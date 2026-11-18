@@ -213,6 +213,7 @@ const {
 } = require('./public/js/spawn.mjs');
 const { MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, normalizeAngle } = require('./public/js/motion.mjs');
 const { packetVelocity } = require('./public/js/drive.mjs');
+const { deadReckon } = require('./public/js/dead-reckoning.mjs');
 const { BZDB_DEFAULTS } = require('./public/js/bzdb-defaults.mjs');
 const {
   BZDB_CONFIG_VARS,
@@ -2610,6 +2611,11 @@ function paneRow(label, value) {
     + `<span>${escapeHtml(value === undefined || value === null ? '' : String(value))}</span></div>`;
 }
 
+// Text as a link to `url`, or as text where there is none.
+function linkTo(url, text) {
+  return url ? `<a href="${escapeHtml(url)}">${escapeHtml(text)}</a>` : escapeHtml(text);
+}
+
 // What the recording is on the left, who was in it on the right, and the map's
 // picture beside them. A player who left early is listed with the score they
 // left with.
@@ -2653,6 +2659,8 @@ function renderMapReadout(entry, index, hidden, t) {
   const counts = stats.counts || {};
   // The map's `metadata` block, each field a list (docs/bzw.md, "Metadata").
   const meta = (key, separator) => (stats.metadata?.[key] || []).join(separator);
+  // Where the map was published, which its name links to.
+  const source = (stats.metadata?.sourceurl || []).find((url) => /^https?:\/\//i.test(url)) || '';
   const count = (value) => (value ? String(value) : '');
   const featureNames = { water: t('water'), weather: t('weather'), ground: t('custom ground') };
   const features = ['water', 'weather', 'ground']
@@ -2661,7 +2669,7 @@ function renderMapReadout(entry, index, hidden, t) {
     .join(', ');
   return `<div class="pane" id="map-pane-${index}"${hidden ? ' hidden' : ''}>`
     + `<div class="paneMain"><div class="paneBody">`
-    + `<p class="paneTitle">${escapeHtml(meta('title', ' ') || entry.file)}</p>`
+    + `<p class="paneTitle">${linkTo(source, meta('title', ' ') || entry.file)}</p>`
     + `<div class="paneCols">`
     + `<div class="paneCol">`
     + paneRow(t('Objects'), count(stats.objects))
@@ -2675,6 +2683,7 @@ function renderMapReadout(entry, index, hidden, t) {
     + `<div class="paneCol">`
     + paneRow(t('File'), entry.file)
     + paneRow(t('Author'), meta('author', ', '))
+    + paneRow(t('Created'), meta('created', ', '))
     + paneRow(t('Version'), meta('version', ' '))
     + paneRow(t('License'), meta('license', ', '))
     + paneRow(t('Description'), meta('description', ' '))
@@ -6977,6 +6986,8 @@ let mapServerOptions = {};
 // dropped-unsupported-feature tally (parseBZWMap), threaded into its
 // MAP_REGISTRY entry below the same way any other map's is.
 let mapMessages = [];
+// The plugin objects in the live map, `{ name: count }` (bz_registerCustomMapObject).
+let mapCustomObjects = {};
 // The map's `zone` blocks, in map order, so a flag slot can name the one it
 // belongs to by index the way upstream's `#<flagId>` qualifier does.
 let MAP_ZONES = [];
@@ -6999,8 +7010,20 @@ let mapNoWalls = false;
 // threading through `GAME_CONFIG` or the client's copy of the map.
 let mapFreeCtfSpawns = false;
 // The live world's physics drivers by upstream's index, for a BZFlag client's
-// death-touch, which names one that way.
+// death-touch and its moves, which name one that way.
 let mapPhysicsDrivers = [];
+const physicsDriverAt = (index) => mapPhysicsDrivers[index] ?? null;
+
+// A registered world's physics drivers that move a tank, as its JSON carries
+// them (`physicsDrivers`), for a proxy's moves on it; none if it cannot be read.
+function worldPhysicsDrivers(entry) {
+  try {
+    const world = JSON.parse(fs.readFileSync(path.join(MAP_CACHE_DIR, `${entry.hash}.json`), 'utf8'));
+    return Array.isArray(world.physicsDrivers) ? world.physicsDrivers : [];
+  } catch {
+    return [];
+  }
+}
 // `waterLevel` -- `null` when the map states none. Read by `validateMovement`
 // for the kill-on-touch rule and by `findFlagSpawnPosition`/`dropSpawnPosition`
 // to keep a flag or a spawn off the surface, the server-side half of what
@@ -7074,6 +7097,7 @@ if (MAP_SOURCE === 'random') {
   mapTeamMode = mapData.teamMode;
   mapServerOptions = mapData.serverOptions;
   mapMessages = mapData.messages;
+  mapCustomObjects = mapData.customObjects || {};
   MAP_ZONES = mapData.zones;
   // The map's `world size` directive. Applied here, at the one call site that
   // loads the *live* map, rather than as a side effect inside `parseBZWMap`
@@ -7457,6 +7481,7 @@ const LIVE_MAP_ENTRY = registerMapFile(MAP_SOURCE, {
   weather: mapWeather,
   groundMaterial: mapGroundMaterial,
   metadata: mapMetadata,
+  physicsDrivers: mapPhysicsDrivers,
   serverOptions: mapServerOptions,
   meshTemplates: mapMeshTemplates,
   meshInstances: mapMeshInstances,
@@ -8589,65 +8614,17 @@ class Player {
     const dt = Number.isFinite(dtOverrideSeconds)
       ? dtOverrideSeconds
       : (atTime - this.lastUpdate) / 1000; // Convert to seconds
-    if (dt <= 0 || this.paused) return { x: this.x, y: this.y, z: this.z, azimuth: this.azimuth };
-
-    const rotSpeed = GAME_CONFIG.TANK_ROTATION_SPEED || 1.5;
-    const speed = GAME_CONFIG.TANK_SPEED || 15;
-
-    const isInAir = this.jumpAzimuth !== null && this.jumpAzimuth !== undefined;
-    if (isInAir) {
-      // A tank in the air coasts: its air velocity, or its jump's speed along
-      // the direction it left on, and gravity on the way.
-      const hasAirVelocity = Number.isFinite(this.airVelocityX) && Number.isFinite(this.airVelocityY);
-      const moveAzimuth = this.slideAzimuth !== undefined ? this.slideAzimuth : this.jumpAzimuth;
-      const dx = hasAirVelocity ? this.airVelocityX * dt : Math.cos(moveAzimuth) * this.forwardSpeed * speed * dt;
-      const dy = hasAirVelocity ? this.airVelocityY * dt : Math.sin(moveAzimuth) * this.forwardSpeed * speed * dt;
-      const gravity = hasAirControl(getPlayerFlag(this.id)?.type)
-        ? GAME_CONFIG.WINGS_GRAVITY
-        : GAME_CONFIG.GRAVITY;
-      const vv = this.verticalVelocity + gravity * dt;
-      const dz = (this.verticalVelocity + vv) / 2 * dt; // Average velocity over dt
-      return {
-        x: this.x + dx,
-        y: this.y + dy,
-        z: Math.max(getGroundLimit(getPlayerFlag(this.id)?.type ?? null), this.z + dz),
-        azimuth: this.azimuth + this.rotationSpeed * rotSpeed * dt,
-      };
-    }
-
-    const rs = this.rotationSpeed || 0;
-    const fs = this.forwardSpeed || 0;
-    // A tank sliding along something moves along the slide, not its heading.
-    const moveAzimuth = this.slideAzimuth !== undefined ? this.slideAzimuth : this.azimuth;
-
-    // A physics driver under the tank carries it.
-    const driver = getSupportPhysicsDriver(this.x, this.y, this.z);
-    const push = driver && driver.linear
-      ? { x: driver.linear[0], y: driver.linear[1], z: driver.linear[2] } : null;
-    const pushX = push ? push.x * dt : 0;
-    const pushY = push ? push.y * dt : 0;
-    const pushZ = push ? push.z * dt : 0;
-
-    const omega = rs * rotSpeed;
-    const v = fs * speed;
-    if (Math.abs(rs) < 0.001) {
-      return {
-        x: this.x + (Math.cos(moveAzimuth) * v * dt) + pushX,
-        y: this.y + (Math.sin(moveAzimuth) * v * dt) + pushY,
-        z: this.z + pushZ,
-        azimuth: this.azimuth + omega * dt,
-      };
-    }
-    // Turning while driving: an arc. The heading turns at `omega` and the tank
-    // travels along it, so the position is the integral of (cos, sin) of it.
-    const a0 = this.azimuth;
-    const a1 = this.azimuth + omega * dt;
-    return {
-      x: this.x + ((v / omega) * (Math.sin(a1) - Math.sin(a0))) + pushX,
-      y: this.y + ((v / omega) * (Math.cos(a0) - Math.cos(a1))) + pushY,
-      z: this.z + pushZ,
-      azimuth: this.azimuth + omega * dt,
-    };
+    // The driver the move named only where the server finds it under the
+    // tank: a claim it cannot check would explain away any drift.
+    const onGround = this.jumpAzimuth === null || this.jumpAzimuth === undefined;
+    const driver = onGround ? getNamedSupportPhysicsDriver(this.x, this.y, this.z, this.physicsDriver) : null;
+    return deadReckon({
+      x: this.x, y: this.y, z: this.z, azimuth: this.azimuth,
+      forwardSpeed: this.forwardSpeed, rotationSpeed: this.rotationSpeed,
+      verticalVelocity: this.verticalVelocity, jumpAzimuth: this.jumpAzimuth,
+      slideAzimuth: this.slideAzimuth, airVelocityX: this.airVelocityX, airVelocityY: this.airVelocityY,
+      flagType: getPlayerFlag(this.id)?.type ?? null, paused: this.paused,
+    }, dt, GAME_CONFIG, driver);
   }
 }
 
@@ -11899,6 +11876,21 @@ function getSupportPhysicsDriver(x, y, z) {
   return obs ? resolvePhysicsDriverAt(obs, x, y, z) : null;
 }
 
+// The driver a move named, where one of the surfaces under the tank is it:
+// at a seam two drivers' surfaces overlap, and the tank is on the one it
+// says. Otherwise the first the server finds, so a name alone explains
+// nothing.
+function getNamedSupportPhysicsDriver(x, y, z, named) {
+  if (Number.isInteger(named) && named >= 0) {
+    for (const obs of getCollisionColliders()) {
+      if (!findPhysicsSurfaceObstacle([obs], x, y, z, 2, 2)) continue;
+      const driver = resolvePhysicsDriverAt(obs, x, y, z);
+      if (driver?.index === named) return driver;
+    }
+  }
+  return getSupportPhysicsDriver(x, y, z);
+}
+
 
 // RandomSpawnPolicy::getPosition. A player waiting to restart at base spawns on
 // a random point of one of their own team's bases, which is every spawn in CTF
@@ -12545,7 +12537,7 @@ function recordingHeader(callsign) {
   const mapPath = generated ? null : resolveMapFilePath(MAP_SOURCE);
   const text = generated ? RANDOM_WORLD_BZW : (mapPath ? fs.readFileSync(mapPath, 'latin1') : null);
   if (!text) throw new Error(`no map file for ${MAP_SOURCE}`);
-  const world = packWorldDatabase(compileBzwWorld(text));
+  const world = packWorldDatabase(compileBzwWorld(text, { customObjects: plugins?.mapObjects() ?? new Set() }));
   const settings = packGameSettings(bzflagGameSettings());
   const frame = Buffer.alloc(4 + settings.length);
   frame.writeUInt16BE(settings.length, 0);
@@ -13619,7 +13611,9 @@ function getBzflagWorld() {
   let promise;
   try {
     const text = generated ? RANDOM_WORLD_BZW : fs.readFileSync(mapPath, 'latin1');
-    const tree = compileBzwWorld(text, { bzdb: SERVER_BZDB, textureName: nativeTextureName });
+    const tree = compileBzwWorld(text, {
+      bzdb: SERVER_BZDB, textureName: nativeTextureName, customObjects: plugins?.mapObjects() ?? new Set(),
+    });
     if (tree.unsupported.length > 0) {
       promise = generated
         ? Promise.resolve(null)
@@ -13758,6 +13752,7 @@ async function seatNativeClient(link, payload) {
     send: (code, body) => link.send(code, body),
     teamIndex: bzflagTeamIndex,
     config: () => GAME_CONFIG,
+    driverAt: physicsDriverAt,
     flagName: (type) => getFlagType(type)?.name || '',
     addressOf: (id) => players.get(id)?.clientIP ?? null,
     scoreOf: (id) => {
@@ -13856,7 +13851,7 @@ async function seatNativeClient(link, payload) {
       const zonedFlag = getPlayerFlag(seated.id);
       const flagActive = (update.status & BZFS_PLAYER_STATUS.FLAG_ACTIVE) !== 0;
       if (zonedFlag && togglesZoneOnTeleport(zonedFlag.type) && zonedFlag.zoned !== flagActive) {
-        const to = moveFromBzfs(update, GAME_CONFIG);
+        const to = moveFromBzfs(update, GAME_CONFIG, physicsDriverAt);
         const crossing = findCrossedTeleporterFace({ x: seated.x, y: seated.y, z: seated.z }, to);
         const refusal = crossing
           ? getZoneRefusal(seated, { ...crossing.at, azimuth: to.a }, crossing.faceId, Date.now())
@@ -13868,11 +13863,11 @@ async function seatNativeClient(link, payload) {
       }
       // The update after a MsgTeleport is the far side of it.
       if (seated.nativeTeleport) {
-        applyNativeTeleport(seated, moveFromBzfs(update, GAME_CONFIG), seated.nativeTeleport);
+        applyNativeTeleport(seated, moveFromBzfs(update, GAME_CONFIG, physicsDriverAt), seated.nativeTeleport);
         seated.nativeTeleport = null;
         return;
       }
-      say(moveFromBzfs(update, GAME_CONFIG));
+      say(moveFromBzfs(update, GAME_CONFIG, physicsDriverAt));
       // bzfs answers Identify on every update its holder sends
       // (`sendClosestFlagMessage`); the translator passes on only a change.
       searchFlag(seated);
@@ -17313,6 +17308,7 @@ bzfsProxy.useServer({
   matchServerLine: l10n.matchServerLine,
   voiceRtcConfigFor,
   worldBase,
+  worldPhysicsDrivers,
   get MAP_SOURCE() { return MAP_SOURCE; },
   get forwardedForPolicy() { return forwardedForPolicy; },
   get forwardedProxyPeer() { return forwardedProxyPeer; },
@@ -19179,6 +19175,15 @@ plugins = createPluginHost({
   log: (text) => log(`[PLUGIN] ${text}`),
 });
 plugins.loadAll();
+{
+  // A plugin's object no loaded plugin reads: bzfs would refuse the map, bzo
+  // plays it without.
+  const claimed = plugins.mapObjects();
+  const unclaimed = Object.entries(mapCustomObjects).filter(([name]) => !claimed.has(name.toUpperCase()));
+  if (unclaimed.length > 0) {
+    log(`${MAP_SOURCE}: no plugin reads ${unclaimed.map(([name, count]) => `${name} x${count}`).join(', ')}`);
+  }
+}
 // Upstream asks before it reads the world, and a plugin may name another file
 // or build the world itself. bzo has parsed its world by now, so this one
 // says what it is and nothing a plugin changes in it is read back.

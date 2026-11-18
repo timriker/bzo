@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { NativeTranslator } = require('../server/bzflag-native.cjs');
+const { NativeTranslator, moveFromBzfs } = require('../server/bzflag-native.cjs');
 const { decodePlayerUpdate } = require('../server/bzfs-session.cjs');
 const { channelTeam, teamChannel } = require('../server/player-ids.cjs');
 
@@ -86,5 +86,46 @@ const chatTo = (message) => {
 assert.deepEqual(chatTo({ text: 'привет всем' }), [], 'a line that folds to nothing is not sent');
 assert.deepEqual(chatTo({ text: 'привет всем', en: 'hello everyone' }), ['hello everyone'], 'its English copy is');
 assert.deepEqual(chatTo({ text: 'hello' }), ['hello'], 'a plain line as written');
+
+// On a physics driver a BZFlag client is sent the whole velocity and turn, the
+// driver's in them, and the driver named; what it sends back is turned into
+// the tank's own motion again, the driver named as `pd`. A move goes round
+// unchanged.
+{
+  const drivers = [
+    { index: 0, linear: [0, -50, 0], angular: null },
+    { index: 1, linear: null, angular: [Math.PI / 2, 100, 0] },
+  ];
+  const config = { TANK_SPEED, TANK_ROTATION_SPEED: Math.PI / 4 };
+  const sent = [];
+  const native = new NativeTranslator({
+    selfSlot: 200,
+    send: (code, payload) => sent.push({ code, payload: Buffer.from(payload) }),
+    teamIndex: () => 0,
+    config: () => config,
+    driverAt: (index) => drivers[index] ?? null,
+  });
+  const roundTrip = (move) => {
+    sent.length = 0;
+    native.playerUpdate({ id: '0', z: 0, vv: 0, vx: 0, vy: 0, ...move });
+    const update = decodePlayerUpdate(sent.find((f) => f.code === 'pu').payload, false);
+    return { update, back: moveFromBzfs(update, config, (index) => drivers[index] ?? null) };
+  };
+  const conveyor = roundTrip({ x: 10, y: 0, a: 0, fs: 1, rs: 0, pd: 0 });
+  near(conveyor.update.velocity, [TANK_SPEED, -50, 0], 'the conveyor in the velocity');
+  assert.equal(conveyor.update.phydrv, 0, 'and named');
+  assert.equal(conveyor.back.fs, 1, 'the tank\'s own speed back out');
+  assert.equal(conveyor.back.pd, 0);
+  const turntable = roundTrip({ x: 110, y: 0, a: Math.PI / 2, fs: 0.5, rs: 0.5, pd: 1 });
+  near(turntable.update.velocity, [0, (TANK_SPEED / 2) + ((Math.PI / 2) * 10), 0], 'the carry in the velocity');
+  assert.ok(Math.abs(turntable.update.angVel - (((Math.PI / 4) * 0.5) + (Math.PI / 2))) < 1e-6, 'and the spin in the turn');
+  assert.equal(turntable.back.fs, 0.5);
+  assert.equal(turntable.back.rs, 0.5);
+  assert.equal(turntable.back.pd, 1);
+  const plain = roundTrip({ x: 0, y: 0, a: 0, fs: 1, rs: 0 });
+  assert.equal(plain.update.phydrv, 0, 'no driver, none named');
+  assert.equal(plain.update.status & (1 << 7), 0);
+  assert.equal(plain.back.pd, undefined);
+}
 
 console.log('test-bzflag-native: ok');

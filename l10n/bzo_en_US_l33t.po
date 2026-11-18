@@ -1538,7 +1538,7 @@ msgstr "51gn1ng 0u7 l34v35 VR. 3x17 73h h34d537 535510n f1r57."
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "Gl0b4l l0g1n l34v35 VR. 3x17 73h h34d537 535510n f1r57."
 
-#: public/js/client.js:4897 public/js/client.js:10862
+#: public/js/client.js:4897 public/js/client.js:10864
 msgid "Fetching remote server's map..."
 msgstr "F37ch1ng r3m073 53rv3r'5 m4p..."
 
@@ -1558,7 +1558,7 @@ msgstr "AutoPilot {pilot}: {intent}"
 msgid "AutoPilot {pilot}"
 msgstr "AutoPilot {pilot}"
 
-#: public/js/client.js:6813 server.js:11585
+#: public/js/client.js:6813 server.js:11608
 msgid "You do not have permission to speak on the admin channel."
 msgstr "j00 d0 n07 h4v3 p3rm15510n 70 5p34k 0n 73h 4dm1n ch4nn3l."
 
@@ -1646,7 +1646,7 @@ msgstr "✓ WebXR VR M0d3: 0N"
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ VR r3qu357 f41l3d - ch3ck server.log"
 
-#: public/js/client.js:7363 public/js/client.js:18118
+#: public/js/client.js:7363 public/js/client.js:18120
 msgid "WebXR VR Mode: OFF"
 msgstr "WebXR VR M0d3: 0FF"
 
@@ -1842,7 +1842,7 @@ msgstr ""
 msgid "nothing uploaded"
 msgstr "n07h1ng upl04d3d"
 
-#: public/js/client.js:10665 public/js/client.js:11145
+#: public/js/client.js:10665 public/js/client.js:11147
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
@@ -1850,260 +1850,264 @@ msgstr "MOTD: {motd}"
 msgid "by {authors}"
 msgstr ""
 
-#: public/js/client.js:10745
+#: public/js/client.js:10741
+msgid "created {date}"
+msgstr ""
+
+#: public/js/client.js:10747
 msgid "{count} box"
 msgstr "{count} b0x"
 
-#: public/js/client.js:10745
+#: public/js/client.js:10747
 msgid "{count} boxes"
 msgstr "{count} b0x35"
 
-#: public/js/client.js:10746
+#: public/js/client.js:10748
 msgid "{count} pyramid"
 msgstr "{count} pyr4m1d"
 
-#: public/js/client.js:10746
+#: public/js/client.js:10748
 msgid "{count} pyramids"
 msgstr "{count} pyr4m1d5"
 
-#: public/js/client.js:10747
+#: public/js/client.js:10749
 msgid "{count} mesh"
 msgstr "{count} m35h"
 
-#: public/js/client.js:10747
+#: public/js/client.js:10749
 msgid "{count} meshes"
 msgstr "{count} m35h35"
 
-#: public/js/client.js:10752
+#: public/js/client.js:10754
 msgid "{count} base"
 msgstr "{count} b453"
 
-#: public/js/client.js:10752
+#: public/js/client.js:10754
 msgid "{count} bases"
 msgstr "{count} b4535"
 
-#: public/js/client.js:10754
+#: public/js/client.js:10756
 msgid "{count} teleporter"
 msgstr "{count} 73l3p0r73r"
 
-#: public/js/client.js:10754
+#: public/js/client.js:10756
 msgid "{count} teleporters"
 msgstr "{count} 73l3p0r73r5"
 
-#: public/js/client.js:10757 server.js:2657
+#: public/js/client.js:10759 server.js:2664
 msgid "water"
 msgstr "w473r"
 
-#: public/js/client.js:10758 server.js:2657
+#: public/js/client.js:10760 server.js:2664
 msgid "weather"
 msgstr "w347h3r"
 
-#: public/js/client.js:10759 server.js:2657
+#: public/js/client.js:10761 server.js:2664
 msgid "custom ground"
 msgstr "cu570m gr0und"
 
-#: public/js/client.js:10797 public/js/client.js:10876
+#: public/js/client.js:10799 public/js/client.js:10878
 msgid "View {map}"
 msgstr "V13w {map}"
 
-#: public/js/client.js:10874
+#: public/js/client.js:10876
 msgid "{server} did not answer"
 msgstr "{server} d1d n07 4n5w3r"
 
-#: public/js/client.js:10886 server.js:2585 server.js:3068 server.js:3123
+#: public/js/client.js:10888 server.js:2585 server.js:3076 server.js:3131
 msgid "Watch"
 msgstr "W47ch"
 
-#: public/js/client.js:10887
+#: public/js/client.js:10889
 msgid "Watch the live game on {server}"
 msgstr "W47ch 73h l1v3 g4m3 0n {server}"
 
-#: public/js/client.js:10905 public/js/client.js:10913 server.js:3081
+#: public/js/client.js:10907 public/js/client.js:10915 server.js:3089
 msgid "Re-import"
 msgstr "R3-1mp0r7"
 
-#: public/js/client.js:10909
+#: public/js/client.js:10911
 msgid "Importing…"
 msgstr "1mp0r71ng…"
 
-#: public/js/client.js:10952
+#: public/js/client.js:10954
 msgid "Loading map..."
 msgstr "L04d1ng m4p..."
 
-#: public/js/client.js:10960
+#: public/js/client.js:10962
 msgid "Building world geometry..."
 msgstr "Bu1ld1ng w0rld g30m37ry..."
 
-#: public/js/client.js:11024
+#: public/js/client.js:11026
 msgid "{count} watching now"
 msgstr "{count} w47ch1ng n0w"
 
-#: public/js/client.js:11027
+#: public/js/client.js:11029
 msgid "Watch {name}"
 msgstr "W47ch {name}"
 
-#: public/js/client.js:11063
+#: public/js/client.js:11065
 msgid "That server's map could not be fetched"
 msgstr "7h47 53rv3r'5 m4p c0uld n07 b3 f37ch3d"
 
-#: public/js/client.js:11081
+#: public/js/client.js:11083
 msgid "import failed"
 msgstr "1mp0r7 f41l3d"
 
-#: public/js/client.js:11081
+#: public/js/client.js:11083
 msgid "Could not load that server's map: {reason}"
 msgstr "C0uld n07 l04d 7h47 53rv3r'5 m4p: {reason}"
 
-#: public/js/client.js:11295
+#: public/js/client.js:11297
 msgid "{team} Limit:"
 msgstr "{team} L1m17:"
 
-#: public/js/client.js:11388
+#: public/js/client.js:11390
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11493
+#: public/js/client.js:11495
 msgid "No limit"
 msgstr "N0 l1m17"
 
-#: public/js/client.js:11602
+#: public/js/client.js:11604
 msgid "Restart"
 msgstr "R3574r7"
 
-#: public/js/client.js:11606
+#: public/js/client.js:11608
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "574r75 4 n3w g4m3: 3v3ry pl4y3r r3l04d5 1n70 73h n3w 53771ng5"
 
-#: public/js/client.js:11607
+#: public/js/client.js:11609
 msgid "Applies the staged changes"
 msgstr "4ppl135 73h 574g3d ch4ng35"
 
-#: public/js/client.js:11954
+#: public/js/client.js:11956
 msgid "Paused"
 msgstr "P4u53d"
 
-#: public/js/client.js:11955
+#: public/js/client.js:11957
 msgid "Sealed"
 msgstr "534l3d"
 
-#: public/js/client.js:12893
+#: public/js/client.js:12895
 msgid "Already following someone"
 msgstr "4lr34dy f0ll0w1ng 50m30n3"
 
-#: public/js/client.js:12929 public/js/client.js:13054
+#: public/js/client.js:12931 public/js/client.js:13056
 msgid "Looking at {player}"
 msgstr "L00k1ng 47 {player}"
 
-#: public/js/client.js:13038
+#: public/js/client.js:13040
 msgid "{player} locked on me"
 msgstr "{player} l0ck3d 0n m3"
 
-#: public/js/client.js:13048
+#: public/js/client.js:13050
 msgid "Looking at nothing"
 msgstr "L00k1ng 47 n07h1ng"
 
-#: public/js/client.js:13054
+#: public/js/client.js:13056
 msgid "Locked on {player}"
 msgstr "L0ck3d 0n {player}"
 
-#: public/js/client.js:13391
+#: public/js/client.js:13393
 msgid "Clear ({count})"
 msgstr "Cl34r ({count})"
 
-#: public/js/client.js:13391 public/js/list-page.js:623
+#: public/js/client.js:13393 public/js/list-page.js:623
 msgid "Clear"
 msgstr "Cl34r"
 
-#: public/js/client.js:13491
+#: public/js/client.js:13493
 msgid "SPOTTED: {player}"
 msgstr "5P0773D: {player}"
 
-#: public/js/client.js:13606 public/js/client.js:13612
+#: public/js/client.js:13608 public/js/client.js:13614
 msgid "nobody"
 msgstr "n0b0dy"
 
-#: public/js/client.js:13616
+#: public/js/client.js:13618
 msgid "Leader {who}"
 msgstr "L34d3r {who}"
 
-#: public/js/client.js:13618 public/js/client.js:13623
+#: public/js/client.js:13620 public/js/client.js:13625
 msgid "Tracking {who}"
 msgstr "7r4ck1ng {who}"
 
-#: public/js/client.js:13619
+#: public/js/client.js:13621
 msgid "Following {who}"
 msgstr "F0ll0w1ng {who}"
 
-#: public/js/client.js:13620
+#: public/js/client.js:13622
 msgid "Driving with {who}"
 msgstr "Dr1v1n' w17h {who}"
 
-#: public/js/client.js:13625 public/js/hud.js:629 public/js/input.js:1457
+#: public/js/client.js:13627 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "F1r57 P3r50n"
 
-#: public/js/client.js:13626 public/js/hud.js:630 public/js/input.js:1458
+#: public/js/client.js:13628 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "7h1rd P3r50n"
 
-#: public/js/client.js:13627 public/js/hud.js:631 public/js/input.js:1459
+#: public/js/client.js:13629 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "0v3rv13w"
 
-#: public/js/client.js:13628
+#: public/js/client.js:13630
 msgid "Roaming"
 msgstr "R04m1ng"
 
-#: public/js/client.js:13912 public/js/client.js:13985
+#: public/js/client.js:13914 public/js/client.js:13987
 msgid "autopilot disabled"
 msgstr "@u+OP1LO+ di5@Bl3d"
 
-#: public/js/client.js:13921
+#: public/js/client.js:13923
 msgid "autopilot not allowed on this server"
 msgstr "4u70p1l07 n07 4ll0w3d 0n 7h15 53rv3r"
 
-#: public/js/client.js:13931
+#: public/js/client.js:13933
 msgid "{pilot} has the controls"
 msgstr "{pilot} h45 73h c0n7r0l5"
 
-#: public/js/client.js:13936
+#: public/js/client.js:13938
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "j00 m4y n07 3n4bl3 73h 4u70p1l07 m0r3 7h4n 0nc3 3v3ry f1v3 53c0nd5."
 
-#: public/js/client.js:13941
+#: public/js/client.js:13943
 msgid "autopilot enabled"
 msgstr "aU+OPiL0+ En4BL3D"
 
-#: public/js/client.js:13965
+#: public/js/client.js:13967
 msgid "Not allowed"
 msgstr "N07 4ll0w3d"
 
-#: public/js/client.js:13965 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/client.js:13967 public/js/input.js:1162 public/js/input.js:1172
 #: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "Un4v41l4bl3"
 
-#: public/js/client.js:13968
+#: public/js/client.js:13970
 msgid "None"
 msgstr "N0n3"
 
-#: public/js/client.js:14813
+#: public/js/client.js:14815
 msgid "Zoned"
 msgstr "Z0n3d"
 
-#: public/js/client.js:14813
+#: public/js/client.js:14815
 msgid "Unzoned"
 msgstr "Unz0n3d"
 
-#: public/js/client.js:15614 public/js/client.js:15631
+#: public/js/client.js:15616 public/js/client.js:15633
 msgid "unidentified"
 msgstr "un1d3n71f13d"
 
-#: public/js/client.js:15651
+#: public/js/client.js:15653
 msgid "unknown"
 msgstr "unkn0wn"
 
-#: public/js/client.js:15662
+#: public/js/client.js:15664
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2111,99 +2115,99 @@ msgstr ""
 "7h15 53rv3r b0unc35 3v3ry 5h07 0ff w4ll5, wh473v3r fl4g f1r3d 17, 50 7h3 "
 "R1c0ch37 fl4g 15 n07 1n pl4y h3r3."
 
-#: public/js/client.js:15663
+#: public/js/client.js:15665
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "0n 7h15 53rv3r 0nly 7h3 R1c0ch37 fl4g b0unc35 5h075 0ff w4ll5."
 
-#: public/js/client.js:15730
+#: public/js/client.js:15732
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:15741
+#: public/js/client.js:15743
 msgid "Can't drop the flag while zoned"
 msgstr "C4n'7 dr0p 73h fl4g wh1l3 z0n3d"
 
-#: public/js/client.js:15745
+#: public/js/client.js:15747
 msgid "Can't drop a flag while inside a building"
 msgstr "C4n'7 dr0p 4 fl4g wh1l3 1n51d3 4 bu1ld1ng"
 
-#: public/js/client.js:15795
+#: public/js/client.js:15797
 msgid "in {seconds}s"
 msgstr "1n {seconds}5"
 
-#: public/js/client.js:15796
+#: public/js/client.js:15798
 msgid "after {count} kill"
 msgstr "4f73r {count} k1ll"
 
-#: public/js/client.js:15796
+#: public/js/client.js:15798
 msgid "after {count} kills"
 msgstr "4f73r {count} k1ll5"
 
-#: public/js/client.js:15797
+#: public/js/client.js:15799
 msgid "on the antidote"
 msgstr "0n 73h 4n71d073"
 
-#: public/js/client.js:15798
+#: public/js/client.js:15800
 msgid "stays until it kills you"
 msgstr "574y5 un71l 17 k1ll5 j00"
 
-#: public/js/client.js:15799
+#: public/js/client.js:15801
 msgid "{first} or {second}"
 msgstr "{first} 0r {second}"
 
-#: public/js/client.js:15800
+#: public/js/client.js:15802
 msgid "shakes off {ways}"
 msgstr "5h4k35 0ff {ways}"
 
-#: public/js/client.js:15856
+#: public/js/client.js:15858
 msgid "Flag Alert!!!"
 msgstr "Fl4g 4l3r7!!!"
 
-#: public/js/client.js:15864
+#: public/js/client.js:15866
 msgid "Team Grab!!!"
 msgstr "734m Gr4b!!!"
 
-#: public/js/client.js:15880
+#: public/js/client.js:15882
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} 570l3 {victim}'5 {flag} fl4g"
 
-#: public/js/client.js:15911
+#: public/js/client.js:15913
 msgid "Closest Flag: {flag}"
 msgstr "Cl05357 Fl4g: {flag}"
 
-#: public/js/client.js:15973
+#: public/js/client.js:15975
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} 700k 7h31r 0wn fl4g 1n70 {team} 73rr170ry"
 
-#: public/js/client.js:15981
+#: public/js/client.js:15983
 msgid "Don't capture your own flag!!!"
 msgstr "D0n'7 c4p7ur3 j00r 0wn fl4g!!!"
 
-#: public/js/client.js:15987
+#: public/js/client.js:15989
 msgid "{player} captured the {team} flag"
 msgstr "{player} c4p7ur3d 73h {team} fl4g"
 
-#: public/js/client.js:17614 public/js/client.js:17615
+#: public/js/client.js:17616 public/js/client.js:17617
 msgid "Exit WebXR VR Mode"
 msgstr "3x17 WebXR VR M0d3"
 
-#: public/js/client.js:18331
+#: public/js/client.js:18333
 msgid "Show translation"
 msgstr "5h0w 7r4n5l4710n"
 
-#: public/js/client.js:18331
+#: public/js/client.js:18333
 msgid "Show original"
 msgstr "5h0w 0r161n4l"
 
-#: public/js/client.js:18339
+#: public/js/client.js:18341
 msgid "Downloading {percent}%"
 msgstr "D0wnl04d1ng {percent}%"
 
-#: public/js/client.js:18343
+#: public/js/client.js:18345
 msgid "Translation unavailable"
 msgstr "7r4n5l4710n un4v41l4bl3"
 
-#: public/js/client.js:18343
+#: public/js/client.js:18345
 msgid "Translate"
 msgstr "7r4n5l473"
 
@@ -2945,7 +2949,7 @@ msgstr "r34d by bzo"
 msgid "{read}/{total} set"
 msgstr "{read}/{total} 537"
 
-#: server.js:2006 server.js:2678 server.js:3186
+#: server.js:2006 server.js:2686 server.js:3194
 msgid "Version"
 msgstr "V3r510n"
 
@@ -3009,11 +3013,11 @@ msgstr "{hours}h {minutes}m"
 msgid "{days}d {hours}h"
 msgstr "{days}d {hours}h"
 
-#: server.js:2177 server.js:2636 server.js:2888
+#: server.js:2177 server.js:2641 server.js:2896
 msgid "Observers"
 msgstr "0b53rv3r5"
 
-#: server.js:2196 server.js:2641
+#: server.js:2196 server.js:2646
 msgid "none"
 msgstr "n0n3"
 
@@ -3125,7 +3129,7 @@ msgstr "{shots} 5h075"
 msgid "Bots"
 msgstr "B075"
 
-#: server.js:2346 server.js:2543 server.js:2790
+#: server.js:2346 server.js:2543 server.js:2798
 msgid "None."
 msgstr "N0n3."
 
@@ -3145,7 +3149,7 @@ msgstr "0b574cl35 1n 73h w0rld"
 msgid "Mesh faces in the world"
 msgstr "M35h f4c35 1n 73h w0rld"
 
-#: server.js:2410 server.js:2682
+#: server.js:2410 server.js:2690
 msgid "World size"
 msgstr "W0rld 51z3"
 
@@ -3153,7 +3157,7 @@ msgstr "W0rld 51z3"
 msgid "Map file name"
 msgstr "M4p f1l3 n4m3"
 
-#: server.js:2412 server.js:2573 server.js:2901
+#: server.js:2412 server.js:2573 server.js:2909
 msgid "Name"
 msgstr "N4m3"
 
@@ -3161,11 +3165,11 @@ msgstr "N4m3"
 msgid "Game style the map sets"
 msgstr "G4m3 57yl3 73h m4p 5375"
 
-#: server.js:2429 server.js:2588 server.js:3015
+#: server.js:2429 server.js:2588 server.js:3023
 msgid "View map"
 msgstr "V13w m4p"
 
-#: server.js:2432 server.js:3077
+#: server.js:2432 server.js:3085
 msgid "Practice"
 msgstr ""
 
@@ -3209,83 +3213,87 @@ msgstr "73h m4p 17 w45 pl4y3d 0n"
 msgid "Unreadable"
 msgstr "Unr34d4bl3"
 
-#: server.js:2619
+#: server.js:2624
 msgid "{viewers} watching, at {time}"
 msgstr "{viewers} w47ch1ng, 47 {time}"
 
-#: server.js:2634
+#: server.js:2639
 msgid "Recorded by"
 msgstr "R3c0rd3d by"
 
-#: server.js:2637
+#: server.js:2642
 msgid "Now"
 msgstr "N0w"
 
-#: server.js:2639
+#: server.js:2644
 msgid "Error"
 msgstr "Error"
 
-#: server.js:2669
+#: server.js:2676
 msgid "Boxes"
 msgstr "B0x35"
 
-#: server.js:2670
+#: server.js:2677
 msgid "Pyramids"
 msgstr "Pyr4m1d5"
 
-#: server.js:2671
+#: server.js:2678
 msgid "Meshes"
 msgstr "M35h35"
 
-#: server.js:2672
+#: server.js:2679
 msgid "Bases"
 msgstr "B4535"
 
-#: server.js:2673
+#: server.js:2680
 msgid "Teleporters"
 msgstr "73l3p0r73r5"
 
-#: server.js:2677
+#: server.js:2684
 msgid "Author"
 msgstr ""
 
-#: server.js:2679
+#: server.js:2685
+msgid "Created"
+msgstr ""
+
+#: server.js:2687
 msgid "License"
 msgstr ""
 
-#: server.js:2680 server.js:2902
+#: server.js:2688 server.js:2910
 msgid "Description"
 msgstr ""
 
-#: server.js:2683
+#: server.js:2691
 msgid "Has"
 msgstr "H45"
 
-#: server.js:2684
+#: server.js:2692
 msgid "Hashed"
 msgstr "H45h3d"
 
-#: server.js:2684
+#: server.js:2692
 msgid "generated at boot"
 msgstr "g3n3r473d 47 b007"
 
-#: server.js:2684
+#: server.js:2692
 msgid "yes"
 msgstr "y35"
 
-#: server.js:2684
+#: server.js:2692
 msgid "not yet"
 msgstr "n07 y37"
 
-#: server.js:2685
+#: server.js:2693
 msgid "Hash"
 msgstr "H45h"
 
-#: server.js:2686
+#: server.js:2694
 msgid "Modified"
 msgstr "M0d1f13d"
 
-#: server.js:2705
+#: server.js:2713
 msgid ""
 "Plain text is a glob over the address, description, version, hash and owner "
 "-- {examples} -- and a word with no {star} or {query} in it is wrapped in "
@@ -3295,7 +3303,7 @@ msgstr ""
 "-- {examples} -- 4nd 4 w0rd w17h n0 {star} 0r {query} 1n 17 15 wr4pp3d 1n "
 "b07h, 50 17 m47ch35 4nywh3r3."
 
-#: server.js:2708
+#: server.js:2716
 msgid ""
 "A leading {slash} starts filters instead: comma-separated, combined with "
 "{and}."
@@ -3303,11 +3311,11 @@ msgstr ""
 "4 l34d1ng {slash} 574r75 f1l73r5 1n5734d: c0mm4-53p4r473d, c0mb1n3d w17h "
 "{and}."
 
-#: server.js:2709
+#: server.js:2717
 msgid "and"
 msgstr "4nd"
 
-#: server.js:2711
+#: server.js:2719
 msgid ""
 "A second {slash} starts another set, and a server matching either set is "
 "shown."
@@ -3315,83 +3323,83 @@ msgstr ""
 "4 53c0nd {slash} 574r75 4n07h3r 537, 4nd 4 53rv3r m47ch1ng 317h3r 537 15 "
 "5h0wn."
 
-#: server.js:2712
+#: server.js:2720
 msgid "{hash} begins a comment."
 msgstr "{hash} b3g1n5 4 c0mm3n7."
 
-#: server.js:2713
+#: server.js:2721
 msgid "Booleans -- {on} for on, {off} for off"
 msgstr "B00l34n5 -- {on} f0r 0n, {off} f0r 0ff"
 
-#: server.js:2714
+#: server.js:2722
 msgid "Free-for-all with teams"
 msgstr "Fr33-f0r-4ll w17h 734m5"
 
-#: server.js:2715
+#: server.js:2723
 msgid "Open free-for-all, no teams"
 msgstr "0p3n fr33-f0r-4ll, n0 734m5"
 
-#: server.js:2716
+#: server.js:2724
 msgid "Capture-the-flag"
 msgstr "C4p7ur3-73h-fl4g"
 
-#: server.js:2717
+#: server.js:2725
 msgid "Rabbit chase"
 msgstr "R4bb17 ch453"
 
-#: server.js:2718
+#: server.js:2726
 msgid "Tanks can jump unaided"
 msgstr "74nk5 c4n jump un41d3d"
 
-#: server.js:2719
+#: server.js:2727
 msgid "Shots ricochet"
 msgstr "5h075 r1c0ch37"
 
-#: server.js:2720
+#: server.js:2728
 msgid "Score affects tank performance"
 msgstr "5c0r3 4ff3c75 74nk p3rf0rm4nc3"
 
-#: server.js:2721
+#: server.js:2729
 msgid "Tanks have inertia"
 msgstr "74nk5 h4v3 1n3r714"
 
-#: server.js:2722
+#: server.js:2730
 msgid "Antidote flags are spawned"
 msgstr "4n71d073 fl4g5 4r3 5p4wn3d"
 
-#: server.js:2723
+#: server.js:2731
 msgid "A replay server"
 msgstr "4 r3pl4y 53rv3r"
 
-#: server.js:2724
+#: server.js:2732
 msgid "The pane has a map overview"
 msgstr "73h p4n3 h45 4 m4p 0v3rv13w"
 
-#: server.js:2725
+#: server.js:2733
 msgid "A generated world, which usually changes on restart"
 msgstr "4 g3n3r473d w0rld, wh1ch u5u4lly ch4ng35 0n r3574r7"
 
-#: server.js:2726
+#: server.js:2734
 msgid "Autopilot and robots allowed"
 msgstr "4u70p1l07 4nd r0b075 4ll0w3d"
 
-#: server.js:2727
+#: server.js:2735
 msgid "Players with no bzflag.org login may join to observe"
 msgstr "Pl4y3r5 w17h n0 bzflag.org l0g1n m4y j01n 70 0b53rv3"
 
-#: server.js:2728
+#: server.js:2736
 msgid "Players with no bzflag.org login may spawn"
 msgstr "Pl4y3r5 w17h n0 bzflag.org l0g1n m4y 5p4wn"
 
-#: server.js:2729
+#: server.js:2737
 msgid "Players with no bzflag.org login may chat"
 msgstr "Pl4y3r5 w17h n0 bzflag.org l0g1n m4y ch47"
 
-#: server.js:2730
+#: server.js:2738
 msgid "Left out of bzo's checks: it bans bzo, or its operator asked"
 msgstr ""
 
-#: server.js:2732
+#: server.js:2740
 msgid ""
 "For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not "
 "found out about matches neither {plus} nor {minus}."
@@ -3399,67 +3407,67 @@ msgstr ""
 "F0r {bots}, {guestWatch}, {guests} 4nd {guestChat}, 4 53rv3r bzo h45 n07 "
 "f0und 0u7 4b0u7 m47ch35 n317h3r {plus} n0r {minus}."
 
-#: server.js:2736
+#: server.js:2744
 msgid "Numbers -- a name, then {operators}, then a number"
 msgstr "Numb3r5 -- 4 n4m3, 7h3n {operators}, 7h3n 4 numb3r"
 
-#: server.js:2739
+#: server.js:2747
 msgid "Active shots a tank may have"
 msgstr "4c71v3 5h075 4 74nk m4y h4v3"
 
-#: server.js:2740
+#: server.js:2748
 msgid "Players now, observers excluded"
 msgstr "Pl4y3r5 n0w, 0b53rv3r5 3xclud3d"
 
-#: server.js:2741
+#: server.js:2749
 msgid "Bots now"
 msgstr "B075 n0w"
 
-#: server.js:2742
+#: server.js:2750
 msgid "Playing slots still free"
 msgstr "Pl4y1ng 5l075 571ll fr33"
 
-#: server.js:2743
+#: server.js:2751
 msgid "Colour teams the server offers"
 msgstr "C0l0ur 734m5 73h 53rv3r 0ff3r5"
 
-#: server.js:2744
+#: server.js:2752
 msgid "Time limit, in seconds"
 msgstr "71m3 l1m17, 1n 53c0nd5"
 
-#: server.js:2745
+#: server.js:2753
 msgid "The server's own player ceiling"
 msgstr "73h 53rv3r'5 0wn pl4y3r c31l1ng"
 
-#: server.js:2746
+#: server.js:2754
 msgid "Team score that ends the game"
 msgstr "734m 5c0r3 7h47 3nd5 73h g4m3"
 
-#: server.js:2747
+#: server.js:2755
 msgid "Player score that ends the game"
 msgstr "Pl4y3r 5c0r3 7h47 3nd5 73h g4m3"
 
-#: server.js:2748
+#: server.js:2756
 msgid "Kills that shed a bad flag"
 msgstr "K1ll5 7h47 5h3d 4 b4d fl4g"
 
-#: server.js:2749
+#: server.js:2757
 msgid "Tenths of a second to shed a bad flag"
 msgstr "73n7h5 0f 4 53c0nd 70 5h3d 4 b4d fl4g"
 
-#: server.js:2750
+#: server.js:2758
 msgid "Players on rogue, red, green, blue, purple, observer"
 msgstr "Pl4y3r5 0n r0gu3, r3d, gr33n, blu3, purpl3, 0b53rv3r"
 
-#: server.js:2751
+#: server.js:2759
 msgid "That team's maximum"
 msgstr "7h47 734m'5 m4x1mum"
 
-#: server.js:2752
+#: server.js:2760
 msgid "That team's free slots"
 msgstr "7h47 734m'5 fr33 5l075"
 
-#: server.js:2754
+#: server.js:2762
 msgid ""
 "Patterns -- a name, then {glob} for a glob or {regex} for a regular "
 "expression"
@@ -3467,39 +3475,39 @@ msgstr ""
 "P4773rn5 -- 4 n4m3, 7h3n {glob} f0r 4 gl0b 0r {regex} f0r 4 r3gul4r "
 "3xpr35510n"
 
-#: server.js:2757
+#: server.js:2765
 msgid "The address, host and port"
 msgstr "73h 4ddr355, h057 4nd p0r7"
 
-#: server.js:2758
+#: server.js:2766
 msgid "The description"
 msgstr "73h d35cr1p710n"
 
-#: server.js:2759
+#: server.js:2767
 msgid "Either one"
 msgstr "317h3r 0n3"
 
-#: server.js:2760
+#: server.js:2768
 msgid "The world hash the pane shows"
 msgstr "73h w0rld h45h 73h p4n3 5h0w5"
 
-#: server.js:2761
+#: server.js:2769
 msgid "The server's version: {bzo} or bzfs's own build"
 msgstr "73h 53rv3r'5 v3r510n: {bzo} 0r bzfs's 0wn bu1ld"
 
-#: server.js:2762
+#: server.js:2770
 msgid "The bzflag.org account that registered it"
 msgstr "73h bzflag.org 4cc0un7 7h47 r3g1573r3d 17"
 
-#: server.js:2763
+#: server.js:2771
 msgid "The IP address the list server has for it"
 msgstr "73h IP 4ddr355 73h l157 53rv3r h45 f0r 17"
 
-#: server.js:2764
+#: server.js:2772
 msgid "Any one world variable it sets, as {pair}"
 msgstr "4ny 0n3 w0rld v4r14bl3 17 5375, 45 {pair}"
 
-#: server.js:2766
+#: server.js:2774
 msgid ""
 "A capitalised pattern name matches case-sensitively: {lower} ignores case, "
 "{upper} does not."
@@ -3507,55 +3515,55 @@ msgstr ""
 "4 c4p174l153d p4773rn n4m3 m47ch35 c453-53n5171v3ly: {lower} 1gn0r35 c453, "
 "{upper} d035 n07."
 
-#: server.js:2769
+#: server.js:2777
 msgid "Examples"
 msgstr "3x4mpl35"
 
-#: server.js:2770
+#: server.js:2778
 msgid "Two or three shots, and somebody playing"
 msgstr "7w0 0r 7hr33 5h075, 4nd 50m3b0dy pl4y1ng"
 
-#: server.js:2771
+#: server.js:2779
 msgid "Capture-the-flag between exactly two teams"
 msgstr "C4p7ur3-73h-fl4g b37w33n 3x4c7ly 7w0 734m5"
 
-#: server.js:2772
+#: server.js:2780
 msgid "Leagues, by description"
 msgstr "L34gu35, by d35cr1p710n"
 
-#: server.js:2773
+#: server.js:2781
 msgid "bzo servers only"
 msgstr "bzo 53rv3r5 0nly"
 
-#: server.js:2774
+#: server.js:2782
 msgid "No version known yet"
 msgstr "N0 v3r510n kn0wn y37"
 
-#: server.js:2775
+#: server.js:2783
 msgid "Somebody is watching"
 msgstr "50m3b0dy 15 w47ch1ng"
 
-#: server.js:2776
+#: server.js:2784
 msgid "Rabbit chase, ricochet, three shots"
 msgstr "R4bb17 ch453, r1c0ch37, 7hr33 5h075"
 
-#: server.js:2777
+#: server.js:2785
 msgid "Either capture-the-flag or rabbit chase"
 msgstr "317h3r c4p7ur3-73h-fl4g 0r r4bb17 ch453"
 
-#: server.js:2778
+#: server.js:2786
 msgid "No map overview yet"
 msgstr "N0 m4p 0v3rv13w y37"
 
-#: server.js:2779
+#: server.js:2787
 msgid "Lists {variable} at all, on or off; {off} is the one that means off"
 msgstr "L1575 {variable} 47 4ll, 0n 0r 0ff; {off} 15 73h 0n3 7h47 m34n5 0ff"
 
-#: server.js:2889
+#: server.js:2897
 msgid "Bots, blank where unknown"
 msgstr "B075, bl4nk wh3r3 unkn0wn"
 
-#: server.js:2891
+#: server.js:2899
 msgid ""
 "Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, "
 "cyan replay"
@@ -3563,139 +3571,139 @@ msgstr ""
 "G4m3 7yp3: y3ll0w fr33-f0r-4ll, r3d c4p7ur3-73h-fl4g, wh173 r4bb17 ch453, "
 "cy4n r3pl4y"
 
-#: server.js:2893
+#: server.js:2901
 msgid "Superflags"
 msgstr "5up3rfl4g5"
 
-#: server.js:2896
+#: server.js:2904
 msgid "This server already holds an import of that map"
 msgstr "7h15 53rv3r 4lr34dy h0ld5 4n 1mp0r7 0f 7h47 m4p"
 
-#: server.js:2901
+#: server.js:2909
 msgid "Sort by address"
 msgstr ""
 
-#: server.js:2902
+#: server.js:2910
 msgid "Sort by description"
 msgstr ""
 
-#: server.js:2914
+#: server.js:2922
 msgid "Filter syntax"
 msgstr "F1l73r 5yn74x"
 
-#: server.js:2988
+#: server.js:2996
 msgid "Left out of bzo's checks at its operator's request"
 msgstr "L3f7 0u7 0f bz0'5 ch3ck5 47 175 0p3r470r'5 r3qu357"
 
-#: server.js:2989
+#: server.js:2997
 msgid "This server bans bzo"
 msgstr "7h15 53rv3r b4n5 bz0"
 
-#: server.js:3015 server.js:3066 server.js:3136
+#: server.js:3023 server.js:3074 server.js:3144
 msgid "Launch"
 msgstr "L4unch"
 
-#: server.js:3048
+#: server.js:3056
 msgid "Address"
 msgstr "4ddr355"
 
-#: server.js:3050 server.js:3174 server.js:3190 server.js:6490
+#: server.js:3058 server.js:3182 server.js:3198 server.js:6499
 msgid "Owner"
 msgstr "0wn3r"
 
-#: server.js:3051
+#: server.js:3059
 msgid "Imported"
 msgstr "1mp0r73d"
 
-#: server.js:3072 server.js:3133 server/discovery.cjs:265
+#: server.js:3080 server.js:3141 server/discovery.cjs:265
 msgid "Play"
 msgstr "Pl4y"
 
-#: server.js:3081
+#: server.js:3089
 msgid "Import"
 msgstr "1mp0r7"
 
-#: server.js:3123
+#: server.js:3131
 msgid "Enter game"
 msgstr "3n73r g4m3"
 
-#: server.js:3135
+#: server.js:3143
 msgid "Login and Play"
 msgstr "L0g1n 4nd Pl4y"
 
-#: server.js:3173
+#: server.js:3181
 msgid "BZFlag server"
 msgstr "BZFlag 53rv3r"
 
-#: server.js:3175
+#: server.js:3183
 msgid "Carried by"
 msgstr "C4rr13d by"
 
-#: server.js:3189
+#: server.js:3197
 msgid "Up"
 msgstr "Up"
 
-#: server.js:3191
+#: server.js:3199
 msgid "Voice chat"
 msgstr "V01c3 ch47"
 
-#: server.js:3191
+#: server.js:3199
 msgid "configured"
 msgstr "c0nf1gur3d"
 
-#: server.js:3193
+#: server.js:3201
 msgid "Also at"
 msgstr "4l50 47"
 
-#: server.js:3244
+#: server.js:3252
 msgid "(admin)"
 msgstr "(4dm1n)"
 
-#: server.js:3245
+#: server.js:3253
 msgid "Log out"
 msgstr "L0g 0u7"
 
-#: server.js:3247
+#: server.js:3255
 msgid "Log in with your bzflag.org account to register a server"
 msgstr "L0g 1n w17h j00r bzflag.org 4cc0un7 70 r3g1573r 4 53rv3r"
 
-#: server.js:3248
+#: server.js:3256
 msgid "Log in with your bzflag.org account"
 msgstr "L0g 1n w17h j00r bzflag.org 4cc0un7"
 
-#: server.js:3259
+#: server.js:3267
 msgid "maps"
 msgstr "m4p5"
 
-#: server.js:3259
+#: server.js:3267
 msgid "replays"
 msgstr "r3pl4y5"
 
-#: server.js:3260
+#: server.js:3268
 msgid "keys"
 msgstr "k3y5"
 
-#: server.js:3260
+#: server.js:3268
 msgid "help"
 msgstr "h3lp"
 
-#: server.js:3264
+#: server.js:3272
 msgid "Imported {file} -- it is in the local maps table below."
 msgstr "1mp0r73d {file} -- 17 15 1n 73h l0c4l m4p5 74bl3 b3l0w."
 
-#: server.js:3266
+#: server.js:3274
 msgid "Import failed: {error}"
 msgstr "1mp0r7 f41l3d: {error}"
 
-#: server.js:3274
+#: server.js:3282
 msgid "bzo servers"
 msgstr "bzo 53rv3r5"
 
-#: server.js:3513
+#: server.js:3521
 msgid "Public bzo servers - {count}"
 msgstr "Publ1c bzo 53rv3r5 - {count}"
 
-#: server.js:3514
+#: server.js:3522
 msgid ""
 "From the designated bzo list server, {server} -- pick a row to read it; "
 "Enter, or the pane's own link, goes in."
@@ -3703,15 +3711,15 @@ msgstr ""
 "Fr0m 73h d351gn473d bzo l157 53rv3r, {server} -- p1ck 4 r0w 70 r34d 17; "
 "3n73r, 0r 73h p4n3'5 0wn l1nk, g035 1n."
 
-#: server.js:3515
+#: server.js:3523
 msgid "disabled on this instance"
 msgstr "d154bl3d 0n 7h15 1n574nc3"
 
-#: server.js:3519
+#: server.js:3527
 msgid "Public BZFlag servers - {count}"
 msgstr "Publ1c BZFlag 53rv3r5 - {count}"
 
-#: server.js:3520
+#: server.js:3528
 msgid ""
 "From the public list server (my.bzflag.org), cached {seconds}s ago -- "
 "{refresh}."
@@ -3719,21 +3727,21 @@ msgstr ""
 "Fr0m 73h publ1c l157 53rv3r (my.bzflag.org), c4ch3d {seconds}5 4g0 -- "
 "{refresh}."
 
-#: server.js:3521
+#: server.js:3529
 msgid "refresh"
 msgstr "r3fr35h"
 
-#: server.js:3523
+#: server.js:3531
 msgid ""
 "Pick a row to read it; its link views that map, and does not enter that game."
 msgstr ""
 "P1ck 4 r0w 70 r34d 17; 175 l1nk v13w5 7h47 m4p, 4nd d035 n07 3n73r 7h47 g4m3."
 
-#: server.js:3527
+#: server.js:3535
 msgid "Local maps - {count}"
 msgstr "L0c4l m4p5 - {count}"
 
-#: server.js:3528
+#: server.js:3536
 msgid ""
 "Already in this server's {directory} -- pick a row to read it; its link "
 "views that map."
@@ -3741,11 +3749,11 @@ msgstr ""
 "4lr34dy 1n 7h15 53rv3r'5 {directory} -- p1ck 4 r0w 70 r34d 17; 175 l1nk "
 "v13w5 7h47 m4p."
 
-#: server.js:3533
+#: server.js:3541
 msgid "Local replays - {count}"
 msgstr "L0c4l r3pl4y5 - {count}"
 
-#: server.js:3534
+#: server.js:3542
 msgid ""
 "bzfs recordings in this server's {directory} -- pick a row to read it; Watch "
 "plays it to everyone watching that replay."
@@ -3753,7 +3761,7 @@ msgstr ""
 "bzfs r3c0rd1ng5 1n 7h15 53rv3r'5 {directory} -- p1ck 4 r0w 70 r34d 17; W47ch "
 "pl4y5 17 70 3v3ry0n3 w47ch1ng 7h47 r3pl4y."
 
-#: server.js:3549
+#: server.js:3557
 msgid ""
 "bzo {version} (build {build}): BZFlag in the browser, on desktop, phone and "
 "headset, and this list of the servers to play it on."
@@ -3761,7 +3769,7 @@ msgstr ""
 "bzo {version} (bu1ld {build}): BZFlag 1n 73h br0w53r, 0n d35k70p, ph0n3 4nd "
 "h34d537, 4nd 7h15 l157 0f 73h 53rv3r5 70 pl4y 17 0n."
 
-#: server.js:3552
+#: server.js:3560
 msgid ""
 "Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source "
 "at {source}."
@@ -3769,7 +3777,7 @@ msgstr ""
 "C0pyr1gh7 (C) 2025-2026 Tim Riker. Fr33 50f7w4r3 und3r 73h {license}; 50urc3 "
 "47 {source}."
 
-#: server.js:3556
+#: server.js:3564
 msgid ""
 "Run a BZFlag server? {page} says when bzo visits it, and how to ask it to "
 "stay away."
@@ -3777,19 +3785,19 @@ msgstr ""
 "Run 4 BZFl4g 53rv3r? {page} 54y5 wh3n bz0 v15175 17, 4nd h0w 70 45k 17 70 "
 "574y 4w4y."
 
-#: server.js:3557
+#: server.js:3565
 msgid "bzo on your BZFlag server"
 msgstr "bz0 0n j00r BZFl4g 53rv3r"
 
-#: server.js:3615
+#: server.js:3623
 msgid "Could not reach the BZFlag list server. Try again shortly."
 msgstr "C0uld n07 r34ch 73h BZFlag l157 53rv3r. 7ry 4g41n 5h0r7ly."
 
-#: server.js:6447
+#: server.js:6456
 msgid "List server key"
 msgstr "L157 53rv3r k3y"
 
-#: server.js:6449
+#: server.js:6458
 msgid ""
 "This instance is not the designated bzo list server. Manage this server's "
 "key at {link}."
@@ -3797,15 +3805,15 @@ msgstr ""
 "7h15 1n574nc3 15 n07 73h d351gn473d bzo l157 53rv3r. M4n4g3 7h15 53rv3r'5 "
 "k3y 47 {link}."
 
-#: server.js:6452
+#: server.js:6461
 msgid "The list server is disabled on this instance ({setting} is empty)."
 msgstr "73h l157 53rv3r 15 d154bl3d 0n 7h15 1n574nc3 ({setting} 15 3mp7y)."
 
-#: server.js:6459
+#: server.js:6468
 msgid "Generate key"
 msgstr "G3n3r473 k3y"
 
-#: server.js:6461
+#: server.js:6470
 msgid ""
 "Enter the server's own {setting} -- the same address it already answers "
 "admin-whitelist probes on."
@@ -3813,7 +3821,7 @@ msgstr ""
 "3n73r 73h 53rv3r'5 0wn {setting} -- 73h 54m3 4ddr355 17 4lr34dy 4n5w3r5 "
 "4dm1n-wh173l157 pr0b35 0n."
 
-#: server.js:6464
+#: server.js:6473
 msgid ""
 "The list server calls this address back to validate a report; it never "
 "trusts one a report claims for itself."
@@ -3821,39 +3829,39 @@ msgstr ""
 "73h l157 53rv3r c4ll5 7h15 4ddr355 b4ck 70 v4l1d473 4 r3p0r7; 17 n3v3r "
 "7ru575 0n3 4 r3p0r7 cl41m5 f0r 1753lf."
 
-#: server.js:6466
+#: server.js:6475
 msgid "Log in above to register a server and generate a key."
 msgstr "L0g 1n 4b0v3 70 r3g1573r 4 53rv3r 4nd g3n3r473 4 k3y."
 
-#: server.js:6469
+#: server.js:6478
 msgid "never"
 msgstr "n3v3r"
 
-#: server.js:6470
+#: server.js:6479
 msgid "stale"
 msgstr "574l3"
 
-#: server.js:6471
+#: server.js:6480
 msgid "{players}/{max} players"
 msgstr "{players}/{max} pl4y3r5"
 
-#: server.js:6472
+#: server.js:6481
 msgid "never reported"
 msgstr "n3v3r r3p0r73d"
 
-#: server.js:6473
+#: server.js:6482
 msgid "Revoke"
 msgstr "R3v0k3"
 
-#: server.js:6474
+#: server.js:6483
 msgid "Failed"
 msgstr "F41l3d"
 
-#: server.js:6475
+#: server.js:6484
 msgid "Key for {url}: {key}"
 msgstr "K3y f0r {url}: {key}"
 
-#: server.js:6476
+#: server.js:6485
 msgid ""
 "Paste this into that server's Operator panel -- also readable from the table "
 "above any time."
@@ -3861,15 +3869,15 @@ msgstr ""
 "P4573 7h15 1n70 7h47 53rv3r'5 0p3r470r p4n3l -- 4l50 r34d4bl3 fr0m 73h 74bl3 "
 "4b0v3 4ny 71m3."
 
-#: server.js:6478
+#: server.js:6487
 msgid "All registered keys"
 msgstr "4ll r3g1573r3d k3y5"
 
-#: server.js:6478
+#: server.js:6487
 msgid "Your keys"
 msgstr "j00r k3y5"
 
-#: server.js:6479
+#: server.js:6488
 msgid ""
 "This instance ({url}) is the designated bzo list server -- every other bzo "
 "instance reports here, so its own {list} can show the {table} above."
@@ -3877,407 +3885,407 @@ msgstr ""
 "7h15 1n574nc3 ({url}) 15 73h d351gn473d bzo l157 53rv3r -- 3v3ry 07h3r bzo "
 "1n574nc3 r3p0r75 h3r3, 50 175 0wn {list} c4n 5h0w 73h {table} 4b0v3."
 
-#: server.js:6482
+#: server.js:6491
 msgid "bzo servers table"
 msgstr "bzo 53rv3r5 74bl3"
 
-#: server.js:6484
+#: server.js:6493
 msgid "A {bzfs} server's key is a different one, from {link}."
 msgstr "4 {bzfs} 53rv3r'5 k3y 15 4 d1ff3r3n7 0n3, fr0m {link}."
 
-#: server.js:6490
+#: server.js:6499
 msgid "Key"
 msgstr "K3y"
 
-#: server.js:6491
+#: server.js:6500
 msgid "Requested"
 msgstr "R3qu3573d"
 
-#: server.js:6491
+#: server.js:6500
 msgid "Last checked"
 msgstr "L457 ch3ck3d"
 
-#: server.js:6492
+#: server.js:6501
 msgid "Status"
 msgstr "5747u5"
 
-#: server.js:7815
+#: server.js:7827
 msgid "Match duration is {duration}"
 msgstr "M47ch dur4710n 15 {duration}"
 
-#: server.js:7825
+#: server.js:7837
 msgid "Match started"
 msgstr "M47ch 574r73d"
 
-#: server.js:8232
+#: server.js:8244
 msgid "Your score record will be saved while you are in observer mode."
 msgstr "j00r 5c0r3 r3c0rd w1ll b3 54v3d wh1l3 j00 4r3 1n 0b53rv3r m0d3."
 
-#: server.js:8237
+#: server.js:8249
 msgid "Your score has been restored."
 msgstr "j00r 5c0r3 h45 b33n r3570r3d."
 
 #. TRANSLATORS: /me is a command name; keep it as it is
-#: server.js:8872
+#: server.js:8895
 msgid "{player}, the /me command requires an argument"
 msgstr "{player}, 73h /me c0mm4nd r3qu1r35 4n 4rgum3n7"
 
-#: server.js:8930
+#: server.js:8953
 msgid "Commands (use /<command>? for one of them):"
 msgstr "C0mm4nd5 (u53 /<command>? f0r 0n3 0f 7h3m):"
 
-#: server.js:8975
+#: server.js:8998
 msgid "Recording started"
 msgstr "R3c0rd1ng 574r73d"
 
-#: server.js:8983 server.js:9040 server/messages-operator.cjs:332
+#: server.js:9006 server.js:9063 server/messages-operator.cjs:332
 msgid "Could not open for writing: {name} ({error})"
 msgstr "C0uld n07 0p3n f0r wr171ng: {name} ({error})"
 
-#: server.js:8987
+#: server.js:9010
 msgid "Recording stopped"
 msgstr "R3c0rd1ng 570pp3d"
 
-#: server.js:8995
+#: server.js:9018
 msgid "Record size set to {mbytes}"
 msgstr "R3c0rd 51z3 537 70 {mbytes}"
 
-#: server.js:9003
+#: server.js:9026
 msgid "Record rate set to {seconds}"
 msgstr "R3c0rd r473 537 70 {seconds}"
 
-#: server.js:9007
+#: server.js:9030
 msgid "Not Recording"
 msgstr "N07 R3c0rd1ng"
 
-#: server.js:9011
+#: server.js:9034
 msgid "Filename:  {name}"
 msgstr "F1l3n4m3:  {name}"
 
-#: server.js:9012
+#: server.js:9035
 msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "   54v3d:  {bytes} by735 / {packets} p4ck375 / {seconds} 53c0nd5"
 
-#: server.js:9018
+#: server.js:9041
 msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "Buff3r3d:  {bytes} by735 / {packets} p4ck375 / {seconds} 53c0nd5"
 
-#: server.js:9032 server/messages-operator.cjs:323
+#: server.js:9055 server/messages-operator.cjs:323
 msgid "No buffer to save"
 msgstr "N0 buff3r 70 54v3"
 
-#: server.js:9037 server/messages-operator.cjs:328
+#: server.js:9060 server/messages-operator.cjs:328
 msgid "Record buffer saved to: {name}"
 msgstr "R3c0rd buff3r 54v3d 70: {name}"
 
-#: server.js:9051
+#: server.js:9074
 msgid "Recording to file: {name}"
 msgstr "R3c0rd1ng 70 f1l3: {name}"
 
-#: server.js:9074 server.js:10023
+#: server.js:9097 server.js:10046
 msgid "BZFS Version: {version}"
 msgstr "BZFS V3r510n: {version}"
 
-#: server.js:9112 server.js:10226
+#: server.js:9135 server.js:10249
 msgid "Nobody is here"
 msgstr "N0b0dy 15 h3r3"
 
-#: server.js:9119
+#: server.js:9142
 msgid "server: {stats}"
 msgstr "53rv3r: {stats}"
 
-#: server.js:9161
+#: server.js:9184
 msgid "Usage: /setteam <#slot|PlayerName> <team>"
 msgstr "U54g3: /setteam <#slot|PlayerName> <team>"
 
 #. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
-#: server.js:9168
+#: server.js:9191
 msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
 msgstr "U54g3: /setteam <#slot|PlayerName> <team> -- one of {teams}"
 
-#: server.js:9174
+#: server.js:9197
 msgid "\"{player}\" is not on a team to move from"
 msgstr "\"{player}\" 15 n07 0n 4 734m 70 m0v3 fr0m"
 
-#: server.js:9178
+#: server.js:9201
 msgid "\"{player}\" is already {team}"
 msgstr "\"{player}\" 15 4lr34dy {team}"
 
-#: server.js:9184
+#: server.js:9207
 msgid "\"{player}\" moved to {team}"
 msgstr "\"{player}\" m0v3d 70 {team}"
 
-#: server.js:9185
+#: server.js:9208
 msgid "@{player} moved you to {team}"
 msgstr "@{player} m0v3d j00 70 {team}"
 
-#: server.js:9214
+#: server.js:9237
 msgid "Moved to {position} facing {bearing}"
 msgstr "M0v3d 70 {position} f4c1ng {bearing}"
 
-#: server.js:9217
+#: server.js:9240
 msgid "\"{player}\" moved to {position} facing {bearing}"
 msgstr "\"{player}\" m0v3d 70 {position} f4c1ng {bearing}"
 
-#: server.js:9218
+#: server.js:9241
 msgid "@{player} moved you to {position} facing {bearing}"
 msgstr "@{player} m0v3d j00 70 {position} f4c1ng {bearing}"
 
-#: server.js:9231
+#: server.js:9254
 msgid "Usage: /msg \"some callsign\" some message"
 msgstr "U54g3: /msg \"some callsign\" some message"
 
-#: server.js:9278
+#: server.js:9301
 msgid "Usage: /kill <#slot|PlayerName> [reason]"
 msgstr "U54g3: /kill <#slot|PlayerName> [reason]"
 
-#: server.js:9283
+#: server.js:9306
 msgid "An observer has no tank to kill"
 msgstr "4n 0b53rv3r h45 n0 74nk 70 k1ll"
 
-#: server.js:9287
+#: server.js:9310
 msgid "\"{player}\" is already dead"
 msgstr "\"{player}\" 15 4lr34dy d34d"
 
-#: server.js:9294
+#: server.js:9317
 msgid "\"{player}\" killed"
 msgstr "\"{player}\" k1ll3d"
 
-#: server.js:9295
+#: server.js:9318
 msgid "You were killed by an operator: {reason}"
 msgstr "j00 w3r3 k1ll3d by 4n 0p3r470r: {reason}"
 
-#: server.js:9296
+#: server.js:9319
 msgid "You were killed by an operator"
 msgstr "j00 w3r3 k1ll3d by 4n 0p3r470r"
 
-#: server.js:9344
+#: server.js:9367
 msgid "You were banned from this server"
 msgstr "j00 w3r3 b4nn3d fr0m 7h15 53rv3r"
 
-#: server.js:9345 server.js:9368
+#: server.js:9368 server.js:9391
 msgid "Reason given: {reason}"
 msgstr "R3450n g1v3n: {reason}"
 
-#: server.js:9346
+#: server.js:9369
 msgid "{player} banned by {admin}, reason: {reason}"
 msgstr "{player} b4nn3d by {admin}, r3450n: {reason}"
 
-#: server.js:9358
+#: server.js:9381
 msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 msgstr "5yn74x: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 
-#: server.js:9359 server.js:9388
+#: server.js:9382 server.js:9411
 msgid "\tPlease keep in mind that reason is displayed to the user."
 msgstr "\tPl3453 k33p 1n m1nd 7h47 r3450n 15 d15pl4y3d 70 73h u53r."
 
-#: server.js:9362
+#: server.js:9385
 msgid "player \"{player}\" not found"
 msgstr "pl4y3r \"{player}\" n07 f0und"
 
-#: server.js:9367
+#: server.js:9390
 msgid "You were kicked off the server"
 msgstr "j00 w3r3 k1ck3d 0ff 73h 53rv3r"
 
-#: server.js:9369
+#: server.js:9392
 msgid "{player} kicked by {admin}, reason: {reason}"
 msgstr "{player} k1ck3d by {admin}, r3450n: {reason}"
 
-#: server.js:9383
+#: server.js:9406
 msgid ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 msgstr ""
 "5yn74x: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 
-#: server.js:9384
+#: server.js:9407
 msgid "\t<duration> can be 'short' or 'default' for the default ban time "
 msgstr "\t<duration> c4n b3 'short' 0r 'default' f0r 73h d3f4ul7 b4n 71m3 "
 
-#: server.js:9385
+#: server.js:9408
 msgid "\tor 'forever' or 'max' for infinite bans "
 msgstr "\t0r 'forever' 0r 'max' f0r 1nf1n173 b4n5 "
 
-#: server.js:9386
+#: server.js:9409
 msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
 msgstr "\t0r 4 71m3 1n 73h f0rm47 <weeks>W<days>D<hours>H<minutes>M "
 
-#: server.js:9387
+#: server.js:9410
 msgid "\tor just a number of minutes "
 msgstr "\t0r ju57 4 numb3r 0f m1nu735 "
 
-#: server.js:9410 server.js:9518
+#: server.js:9433 server.js:9541
 msgid "Error: invalid ban duration"
 msgstr "Error: 1nv4l1d b4n dur4710n"
 
-#: server.js:9411 server.js:9519
+#: server.js:9434 server.js:9542
 msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
 msgstr "Dur4710n 3x4mpl35:  30m 1h  1d  1w  4nd m1x1ng: 1w2d4h 1w2d1m"
 
-#: server.js:9420 server.js:9814
+#: server.js:9443 server.js:9837
 msgid "{player} has no trusted address to ban"
 msgstr "{player} h45 n0 7ru573d 4ddr355 70 b4n"
 
-#: server.js:9426 server.js:9528
+#: server.js:9449 server.js:9551
 msgid "Pattern added to the BZID banlist"
 msgstr "P4773rn 4dd3d 70 73h BZID b4nl157"
 
-#: server.js:9432
+#: server.js:9455
 msgid "Malformed address or invalid Player/Slot: {target}"
 msgstr "M4lf0rm3d 4ddr355 0r 1nv4l1d Pl4y3r/5l07: {target}"
 
-#: server.js:9436
+#: server.js:9459
 msgid "Pattern added to the IP banlist"
 msgstr "P4773rn 4dd3d 70 73h IP b4nl157"
 
-#: server.js:9447
+#: server.js:9470
 msgid "Removed IP pattern from the ban list"
 msgstr "R3m0v3d IP p4773rn fr0m 73h b4n l157"
 
-#: server.js:9449 server.js:9538
+#: server.js:9472 server.js:9561
 msgid "No pattern removed"
 msgstr "N0 p4773rn r3m0v3d"
 
-#: server.js:9464
+#: server.js:9487
 msgid "Syntax: /checkip <ip>"
 msgstr "5yn74x: /checkip <ip>"
 
-#: server.js:9469
+#: server.js:9492
 msgid "{address} is not banned."
 msgstr "{address} 15 n07 b4nn3d."
 
-#: server.js:9472
+#: server.js:9495
 msgid "{address} is banned:"
 msgstr "{address} 15 b4nn3d:"
 
-#: server.js:9480
+#: server.js:9503
 msgid ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 msgstr ""
 "5yn74x: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 
-#: server.js:9481
+#: server.js:9504
 msgid "  Please keep in mind that reason is displayed to the user."
 msgstr "  Pl3453 k33p 1n m1nd 7h47 r3450n 15 d15pl4y3d 70 73h u53r."
 
-#: server.js:9492
+#: server.js:9515
 msgid "Error: invalid id pattern"
 msgstr "Error: 1nv4l1d 1d p4773rn"
 
-#: server.js:9500
+#: server.js:9523
 msgid "could not find player ({player})"
 msgstr "c0uld n07 f1nd pl4y3r ({player})"
 
-#: server.js:9505
+#: server.js:9528
 msgid "no BZID for player ({player})"
 msgstr "n0 BZID f0r pl4y3r ({player})"
 
-#: server.js:9536
+#: server.js:9559
 msgid "Removed id from the ban list"
 msgstr "R3m0v3d 1d fr0m 73h b4n l157"
 
-#: server.js:9642
+#: server.js:9665
 msgid "Usage: /poll vote yes|no"
 msgstr "U54g3: /poll vote yes|no"
 
-#: server.js:9643
+#: server.js:9666
 msgid "    or /poll ban playername"
 msgstr "    0r /poll ban playername"
 
-#: server.js:9644
+#: server.js:9667
 msgid "    or /poll kick playername"
 msgstr "    0r /poll kick playername"
 
-#: server.js:9645
+#: server.js:9668
 msgid "    or /poll kill playername"
 msgstr "    0r /poll kill playername"
 
-#: server.js:9646
+#: server.js:9669
 msgid "    or /poll set variable value"
 msgstr "    0r /poll set variable value"
 
-#: server.js:9647
+#: server.js:9670
 msgid "    or /poll flagreset"
 msgstr "    0r /poll flagreset"
 
-#: server.js:9649
+#: server.js:9672
 msgid "    or /poll {action} {parameters}"
 msgstr ""
 
 #. TRANSLATORS: /vote is a command name; keep it as it is
-#: server.js:9658
+#: server.js:9681
 msgid "{player}, you are presently not authorized to run /vote"
 msgstr "{player}, j00 4r3 pr353n7ly n07 4u7h0r1z3d 70 run /vote"
 
-#: server.js:9662 server.js:9709 server.js:9736
+#: server.js:9685 server.js:9732 server.js:9759
 msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
 msgstr "ERROR: 73h p0ll 4rb173r h45 d154pp34r3d (7h15 5h0uld n3v3r h4pp3n)"
 
-#: server.js:9666
+#: server.js:9689
 msgid "A poll is not presently in progress.  There is nothing to vote on"
 msgstr "4 p0ll 15 n07 pr353n7ly 1n pr0gr355.  7h3r3 15 n07h1ng 70 v073 0n"
 
-#: server.js:9671
+#: server.js:9694
 msgid "{player}, you did not vote in favor or in opposition"
 msgstr "{player}, j00 d1d n07 v073 1n f4v0r 0r 1n 0pp051710n"
 
-#: server.js:9672
+#: server.js:9695
 msgid "{player}, you did not provide a vote answer"
 msgstr "{player}, j00 d1d n07 pr0v1d3 4 v073 4n5w3r"
 
-#: server.js:9673
+#: server.js:9696
 msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 msgstr "U54g3: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 
 #. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
-#: server.js:9687
+#: server.js:9710
 msgid "{player}, your vote in favor of the {action} has been recorded"
 msgstr "{player}, j00r v073 1n f4v0r 0f 73h {action} h45 b33n r3c0rd3d"
 
-#: server.js:9688
+#: server.js:9711
 msgid "{player}, your vote in opposition of the {action} has been recorded"
 msgstr "{player}, j00r v073 1n 0pp051710n 0f 73h {action} h45 b33n r3c0rd3d"
 
-#: server.js:9690
+#: server.js:9713
 msgid "{player}, you have already voted on the poll to {action} {target}"
 msgstr "{player}, j00 h4v3 4lr34dy v073d 0n 73h p0ll 70 {action} {target}"
 
-#: server.js:9694
+#: server.js:9717
 msgid ""
 "{player}, there was an error while voting on the poll to {action} {target}"
 msgstr ""
 "{player}, 7h3r3 w45 4n 3rr0r wh1l3 v071ng 0n 73h p0ll 70 {action} {target}"
 
 #. TRANSLATORS: /veto is a command name; keep it as it is
-#: server.js:9705
+#: server.js:9728
 msgid "{player}, you are presently not authorized to run /veto"
 msgstr "{player}, j00 4r3 pr353n7ly n07 4u7h0r1z3d 70 run /veto"
 
-#: server.js:9713
+#: server.js:9736
 msgid "{player}, there is presently no active poll to veto"
 msgstr "{player}, 7h3r3 15 pr353n7ly n0 4c71v3 p0ll 70 v370"
 
-#: server.js:9716
+#: server.js:9739
 msgid "{player}, you have cancelled the poll to {action} {target}"
 msgstr "{player}, j00 h4v3 c4nc3ll3d 73h p0ll 70 {action} {target}"
 
-#: server.js:9722
+#: server.js:9745
 msgid "The poll was cancelled by {player}"
 msgstr "73h p0ll w45 c4nc3ll3d by {player}"
 
 #. TRANSLATORS: /poll is a command name; keep it as it is
-#: server.js:9732
+#: server.js:9755
 msgid "{player}, you are presently not authorized to run /poll"
 msgstr "{player}, j00 4r3 pr353n7ly n07 4u7h0r1z3d 70 run /poll"
 
-#: server.js:9752
+#: server.js:9775
 msgid "A poll to {action} {target} is presently in progress"
 msgstr "4 p0ll 70 {action} {target} 15 pr353n7ly 1n pr0gr355"
 
-#: server.js:9755
+#: server.js:9778
 msgid "Unable to start a new poll until the current one is over"
 msgstr "Un4bl3 70 574r7 4 n3w p0ll un71l 73h curr3n7 0n3 15 0v3r"
 
-#: server.js:9760
+#: server.js:9783
 msgid ""
 "Unable to initiate a new poll.  There are not enough registered players "
 "playing."
@@ -4285,7 +4293,7 @@ msgstr ""
 "Un4bl3 70 1n171473 4 n3w p0ll.  7h3r3 4r3 n07 3n0ugh r3g1573r3d pl4y3r5 "
 "pl4y1ng."
 
-#: server.js:9764
+#: server.js:9787
 msgid ""
 "There needs to be at least {required} other player and only {others} is "
 "available."
@@ -4293,7 +4301,7 @@ msgstr ""
 "7h3r3 n33d5 70 b3 47 l3457 {required} 07h3r pl4y3r 4nd 0nly {others} 15 "
 "4v41l4bl3."
 
-#: server.js:9765
+#: server.js:9788
 msgid ""
 "There needs to be at least {required} other player and only {others} are "
 "available."
@@ -4301,7 +4309,7 @@ msgstr ""
 "7h3r3 n33d5 70 b3 47 l3457 {required} 07h3r pl4y3r 4nd 0nly {others} 4r3 "
 "4v41l4bl3."
 
-#: server.js:9767
+#: server.js:9790
 msgid ""
 "There needs to be at least {required} other players and only {others} is "
 "available."
@@ -4309,7 +4317,7 @@ msgstr ""
 "7h3r3 n33d5 70 b3 47 l3457 {required} 07h3r pl4y3r5 4nd 0nly {others} 15 "
 "4v41l4bl3."
 
-#: server.js:9769
+#: server.js:9792
 msgid ""
 "There needs to be at least {required} other players and only {others} are "
 "available."
@@ -4317,45 +4325,45 @@ msgstr ""
 "7h3r3 n33d5 70 b3 47 l3457 {required} 07h3r pl4y3r5 4nd 0nly {others} 4r3 "
 "4v41l4bl3."
 
-#: server.js:9779
+#: server.js:9802
 msgid "/poll: incorrect syntax, argument required."
 msgstr "/poll: 1nc0rr3c7 5yn74x, 4rgum3n7 r3qu1r3d."
 
-#: server.js:9785
+#: server.js:9808
 msgid "{player}, no target was specified for the [{action}] vote"
 msgstr "{player}, n0 74rg37 w45 5p3c1f13d f0r 73h [{action}] v073"
 
 #. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
-#: server.js:9787
+#: server.js:9810
 msgid "Usage: /poll {action} target"
 msgstr "U54g3: /poll {action} target"
 
 #. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
-#: server.js:9792
+#: server.js:9815
 msgid "{player}, you may not /poll {action} on this server"
 msgstr "{player}, j00 m4y n07 /poll {action} 0n 7h15 53rv3r"
 
-#: server.js:9800
+#: server.js:9823
 msgid "The player specified for a {action} vote is not here"
 msgstr "73h pl4y3r 5p3c1f13d f0r 4 {action} v073 15 n07 h3r3"
 
-#: server.js:9804
+#: server.js:9827
 msgid "You can't kill an observer!"
 msgstr "j00 c4n'7 k1ll 4n 0b53rv3r!"
 
-#: server.js:9810
+#: server.js:9833
 msgid "{player} is protected from being polled against."
 msgstr "{player} 15 pr073c73d fr0m b31ng p0ll3d 4g41n57."
 
-#: server.js:9842
+#: server.js:9865
 msgid "You are not able to request a {action} poll right now, {player}"
 msgstr "j00 4r3 n07 4bl3 70 r3qu357 4 {action} p0ll r1gh7 n0w, {player}"
 
-#: server.js:9847
+#: server.js:9870
 msgid "A poll to {action} {target} has been requested by {player}"
 msgstr "4 p0ll 70 {action} {target} h45 b33n r3qu3573d by {player}"
 
-#: server.js:9855
+#: server.js:9878
 msgid ""
 "{available} player is available, {needed} additional affirming vote required "
 "to pass the poll ({percentage} %)"
@@ -4363,7 +4371,7 @@ msgstr ""
 "{available} pl4y3r 15 4v41l4bl3, {needed} 4dd1710n4l 4ff1rm1ng v073 r3qu1r3d "
 "70 p455 73h p0ll ({percentage} %)"
 
-#: server.js:9856
+#: server.js:9879
 msgid ""
 "{available} player is available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4371,7 +4379,7 @@ msgstr ""
 "{available} pl4y3r 15 4v41l4bl3, {needed} 4dd1710n4l 4ff1rm1ng v0735 "
 "r3qu1r3d 70 p455 73h p0ll ({percentage} %)"
 
-#: server.js:9859
+#: server.js:9882
 msgid ""
 "{available} players are available, {needed} additional affirming vote "
 "required to pass the poll ({percentage} %)"
@@ -4379,7 +4387,7 @@ msgstr ""
 "{available} pl4y3r5 4r3 4v41l4bl3, {needed} 4dd1710n4l 4ff1rm1ng v073 "
 "r3qu1r3d 70 p455 73h p0ll ({percentage} %)"
 
-#: server.js:9860
+#: server.js:9883
 msgid ""
 "{available} players are available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4387,25 +4395,25 @@ msgstr ""
 "{available} pl4y3r5 4r3 4v41l4bl3, {needed} 4dd1710n4l 4ff1rm1ng v0735 "
 "r3qu1r3d 70 p455 73h p0ll ({percentage} %)"
 
-#: server.js:9865
+#: server.js:9888
 msgid "Unable to automatically place your vote for some unknown reason"
 msgstr "Un4bl3 70 4u70m471c4lly pl4c3 j00r v073 f0r 50m3 unkn0wn r3450n"
 
-#: server.js:9893
+#: server.js:9916
 msgid ""
 "You have been temporarily banned due to sufficient votes to have you removed"
 msgstr ""
 "j00 h4v3 b33n 73mp0r4r1ly b4nn3d du3 70 5uff1c13n7 v0735 70 h4v3 j00 r3m0v3d"
 
-#: server.js:9899
+#: server.js:9922
 msgid "You have been kicked due to sufficient votes to have you removed"
 msgstr "j00 h4v3 b33n k1ck3d du3 70 5uff1c13n7 v0735 70 h4v3 j00 r3m0v3d"
 
-#: server.js:9905
+#: server.js:9928
 msgid "You have been killed due to sufficient votes"
 msgstr "j00 h4v3 b33n k1ll3d du3 70 5uff1c13n7 v0735"
 
-#: server.js:9928
+#: server.js:9951
 msgid ""
 "A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
 "to vote."
@@ -4413,27 +4421,27 @@ msgstr ""
 "4 p0ll 70 {action} {target} h45 b3gun.  Pl4y3r5 h4v3 up 70 {seconds} 53c0nd5 "
 "70 v073."
 
-#: server.js:9936
+#: server.js:9959
 msgid "{seconds} seconds remain in the poll to {action} {target}."
 msgstr "{seconds} 53c0nd5 r3m41n 1n 73h p0ll 70 {action} {target}."
 
-#: server.js:9944
+#: server.js:9967
 msgid "Enough votes were collected to {action} {target} early."
 msgstr "3n0ugh v0735 w3r3 c0ll3c73d 70 {action} {target} 34rly."
 
-#: server.js:9945
+#: server.js:9968
 msgid "Enough votes were collected to reset all unused flags early."
 msgstr "3n0ugh v0735 w3r3 c0ll3c73d 70 r3537 4ll unu53d fl4g5 34rly."
 
-#: server.js:9961
+#: server.js:9984
 msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
 msgstr "P0ll R35ul75: {yes} 1n f4v0r, {no} 0pp053, {abstain} 4b5741n"
 
-#: server.js:9969
+#: server.js:9992
 msgid "The poll to {action} {target} was not successful"
 msgstr "73h p0ll 70 {action} {target} w45 n07 5ucc355ful"
 
-#: server.js:9978
+#: server.js:10001
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "temporarily banned."
@@ -4441,7 +4449,7 @@ msgstr ""
 "73h p0ll 15 n0w cl053d 4nd w45 5ucc355ful.  {target} 15 5ch3dul3d 70 b3 "
 "73mp0r4r1ly b4nn3d."
 
-#: server.js:9979
+#: server.js:10002
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "kicked."
@@ -4449,7 +4457,7 @@ msgstr ""
 "73h p0ll 15 n0w cl053d 4nd w45 5ucc355ful.  {target} 15 5ch3dul3d 70 b3 "
 "k1ck3d."
 
-#: server.js:9980
+#: server.js:10003
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "killed."
@@ -4457,7 +4465,7 @@ msgstr ""
 "73h p0ll 15 n0w cl053d 4nd w45 5ucc355ful.  {target} 15 5ch3dul3d 70 b3 "
 "k1ll3d."
 
-#: server.js:9983
+#: server.js:10006
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "{action}."
@@ -4465,390 +4473,390 @@ msgstr ""
 "73h p0ll 15 n0w cl053d 4nd w45 5ucc355ful.  {target} 15 5ch3dul3d 70 b3 "
 "{action}."
 
-#: server.js:9991
+#: server.js:10014
 msgid "{target} has been kicked."
 msgstr "{target} h45 b33n k1ck3d."
 
-#: server.js:9992
+#: server.js:10015
 msgid "{target} has been killed."
 msgstr "{target} h45 b33n k1ll3d."
 
-#: server.js:9994
+#: server.js:10017
 msgid "{target} has been {action}"
 msgstr "{target} h45 b33n {action}"
 
-#: server.js:10009
+#: server.js:10032
 msgid "{player}'s client version:"
 msgstr "{player}'5 cl13n7 v3r510n:"
 
-#: server.js:10010
+#: server.js:10033
 msgid "  {version}"
 msgstr "  {version}"
 
-#: server.js:10011
+#: server.js:10034
 msgid "  unknown"
 msgstr "  unkn0wn"
 
-#: server.js:10017
+#: server.js:10040
 msgid "Player not found."
 msgstr "Pl4y3r n07 f0und."
 
-#: server.js:10048
+#: server.js:10071
 msgid "Countdown cancelled by {player}."
 msgstr "C0un7d0wn c4nc3ll3d by {player}."
 
-#: server.js:10048
+#: server.js:10071
 msgid "Countdown cancelled"
 msgstr "C0un7d0wn c4nc3ll3d"
 
-#: server.js:10074
+#: server.js:10097
 msgid "No match is running to pause"
 msgstr "N0 m47ch 15 runn1ng 70 p4u53"
 
-#: server.js:10082
+#: server.js:10105
 msgid "No paused match to resume"
 msgstr "N0 p4u53d m47ch 70 r35um3"
 
-#: server.js:10089
+#: server.js:10112
 msgid "There is no running countdown to cancel"
 msgstr "7h3r3 15 n0 runn1ng c0un7d0wn 70 c4nc3l"
 
-#: server.js:10097
+#: server.js:10120
 msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
 msgstr "U54g3: /countdown [<seconds>|pause|resume|cancel]"
 
-#: server.js:10102
+#: server.js:10125
 msgid "There is a countdown already in progress"
 msgstr "7h3r3 15 4 c0un7d0wn 4lr34dy 1n pr0gr355"
 
-#: server.js:10106
+#: server.js:10129
 msgid "A game is already in progress"
 msgstr "4 g4m3 15 4lr34dy 1n pr0gr355"
 
-#: server.js:10110 server.js:10113
+#: server.js:10133 server.js:10136
 msgid "Countdown set to {seconds} instead of {asked}"
 msgstr "C0un7d0wn 537 70 {seconds} 1n5734d 0f {asked}"
 
-#: server.js:10122
+#: server.js:10145
 msgid "Countdown started by {player}."
 msgstr "C0un7d0wn 574r73d by {player}."
 
-#: server.js:10123
+#: server.js:10146
 msgid "Match begins in about {duration}"
 msgstr "M47ch b3g1n5 1n 4b0u7 {duration}"
 
-#: server.js:10131
+#: server.js:10154
 msgid "The match has started!...Good Luck Teams!"
 msgstr "73h m47ch h45 574r73d!...G00d Luck 734m5!"
 
-#: server.js:10135
+#: server.js:10158
 msgid "Start your engines!......"
 msgstr "574r7 j00r 3ng1n35!......"
 
-#: server.js:10137
+#: server.js:10160
 msgid "{seconds}..."
 msgstr "{seconds}..."
 
-#: server.js:10149
+#: server.js:10172
 msgid "No match is running"
 msgstr "N0 m47ch 15 runn1ng"
 
-#: server.js:10161
+#: server.js:10184
 msgid "Usage: /say <message>"
 msgstr "U54g3: /say <message>"
 
-#: server.js:10177
+#: server.js:10200
 msgid "Usage: /mute <#slot|PlayerName>"
 msgstr "U54g3: /mute <#slot|PlayerName>"
 
-#: server.js:10183
+#: server.js:10206
 msgid "\"{player}\" is now muted"
 msgstr "\"{player}\" 15 n0w mu73d"
 
-#: server.js:10184
+#: server.js:10207
 msgid "You have been muted by an operator"
 msgstr "j00 h4v3 b33n mu73d by 4n 0p3r470r"
 
-#: server.js:10193
+#: server.js:10216
 msgid "Usage: /unmute <#slot|PlayerName>"
 msgstr "U54g3: /unmute <#slot|PlayerName>"
 
-#: server.js:10199
+#: server.js:10222
 msgid "\"{player}\" is no longer muted"
 msgstr "\"{player}\" 15 n0 l0ng3r mu73d"
 
-#: server.js:10200
+#: server.js:10223
 msgid "You are no longer muted"
 msgstr "j00 4r3 n0 l0ng3r mu73d"
 
-#: server.js:10208
+#: server.js:10231
 msgid "Nobody is muted"
 msgstr "N0b0dy 15 mu73d"
 
-#: server.js:10321
+#: server.js:10344
 msgid "Usage: /flag drop [#slot|PlayerName]"
 msgstr "U54g3: /flag drop [#slot|PlayerName]"
 
-#: server.js:10328
+#: server.js:10351
 msgid "You are not carrying a flag"
 msgstr "j00 4r3 n07 c4rry1ng 4 fl4g"
 
-#: server.js:10329
+#: server.js:10352
 msgid "\"{player}\" is not carrying a flag"
 msgstr "\"{player}\" 15 n07 c4rry1ng 4 fl4g"
 
-#: server.js:10338
+#: server.js:10361
 msgid "Dropped {flag} from \"{player}\""
 msgstr "Dr0pp3d {flag} fr0m \"{player}\""
 
-#: server.js:10339
+#: server.js:10362
 msgid "Your {flag} flag was dropped"
 msgstr "j00r {flag} fl4g w45 dr0pp3d"
 
-#: server.js:10353
+#: server.js:10376
 msgid "{count} flags sent up"
 msgstr "{count} fl4g5 53n7 up"
 
-#: server.js:10363
+#: server.js:10386
 msgid "{count} flags reset"
 msgstr "{count} fl4g5 r3537"
 
-#: server.js:10368
+#: server.js:10391
 msgid "No flags are in the world"
 msgstr "N0 fl4g5 4r3 1n 73h w0rld"
 
-#: server.js:10386
+#: server.js:10409
 msgid "Usage: /flag take <#slot|PlayerName>"
 msgstr "U54g3: /flag take <#slot|PlayerName>"
 
 #. TRANSLATORS: /flag take is a command name; keep it as it is
-#: server.js:10393
+#: server.js:10416
 msgid "/flag take: player ({player}) does not have a flag"
 msgstr "/flag take: pl4y3r ({player}) d035 n07 h4v3 4 fl4g"
 
-#: server.js:10402
+#: server.js:10425
 msgid "{admin} took flag {flag}/{slot} from {player}"
 msgstr "{admin} 700k fl4g {flag}/{slot} fr0m {player}"
 
-#: server.js:10414
+#: server.js:10437
 msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 msgstr "U54g3: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 
-#: server.js:10430
+#: server.js:10453
 msgid "flag {flag} is not in this world"
 msgstr "fl4g {flag} 15 n07 1n 7h15 w0rld"
 
-#: server.js:10437 server.js:10475
+#: server.js:10460 server.js:10498
 msgid "you may need to use the force"
 msgstr "j00 m4y n33d 70 u53 73h f0rc3"
 
-#: server.js:10444
+#: server.js:10467
 msgid "flag {flag} is an empty slot"
 msgstr "fl4g {flag} 15 4n 3mp7y 5l07"
 
-#: server.js:10450
+#: server.js:10473
 msgid "bad flag type"
 msgstr "b4d fl4g 7yp3"
 
-#: server.js:10472
+#: server.js:10495
 msgid "flag type not found"
 msgstr "fl4g 7yp3 n07 f0und"
 
-#: server.js:10481
+#: server.js:10504
 msgid "An observer has no tank to carry a flag"
 msgstr "4n 0b53rv3r h45 n0 74nk 70 c4rry 4 fl4g"
 
 #. TRANSLATORS: /flag give is a command name; keep it as it is
-#: server.js:10488
+#: server.js:10511
 msgid "/flag give: player ({player}) is not alive"
 msgstr "/flag give: pl4y3r ({player}) 15 n07 4l1v3"
 
-#: server.js:10509
+#: server.js:10532
 msgid "{admin} gave flag {flag}/{slot} to {player}"
 msgstr "{admin} g4v3 fl4g {flag}/{slot} 70 {player}"
 
-#: server.js:10536
+#: server.js:10559
 msgid "Usage: /mv [player] <x,y> [facing]"
 msgstr "U54g3: /mv [player] <x,y> [facing]"
 
-#: server.js:10551
+#: server.js:10574
 msgid "An observer has no tank to move"
 msgstr "4n 0b53rv3r h45 n0 74nk 70 m0v3"
 
-#: server.js:10594
+#: server.js:10617
 msgid "Nowhere to stand at {x},{y}"
 msgstr "N0wh3r3 70 574nd 47 {x},{y}"
 
-#: server.js:10661
+#: server.js:10684
 msgid "Checking another player's position requires operator status"
 msgstr "Ch3ck1ng 4n07h3r pl4y3r'5 p051710n r3qu1r35 0p3r470r 5747u5"
 
-#: server.js:10667
+#: server.js:10690
 msgid "Usage: /pos [player]"
 msgstr "U54g3: /pos [player]"
 
-#: server.js:10673
+#: server.js:10696
 msgid "An observer has no tank position"
 msgstr "4n 0b53rv3r h45 n0 74nk p051710n"
 
-#: server.js:10681
+#: server.js:10704
 msgid "You are at {position} facing {bearing}"
 msgstr "j00 4r3 47 {position} f4c1ng {bearing}"
 
-#: server.js:10682
+#: server.js:10705
 msgid "\"{player}\" is at {position} facing {bearing}"
 msgstr "\"{player}\" 15 47 {position} f4c1ng {bearing}"
 
-#: server.js:11153
+#: server.js:11176
 msgid "All shots now ricochet"
 msgstr "4ll 5h075 n0w r1c0ch37"
 
-#: server.js:11153
+#: server.js:11176
 msgid "Shots no longer ricochet"
 msgstr "5h075 n0 l0ng3r r1c0ch37"
 
-#: server.js:11319
+#: server.js:11342
 msgid "usage: set <name> [<value>]"
 msgstr "u54g3: set <name> [<value>]"
 
-#: server.js:11320
+#: server.js:11343
 msgid "bzo's own: {variables}"
 msgstr "bzo's 0wn: {variables}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11340
+#: server.js:11363
 msgid "/set failed, reason: variable {name} does not exist"
 msgstr "/set f41l3d, r3450n: v4r14bl3 {name} d035 n07 3x157"
 
-#: server.js:11341 server.js:11375
+#: server.js:11364 server.js:11398
 msgid "variable {name} does not exist"
 msgstr "v4r14bl3 {name} d035 n07 3x157"
 
-#: server.js:11345
+#: server.js:11368
 msgid "{name} is {value}"
 msgstr "{name} 15 {value}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11350
+#: server.js:11373
 msgid "/set failed, reason: variable {name} is not writeable"
 msgstr "/set f41l3d, r3450n: v4r14bl3 {name} 15 n07 wr1734bl3"
 
-#: server.js:11356
+#: server.js:11379
 msgid "{name} set"
 msgstr "{name} 537"
 
-#: server.js:11357
+#: server.js:11380
 msgid "Variable Modification Notice by {player} of set {name} {value}"
 msgstr "V4r14bl3 M0d1f1c4710n N071c3 by {player} 0f 537 {name} {value}"
 
-#: server.js:11367
+#: server.js:11390
 msgid "usage: reset <name>"
 msgstr "u54g3: reset <name>"
 
-#: server.js:11378
+#: server.js:11401
 msgid "variable {name} is not writeable"
 msgstr "v4r14bl3 {name} 15 n07 wr1734bl3"
 
-#: server.js:11384
+#: server.js:11407
 msgid "all variables reset"
 msgstr "4ll v4r14bl35 r3537"
 
-#: server.js:11385
+#: server.js:11408
 msgid "{name} reset"
 msgstr "{name} r3537"
 
-#: server.js:11389
+#: server.js:11412
 msgid "Variable Reset Notice by {player} of reset {name}"
 msgstr "V4r14bl3 R3537 N071c3 by {player} 0f r3537 {name}"
 
-#: server.js:11417
+#: server.js:11440
 msgid "No command starting with {prefix}"
 msgstr "N0 c0mm4nd 574r71ng w17h {prefix}"
 
-#: server.js:11431
+#: server.js:11454
 msgid "The {command} command is only for players in the game"
 msgstr ""
 
-#: server.js:11437 server.js:11460
+#: server.js:11460 server.js:11483
 msgid "You do not have permission to run the {command} command"
 msgstr "j00 d0 n07 h4v3 p3rm15510n 70 run 73h {command} c0mm4nd"
 
-#: server.js:11511
+#: server.js:11534
 msgid "We're sorry, you are not allowed to talk!"
 msgstr "W3'r3 50rry, j00 4r3 n07 4ll0w3d 70 74lk!"
 
-#: server.js:11766
+#: server.js:11789
 msgid "You signed in as {player} on another device."
 msgstr "j00 51gn3d 1n 45 {player} 0n 4n07h3r d3v1c3."
 
-#: server.js:11788
+#: server.js:11811
 msgid "{player} signed in with that name, so yours is now {name}."
 msgstr "{player} 51gn3d 1n w17h 7h47 n4m3, 50 y0ur5 15 n0w {name}."
 
-#: server.js:13999
+#: server.js:14024
 msgid "Global login approved!"
 msgstr "Gl0b4l l0g1n 4ppr0v3d!"
 
-#: server.js:14001
+#: server.js:14026
 msgid "Global login rejected, bad token."
 msgstr "Gl0b4l l0g1n r3j3c73d, b4d 70k3n."
 
-#: server.js:14003
+#: server.js:14028
 msgid "This callsign is not registered."
 msgstr "7h15 c4ll51gn 15 n07 r3g1573r3d."
 
-#: server.js:14004
+#: server.js:14029
 msgid "You can register it at https://forums.bzflag.org/"
 msgstr "j00 c4n r3g1573r 17 47 https://forums.bzflag.org/"
 
-#: server.js:14629
+#: server.js:14654
 msgid "{count} shots left"
 msgstr "{count} 5h075 l3f7"
 
-#: server.js:14630
+#: server.js:14655
 msgid "1 shot left"
 msgstr "1 5h07 l3f7"
 
-#: server.js:15106
+#: server.js:15131
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "1'm 50rry, w3 d0 n07 4ll0w 4u70p1l07 0n 7h15 53rv3r."
 
-#: server.js:17167
+#: server.js:17192
 msgid "Server restarting: {reason}"
 msgstr "53rv3r r3574r71ng: {reason}"
 
-#: server.js:18514
+#: server.js:18539
 msgid "The pilots have not loaded"
 msgstr "73h p1l075 h4v3 n07 l04d3d"
 
 #. TRANSLATORS: a command's syntax; keep it as it is
-#: server.js:18526
+#: server.js:18551
 msgid "Usage: /bot fill <0-{max}> [{pilots}]"
 msgstr "U54g3: /bot fill <0-{max}> [{pilots}]"
 
-#: server.js:18530
+#: server.js:18555
 msgid "No pilot \"{pilot}\"; one of {pilots}"
 msgstr "N0 p1l07 \"{pilot}\"; 0n3 0f {pilots}"
 
 #. TRANSLATORS: a command's syntax; keep /bot add as it is
-#: server.js:18552
+#: server.js:18577
 msgid "Usage: /bot add [{pilots}] [team] [count]"
 msgstr "U54g3: /bot add [{pilots}] [team] [count]"
 
-#: server.js:18573
+#: server.js:18598
 msgid "{player} paused the bots and autopilots"
 msgstr "{player} p4u53d 73h b075 4nd 4u70p1l075"
 
-#: server.js:18574
+#: server.js:18599
 msgid "{player} resumed the bots and autopilots"
 msgstr "{player} r35um3d 73h b075 4nd 4u70p1l075"
 
-#: server.js:18586
+#: server.js:18611
 msgid "Usage: /bot remove <name|all>"
 msgstr "U54g3: /bot remove <name|all>"
 
 #. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove, all, pause and resume as they are
-#: server.js:18598
+#: server.js:18623
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
@@ -4856,51 +4864,51 @@ msgstr ""
 "U54g3: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
 
-#: server.js:18625
+#: server.js:18650
 msgid "Server shutting down"
 msgstr "53rv3r 5hu771ng d0wn"
 
-#: server.js:18635
+#: server.js:18660
 msgid "Server restarting"
 msgstr "53rv3r r3574r71ng"
 
-#: server.js:18865
+#: server.js:18890
 msgid "You have been kicked from the server for: {reason}"
 msgstr ""
 
-#: server.js:18866
+#: server.js:18891
 msgid "{player} was kicked for:{reason}"
 msgstr ""
 
-#: server.js:19120
+#: server.js:19145
 msgid "No Plug-ins loaded."
 msgstr ""
 
-#: server.js:19123
+#: server.js:19148
 msgid "Plug-ins loaded:"
 msgstr ""
 
-#: server.js:19132
+#: server.js:19157
 msgid "Usage: /loadplugin plug-in"
 msgstr ""
 
-#: server.js:19140 server.js:19151
+#: server.js:19165 server.js:19176
 msgid "Plug-in load failed."
 msgstr ""
 
-#: server.js:19148
+#: server.js:19173
 msgid "Plug-in loaded."
 msgstr ""
 
-#: server.js:19160
+#: server.js:19185
 msgid "Usage: /unloadplugin plug-in"
 msgstr ""
 
-#: server.js:19166
+#: server.js:19191
 msgid "Plug-In {name} unloaded."
 msgstr ""
 
-#: server.js:19169
+#: server.js:19194
 msgid "Plug-in {name} is not loaded."
 msgstr ""
 

@@ -408,12 +408,14 @@ import {
   findInsideBuildings,
   isDrivenUpward,
   movePacketFields,
+  standingDriverIndex,
   packetVelocity,
   readDriveInput,
   shotFromTank,
   stepDrive,
   holdDrive,
 } from './drive.mjs';
+import { deadReckon } from './dead-reckoning.mjs';
 import { bzdbFromObject, evalBzdb, worldConfig as evaluateWorldConfig } from './bzdb.mjs';
 import { applyWeatherVar } from './weather-vars.mjs';
 import { isStockTextureName } from './texture.js';
@@ -5916,6 +5918,8 @@ let lastSentAirVelocityY = 0;
 let lastSentTime = 0;
 // The heading the last move carried, for `_angleTolerance`'s drift check.
 let lastSentHeading = null;
+// The physics driver the last move named (`pd`), -1 for none.
+let lastSentDriver = -1;
 let worldTime = 0;
 
 // The sky's clock, each frame. Upstream's (#166) is the real instant -- or the
@@ -8543,6 +8547,8 @@ function applyPlayerMoveMessage(message, isTeleportPacket) {
   tank.userData.rotationSpeed = message.rs;
   tank.userData.verticalVelocity = message.vv;
   tank.userData.slideAzimuth = message.sd; // Optional slide direction (undefined if not sliding)
+  // The physics driver the move named: the tank is predicted on it.
+  tank.userData.physicsDriver = Number.isInteger(message.pd) ? message.pd : -1;
   tank.userData.airVelocityX = Number.isFinite(message.vx)
     ? message.vx
     : tank.userData.airVelocityX || 0;
@@ -10737,6 +10743,8 @@ function describeMapStats(stats) {
   if (title) parts.push(title);
   const authors = stats.metadata?.author?.join(', ');
   if (authors) parts.push(t('by {authors}', { authors }));
+  const created = stats.metadata?.created?.join(', ');
+  if (created) parts.push(t('created {date}', { date: created }));
   const counts = stats.counts || {};
   // Spelled out rather than suffixed: "box" takes -es and "pyramid" takes -s,
   // and a language has its own singular and plural forms for each.
@@ -14746,6 +14754,7 @@ function sendFrozenHeartbeat() {
   lastSentVerticalVelocity = motionFields.vv;
   lastSentAirVelocityX = motionFields.vx;
   lastSentAirVelocityY = motionFields.vy;
+  lastSentDriver = motionFields.pd ?? -1;
   lastSentTime = now;
 }
 
@@ -14870,8 +14879,10 @@ function handleMotion(deltaTime) {
   // predict from the last move -- its heading, turned at its rate since -- drifts
   // from the real one by more than `_angleTolerance` (0.05 rad by default).
   const angleTolerance = Number.isFinite(gameConfig?.ANGLE_TOLERANCE) ? gameConfig.ANGLE_TOLERANCE : 0.05;
+  // A turntable the last move named turns the tank too (`deadReckon`).
+  const sentSpin = physicsDriverByIndex(lastSentDriver)?.angular?.[0] || 0;
   const predictedHeading = lastSentHeading === null ? myAzimuth
-    : lastSentHeading + (lastSentRotationSpeed * (gameConfig?.TANK_ROTATION_SPEED || 0)
+    : lastSentHeading + (((lastSentRotationSpeed * (gameConfig?.TANK_ROTATION_SPEED || 0)) + sentSpin)
       * (timeSinceLastSend / 1000));
   const headingDrift = Math.abs(normalizeAngle(myAzimuth - predictedHeading));
   // Don't check vertical velocity changes while in air - gravity is extrapolated
@@ -14945,6 +14956,11 @@ function handleMotion(deltaTime) {
     ? findFreeShotSlot(myShotSlotFreeAt, maxActiveShots, fireNow)
     : -1;
   if (shotSlot >= 0) forceMoveSend = true;
+  // "send a packet if we've crossed a physics driver boundary"
+  // (Player::isDeadReckoningWrong): the others predict the tank on the driver
+  // the move named, so stepping onto another is news at once.
+  const standingDriver = standingDriverIndex(myDrive);
+  if (standingDriver !== lastSentDriver) forceMoveSend = true;
 
   const reasons = [];
   if (forceMoveSend) reasons.push('force');
@@ -15072,6 +15088,7 @@ function handleMotion(deltaTime) {
     lastSentVerticalVelocity = sentVV;
     lastSentAirVelocityX = movePacket.vx;
     lastSentAirVelocityY = movePacket.vy;
+    lastSentDriver = movePacket.pd ?? -1;
     lastSentTime = now;
 
   }
@@ -18384,73 +18401,14 @@ function updateChatWindow() {
  */
 function extrapolatePosition(player, dt) {
   if (!player || !gameConfig) return player;
+  return deadReckon(player, dt, gameConfig, physicsDriverByIndex(player.physicsDriver));
+}
 
-  const {
-    x, y, z, azimuth, forwardSpeed, rotationSpeed, verticalVelocity,
-    jumpAzimuth, slideAzimuth, airVelocityX, airVelocityY, flagType
-  } = player;
-
-  // getDeadReckoning (Player.cxx:1127): a paused tank does not move, whatever it
-  // was doing when the pause landed. Without this a tank that paused while
-  // rolling drifts away from where the server has it, and the sphere drawn
-  // around it goes with it.
-  if (player.paused) return { x, y, z, azimuth };
-
-  // Apply rotation
-  const rotSpeed = gameConfig.TANK_ROTATION_SPEED || 1.5;
-  const newAzimuth = azimuth + (rotationSpeed || 0) * rotSpeed * dt;
-
-  // Determine if player is in air based on jumpAzimuth
-  const isInAir = jumpAzimuth !== null && jumpAzimuth !== undefined;
-
-  if (isInAir) {
-    const hasAirVelocity = Number.isFinite(airVelocityX) && Number.isFinite(airVelocityY);
-    const speed = gameConfig.TANK_SPEED || 15;
-    const moveAzimuth = slideAzimuth !== undefined ? slideAzimuth : jumpAzimuth;
-    const dx = hasAirVelocity ? airVelocityX * dt : Math.cos(moveAzimuth) * (forwardSpeed || 0) * speed * dt;
-    const dy = hasAirVelocity ? airVelocityY * dt : Math.sin(moveAzimuth) * (forwardSpeed || 0) * speed * dt;
-
-    // Apply gravity to vertical velocity. Wings falls at _wingsGravity, which is
-    // the world's own unless a server has said otherwise.
-    const gravity = hasAirControl(flagType) ? gameConfig.WINGS_GRAVITY : gameConfig.GRAVITY;
-    const vv = (verticalVelocity || 0) + gravity * dt;
-    const dz = ((verticalVelocity || 0) + vv) / 2 * dt; // Average velocity over dt
-
-    return {
-      x: x + dx,
-      y: y + dy,
-      // Don't go below this tank's own ground: Burrow's is `_burrowDepth`, and
-      // getDeadReckoning clamps to the same limit (Player.cxx:1333) so a remote
-      // burrowed tank is not drawn hovering at zero while the server has it in
-      // its hole.
-      z: Math.max(getGroundLimit(flagType ?? null), z + dz),
-      azimuth: newAzimuth
-    };
-  }
-  // On the ground: a straight line, or the arc a turning tank drives -- its
-  // heading turns at the angular rate and it moves along it, so the position
-  // is the integral of the heading over the time.
-  const speed = gameConfig.TANK_SPEED || 15;
-  const rs = rotationSpeed || 0;
-  const fs = forwardSpeed || 0;
-
-  // Use slide direction if present, otherwise the heading
-  const moveAzimuth = slideAzimuth !== undefined ? slideAzimuth : azimuth;
-
-  if (Math.abs(rs) < 0.001) {
-    const dx = Math.cos(moveAzimuth) * fs * speed * dt;
-    const dy = Math.sin(moveAzimuth) * fs * speed * dt;
-    return { x: x + dx, y: y + dy, z, azimuth: newAzimuth };
-  }
-  const angularVelocity = rs * rotSpeed;
-  const theta = angularVelocity * dt;
-  const reach = (fs * speed) / angularVelocity;
-  return {
-    x: x + (reach * (Math.sin(azimuth + theta) - Math.sin(azimuth))),
-    y: y - (reach * (Math.cos(azimuth + theta) - Math.cos(azimuth))),
-    z,
-    azimuth: azimuth + theta,
-  };
+// A physics driver of the world being played, by upstream's index, as a move
+// names it (`pd`); null for none or one the world does not have.
+function physicsDriverByIndex(index) {
+  if (!Number.isInteger(index) || index < 0) return null;
+  return (currentWorldData?.physicsDrivers || []).find((driver) => driver.index === index) || null;
 }
 
 function runFallbackAnimationLoop(frameTime) {
@@ -18557,13 +18515,16 @@ function animate(frameTime) {
       const remoteAirVx = tank.userData.airVelocityX;
       const remoteAirVy = tank.userData.airVelocityY;
       const remoteAirborne = remoteJumpAzimuth !== null && remoteJumpAzimuth !== undefined;
+      // A tank whose own speeds are all zero is still moving while a physics
+      // driver carries it.
       const remoteStopped =
         !remoteAirborne &&
         remoteFS === 0 &&
         remoteRS === 0 &&
         remoteVV === 0 &&
         remoteAirVx === 0 &&
-        remoteAirVy === 0;
+        remoteAirVy === 0 &&
+        !physicsDriverByIndex(tank.userData.physicsDriver);
       const clampedTimeSinceUpdate = remoteStopped
         ? Math.max(0, Math.min(timeSinceUpdate, MAX_REMOTE_EXTRAPOLATION_STOP_SECONDS))
         : Math.max(0, timeSinceUpdate);
@@ -18581,7 +18542,8 @@ function animate(frameTime) {
         slideAzimuth: tank.userData.slideAzimuth,
         airVelocityX: remoteAirVx,
         airVelocityY: remoteAirVy,
-        flagType: getPlayerFlag(playerId)?.type ?? null
+        flagType: getPlayerFlag(playerId)?.type ?? null,
+        physicsDriver: tank.userData.physicsDriver,
       }, clampedTimeSinceUpdate);
 
       // Update tank's rendered position smoothly

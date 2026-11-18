@@ -713,11 +713,23 @@ export function findMeshFaceAt(obs, x, y, z, radius, height) {
 export function resolvePhysicsDriverAt(obstacle, x, y, z) {
   if (!obstacle) return null;
   if (obstacle.type === 'mesh') {
-    const f = findMeshFaceAt(obstacle, x, y, z, 2, 2);
-    if (f !== NO_FACE) {
+    // Upstream takes the driver of the face the tank rests on
+    // (LocalPlayer.cxx:777), wherever under it that face is: a tank whose
+    // centre is past a conveyor's edge still rides it. So any face under the
+    // tank's footprint that names a driver, not only one at its centre.
+    const footprint = Math.hypot(TANK.halfLength || 3, TANK.halfWidth || 1.4);
+    const { bounds } = obstacle;
+    if (!(bounds && outsideBounds(bounds, x, y, footprint))) {
       const arrays = meshArrays(obstacle);
-      const index = arrays.facePhydrv[f];
-      if (index !== NO_PHYDRV) return arrays.phydrvs[index];
+      const boxMins = [-footprint, -footprint, -FACE_UNDER_TOLERANCE];
+      const boxMaxs = [footprint, footprint, 2];
+      for (let f = 0; f < arrays.faceCount; f += 1) {
+        const index = arrays.facePhydrv[f];
+        if (index === NO_PHYDRV || !meshFaceHasPlane(arrays, f)) continue;
+        if (testPolygonInAxisBox(
+          faceLocalPoints(arrays, f, x, y, z), faceLocalPlane(arrays, f, x, y, z), boxMins, boxMaxs,
+        )) return arrays.phydrvs[index];
+      }
     }
     return obstacle.phydrv || null;
   }

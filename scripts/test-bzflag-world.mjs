@@ -9,6 +9,7 @@
 //   node scripts/test-bzflag-world.mjs [map ...]
 
 import { execFileSync } from 'node:child_process';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -19,6 +20,27 @@ const require = createRequire(import.meta.url);
 const { compileBzwWorld } = require('../server/bzw-compile.cjs');
 const { packWorldBody } = require('../server/bzflag-world.cjs');
 const { parseWorldDatabase } = require('../server/remote-world-import.cjs');
+
+// A block a loaded plugin registered (bz_registerCustomMapObject) is the
+// plugin's: bzfs's reader skips it, and fails the map where no plugin did.
+{
+  const map = 'finishline\n  position 0 0 0\n  heading 180\nend\nbox\n  position 0 0 0\n  size 5 5 5\nend\n';
+  assert.throws(() => compileBzwWorld(map), /failed to load/, 'an object no plugin registered fails the map');
+  const tree = compileBzwWorld(map, { customObjects: new Set(['FINISHLINE']) });
+  assert.equal(tree.unsupported.length, 0, 'one a plugin registered is skipped');
+
+  // bzo's own parse reads it whole as a plugin's, and warns of nothing in it;
+  // a stray word whose lines reach a real object first is still unread.
+  const { parseBZWMap } = require('../server/bzw-parse.cjs');
+  const world = parseBZWMap('race.bzw', { text: map, quiet: true });
+  assert.deepEqual(world.customObjects, { finishline: 1 });
+  assert.equal(world.obstacles.filter((obs) => obs.type === 'box').length, 1, 'the box after it is read');
+  assert.ok(!world.messages.some((line) => /ignored/.test(line)), world.messages.join('; '));
+  const stray = parseBZWMap('stray.bzw', { text: `typo\n${map.slice(map.indexOf('box'))}`, quiet: true });
+  assert.deepEqual(stray.customObjects, {});
+  assert.equal(stray.obstacles.filter((obs) => obs.type === 'box').length, 1, 'a stray word swallows nothing');
+  assert.ok(stray.messages.some((line) => /ignored: typo/.test(line)), stray.messages.join('; '));
+}
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const mapsDir = path.join(root, 'maps');

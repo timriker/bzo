@@ -53,6 +53,7 @@ const {
   toBzfsChatText,
 } = require('./bzfs-session.cjs');
 const { bzdbIsTrue, evalBzdb, worldConfig } = require('../public/js/bzdb.mjs');
+const { relativeMotion, absoluteMotion } = require('../public/js/dead-reckoning.mjs');
 const { CLIENT_TYPE, clientTypeOf } = require('./client-type.cjs');
 const { DEFAULT_VOICE_CHANNEL } = require('../public/js/voice-channels.mjs');
 const {
@@ -111,6 +112,7 @@ let VOICE_ON;
 let matchServerLine;
 let voiceRtcConfigFor;
 let worldBase;
+let worldPhysicsDrivers;
 
 function useServer(deps) {
   server = deps;
@@ -147,6 +149,7 @@ function useServer(deps) {
     matchServerLine,
     voiceRtcConfigFor,
     worldBase,
+    worldPhysicsDrivers,
   } = deps);
   PROXY_CLIENT_VERSION = `${SERVER_VERSION}.${CLIENT_BUILD}-bzo-web`;
 }
@@ -523,22 +526,31 @@ function round3(value) {
 // updates. So the fraction is recovered against the very numbers that client
 // will multiply back by -- this server's config with the map's own overlaid,
 // which is where the target's `-set` lines already are.
-function proxyMove(id, motion, physics) {
+//
+// On a physics driver the target's update carries the driver's push and spin
+// in its velocity and turn and names the driver; bzo's move states the tank's
+// own motion and names the driver (`pd`) for the browser to add it back.
+// `driverAt(index)` is the target world's driver of that index, or null.
+function proxyMove(id, motion, physics, driverAt = () => null) {
   const a = motion.azimuth;
   const [x, y, z] = motion.pos;
-  const [vx, vy, vv] = motion.velocity;
-  return {
+  const vv = motion.velocity[2];
+  const driver = !motion.falling && motion.phydrv >= 0 ? driverAt(motion.phydrv) : null;
+  const { vx, vy, angVel } = relativeMotion(motion.velocity[0], motion.velocity[1], motion.angVel, x, y, driver);
+  const move = {
     id: String(id),
     x: round2(x),
     y: round2(y),
     z: round2(z),
     a: round2(a),
     fs: round3((vx * Math.cos(a) + vy * Math.sin(a)) / physics.tankSpeed),
-    rs: round3(motion.angVel / physics.tankAngVel),
+    rs: round3(angVel / physics.tankAngVel),
     vv: round3(vv),
     vx: round3(vx),
     vy: round3(vy),
   };
+  if (driver) move.pd = motion.phydrv;
+  return move;
 }
 
 // `proxyMove` inverted: what the browser says about its own tank, in the shape
@@ -550,7 +562,7 @@ function proxyMove(id, motion, physics) {
 // rather than a velocity, because that is all its own server needs to
 // extrapolate. bzfs wants the vector, so it is rebuilt from the heading the
 // same way `proxyMove` decomposed it.
-function proxyOutboundMotion(message, physics, status) {
+function proxyOutboundMotion(message, physics, status, driverAt = () => null) {
   // `PlayerState::Falling` is the target's business as well as the browser's:
   // `shotFired` skips the vertical part of its origin check for a falling
   // tank (`bzfs.cxx:4210`), so a shot fired mid-jump is dropped without it.
@@ -583,13 +595,17 @@ function proxyOutboundMotion(message, physics, status) {
     vx = Math.cos(azimuth) * speed;
     vy = Math.sin(azimuth) * speed;
   }
+  // The driver the browser names goes back into the velocity and turn, and is
+  // named, as upstream's own client sends them.
+  const driver = !message.air && Number.isInteger(message.pd) ? driverAt(message.pd) : null;
+  const motion = absoluteMotion(vx, vy, (Number(message.rs) || 0) * physics.tankAngVel, x, y, driver);
   return {
     pos: [x, y, z],
-    velocity: [vx, vy, Number(message.vv) || 0],
+    velocity: [motion.vx, motion.vy, Number(message.vv) || 0],
     azimuth: a,
-
-    angVel: (Number(message.rs) || 0) * physics.tankAngVel,
-    status,
+    angVel: motion.angVel,
+    status: driver ? status | BZFS_PLAYER_STATUS.ON_DRIVER : status,
+    phydrv: driver ? message.pd : -1,
   };
 }
 
@@ -1010,6 +1026,9 @@ async function handleProxyConnection(ws, req, request) {
   // below: what a proxied player may say depends on the team its connection
   // entered on, and how its motion converts depends on the target's world.
   let physics = null;
+  // The target world's physics drivers by upstream's index, which its updates
+  // and the browser's moves name; none until the world is known.
+  let driverAt = () => null;
   let playingTeam = false;
   // Whether the target thinks this browser's own tank is standing. Not read off
   // `announcedAlive`, which deliberately skips our own id -- that map is about
@@ -1060,6 +1079,8 @@ async function handleProxyConnection(ws, req, request) {
     if (room) room.worldFile = safeMapName;
     const mapEntry = MAP_REGISTRY.get(safeMapName);
     if (!mapEntry) throw new Error(`imported ${safeMapName} is not registered`);
+    const drivers = worldPhysicsDrivers(mapEntry);
+    driverAt = (index) => drivers.find((driver) => driver.index === index) ?? null;
     if (ws.readyState !== ws.OPEN) return;
 
     // A team the target has no room for is refused at `MsgEnter` with a
@@ -1271,7 +1292,7 @@ async function handleProxyConnection(ws, req, request) {
       }
       // One entry per mover per batch, newest wins -- an update that has been
       // superseded inside 50ms is one nobody needs to draw.
-      const move = proxyMove(id, motion, physics);
+      const move = proxyMove(id, motion, physics, driverAt);
       const existing = pendingMoves.findIndex((entry) => entry.id === move.id);
       if (existing === -1) pendingMoves.push(move);
       else pendingMoves[existing] = move;
@@ -1856,6 +1877,7 @@ async function handleProxyConnection(ws, req, request) {
           (selfAlive ? BZFS_PLAYER_STATUS.ALIVE : 0)
             | (proxyPaused ? BZFS_PLAYER_STATUS.PAUSED : 0)
             | (proxyZoned ? BZFS_PLAYER_STATUS.FLAG_ACTIVE : 0),
+          driverAt,
         );
         session.sendPlayerUpdate(lastMotion);
       }
@@ -2171,4 +2193,6 @@ module.exports = {
   authoriseProxyRequest,
   buildProxyInit,
   handleProxyConnection,
+  proxyMove,
+  proxyOutboundMotion,
 };

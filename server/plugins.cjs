@@ -374,11 +374,16 @@ function createPluginHost({
     bz.bz_registerCustomMapObject = (name, handler) => {
       const run = typeof handler === 'function' ? handler : handler?.MapObject?.bind(handler);
       if (!name || typeof run !== 'function') return false;
+      entry.mapObjects.add(String(name).toUpperCase());
       for (const block of api.bz_customMapObjects?.(name) ?? []) run(block.name, block);
       return true;
     };
-    // Nothing to take back: the map is read once.
-    bz.bz_removeCustomMapObject = () => true;
+    // The map is read once, so only the name is taken back: a world compiled
+    // for a BZFlag client after this no longer skips the object.
+    bz.bz_removeCustomMapObject = (name) => {
+      entry.mapObjects.delete(String(name ?? '').toUpperCase());
+      return true;
+    };
     // bzhttp_RegisterVDir (bzfsHTTPAPI.cxx:349): a page set at
     // `/plugins/<VDirName()>/` (plugin-http.cjs). Upstream passes the plugin
     // first; here it may be left out. The name is unique in any case.
@@ -443,6 +448,7 @@ function createPluginHost({
     entry.bzdb.clear();
     for (const name of entry.pollTypes) api.bz_removeCustomPollType?.(name);
     entry.pollTypes.clear();
+    entry.mapObjects.clear();
     for (const [key, found] of vdirs) if (found.entry === entry) vdirs.delete(key);
   }
 
@@ -522,6 +528,7 @@ function createPluginHost({
       entries.set(found.id, {
         ...found, meta: null, state: 'off', error: null, plugin: null,
         events: new Set(), commands: new Set(), timers: new Set(), bzdb: new Map(), pollTypes: new Set(),
+        mapObjects: new Set(),
       });
       if (found.replaces) log(`${found.id}: ${found.file} replaces ${found.replaces}`);
       added.push(found.id);
@@ -685,9 +692,19 @@ function createPluginHost({
     }));
   }
 
+  // The custom map objects loaded plugins registered, upper case, which a
+  // world compiled for a BZFlag client skips as bzfs's reader does.
+  function mapObjects() {
+    const names = new Set();
+    for (const entry of entries.values()) {
+      if (entry.state === 'loaded') for (const name of entry.mapObjects) names.add(name);
+    }
+    return names;
+  }
+
   return {
     discover, drop, loadAll, load, unload, listening, callEvents, slashCommand, commands, messages, msgids, list,
-    generation: () => loads, webPage, webPages,
+    generation: () => loads, webPage, webPages, mapObjects,
   };
 }
 

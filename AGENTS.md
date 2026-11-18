@@ -4643,13 +4643,58 @@ azimuth a jump left with in the air.
 ```
 
 The server uses `sd` for extrapolation instead of `a`, stores it as
-`player.slideAzimuth`, and relays it in `pm`. A client extrapolates along it:
+`player.slideAzimuth`, and relays it in `pm`. Both predict along it
+(`deadReckon`, below).
 
-```javascript
-const moveAzimuth = slideAzimuth !== undefined ? slideAzimuth : azimuth;
-const dx = Math.cos(moveAzimuth) * fs * speed * dt;
-const dy = Math.sin(moveAzimuth) * fs * speed * dt;
-```
+---
+
+# Dead reckoning and the physics driver (`pd`)
+
+**Status: IMPLEMENTED.**
+
+`public/js/dead-reckoning.mjs`'s `deadReckon` is upstream's
+`Player::getDeadReckoning`: where a tank is some time after the move it last
+sent. It is the one prediction there is -- the server's drift check
+(`getExtrapolatedPosition`) and a client drawing another tank both call it --
+so the two cannot disagree.
+
+On a physics driver, a move states the tank's **own** motion: `fs`, `rs` and
+`sd` with the driver's push and spin taken out (`stepDrive`, as upstream's
+`calcRelativeMotion`), and `pd`, the driver's upstream index, naming the
+driver to add back. A move goes out the frame the tank steps onto another
+driver, as upstream's `isDeadReckoningWrong` sends one. A client looks the
+driver up in the world's `physicsDrivers`. The server takes the named driver
+only where one of the surfaces under the tank has it -- at a seam two
+drivers' surfaces overlap -- and its own finding otherwise, since a driver it
+took on the client's word alone would explain away any drift. A client
+predicts a tank a driver carries for as long as it would a moving one, even
+when its own speeds are zero.
+
+Upstream's update carries the whole velocity and turn, the driver's in them,
+with `OnDriver` and the driver's index. Wherever bzo meets one -- a BZFlag
+client's (`moveFromBzfs`, `NativeTranslator.playerUpdate`) or a proxied
+bzfs's (`proxyMove`, `proxyOutboundMotion`) -- `relativeMotion` takes the
+driver out on the way in and `absoluteMotion` puts it back on the way out.
+
+A mesh's driver is the one any face under the tank's footprint names
+(`resolvePhysicsDriverAt`), as upstream takes the driver of the face the tank
+rests on (`LocalPlayer.cxx:777`): a tank whose centre is past a belt's edge
+still rides it.
+
+**Two upstream bugs on a turntable, not compensated for here.** A BZFlag
+client watching any tank on an `angular` driver shows its treads running, and
+its own tank's treads creep:
+
+- `LocalPlayer::doUpdateMotion` adds the turntable's carry for the position
+  the frame started at (`oldPosition`) but reports the position it ended at,
+  so taking the carry out again (`calcRelativeMotion`) leaves about a unit a
+  second the tank never drove. bzo passes that on as it is.
+- `Player::getDeadReckoning` adds the carry for the position before it turns
+  the tank round the centre, then `setRelativeMotion` measures at the
+  position after, so a remote tank's own speed grows until its next update.
+
+Both are one line each upstream: add and take out the carry at the same
+position. A bzo tank on a turntable reports none of its own motion.
 
 ---
 

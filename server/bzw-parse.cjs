@@ -68,6 +68,16 @@ const UNSUPPORTED_TOP_LEVEL_KEYWORDS = new Set([
   'transform',
 ]);
 
+// The words that open or close something of the map's own at the top level.
+// An unknown word there whose lines reach `end` before any of these is a
+// plugin's object (bz_registerCustomMapObject), read whole and left to the
+// plugin; one that does not is a stray word, counted as unread.
+const TOP_LEVEL_OBJECT_KEYWORDS = new Set([
+  'arc', 'base', 'box', 'cone', 'define', 'dynamiccolor', 'enddef', 'group', 'link', 'material', 'mesh',
+  'meshbox', 'meshpyr', 'options', 'physics', 'pyramid', 'sphere', 'teleporter', 'tetra', 'texturematrix',
+  'transform', 'waterlevel', 'weapon', 'world', 'zone',
+]);
+
 // Material keywords bzo reads and deliberately drops, because none of them
 // can change what a real bzflag client draws either -- see
 // `applyBzwMaterialToken` for the reason behind each. Inside a `material`
@@ -1327,8 +1337,8 @@ function parseBZWServerOptions(lines) {
     // switches above this carries a value, and upstream parses a map's options
     // where `-world` sits on the command line, so the map's number simply
     // replaces whatever came before it rather than only ever raising it.
-    // A count of 0 means "tanks cannot shoot" upstream; bzo has no such mode, so
-    // normalizeShotSlotCount clamps it to one shot as it clamps the config.
+    // A count of 0 means "tanks cannot shoot", upstream and here
+    // (normalizeShotSlotCount keeps it).
     if (readOption('-ms')) {
       const requestedShots = Number(value);
       if (Number.isFinite(requestedShots)) {
@@ -1961,12 +1971,12 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   const physicsDriverRegistry = [];
   // A `phydrv` naming a driver this file never defined.
   const unresolvedPhysicsDriverRefs = new Set();
-  // `angular`/`radial`/`slide` lines inside a `physics` block -- read as far
-  // as recognizing the keyword so it never falls through as a stray unknown
-  // token, but not applied to motion: no real map sampled uses any of the
-  // three (`docs/bzw-plan.md`, "Physics drivers"), and upstream's own
-  // `radial` has no consumer anywhere in its renderer either. Counted the
-  // same way `unsupportedCounts` tracks any other partially-read block.
+  // `radial`/`slide` lines inside a `physics` block -- read as far as
+  // recognizing the keyword so it never falls through as a stray unknown
+  // token, but not applied to motion: `slide` is not built yet
+  // (`docs/bzw-plan.md`, "Physics drivers"), and upstream's own `radial` has
+  // no consumer anywhere in its client either. Counted the same way
+  // `unsupportedCounts` tracks any other partially-read block.
   const unreadPhysicsDriverKeywords = new Set();
   // `dynamicColor` / `end` (`CustomDynamicColor.cxx`, `DynamicColor.cxx`). A
   // named, time-varying RGBA a `material`'s own `dyncol <name>` line pulls
@@ -2007,6 +2017,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // declines: these are words nobody has taught it, and the difference
   // matters to whoever reads the warning.
   const unreadKeywordCounts = new Map();
+  // Blocks of a plugin's own objects, by name: which plugin reads them is the
+  // server's to say, once its plugins have loaded.
+  const customObjectCounts = new Map();
 
   function getTeleporterEndpointName(teleporter, face) {
     return `${teleporter.linkName}:${face === 0 ? 'f' : 'b'}`;
@@ -2896,7 +2909,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       && !currentMaterial && !currentPhysicsDriver && !currentDynamicColor && !currentTextureMatrix
       && !currentWaterLevel
       && token === 'physics') {
-      currentPhysicsDriver = { name: null, linear: null, death: null };
+      currentPhysicsDriver = { name: null, linear: null, angular: null, death: null };
       continue;
     }
     if (currentPhysicsDriver) {
@@ -2932,7 +2945,17 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         currentPhysicsDriver.death = rest.join(' ').trim() || null;
         continue;
       }
-      if (token === 'angular' || token === 'radial' || token === 'slide') {
+      if (token === 'angular') {
+        // Rotations a second about the point `x y`, kept in radians a second
+        // as `PhysicsDriver::setAngular` converts it. 0 is no driver.
+        const [, vel, px, py] = line.split(/\s+/).map((word) => {
+          const value = Number(word);
+          return Number.isFinite(value) ? value : 0;
+        });
+        currentPhysicsDriver.angular = vel !== 0 ? [vel * 2 * Math.PI, px, py] : null;
+        continue;
+      }
+      if (token === 'radial' || token === 'slide') {
         unreadPhysicsDriverKeywords.add(token);
         continue;
       }
@@ -4269,10 +4292,28 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // has no handling for the word at all -- which is worth counting rather
       // than dropping in silence. `alphathresh` went unread in 26 of the maps
       // in `maps/` without any of them ever saying so.
+      if (!current && !currentLink && !currentZone && !currentWeapon && !currentDefine
+        && !currentMaterial && !currentPhysicsDriver && !currentDynamicColor && !currentTextureMatrix
+        && !currentWaterLevel && isCustomObjectBlock(i)) {
+        customObjectCounts.set(token, (customObjectCounts.get(token) || 0) + 1);
+        consumedBlock = token;
+        continue;
+      }
       unreadKeywordCounts.set(token, (unreadKeywordCounts.get(token) || 0) + 1);
     }
   }
   noteSpans(lines.length - 1);
+
+  // Whether the lines after `start` reach an `end` before anything of the
+  // map's own begins.
+  function isCustomObjectBlock(start) {
+    for (let j = start + 1; j < lines.length; j++) {
+      const word = lines.at(j).trim().split(/\s+/)[0].toLowerCase();
+      if (word === 'end') return true;
+      if (TOP_LEVEL_OBJECT_KEYWORDS.has(word)) return false;
+    }
+    return false;
+  }
 
   // One line inside a `drawInfo { ... }` block (`MeshDrawInfo::parse`,
   // `MeshDrawInfo.cxx:874-1029`, with `parseDrawLod`/`parseDrawSet` for the
@@ -5747,6 +5788,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     groundMaterial: mapGroundMaterial,
     messages,
     warnedMessages,
+    // `{ name: count }` of the plugin objects the map holds.
+    customObjects: Object.fromEntries(customObjectCounts),
     // Every material in file order with its name and its block in the file,
     // for the world viewer to name the materials an obstacle refers to.
     materialSources: materialRegistry.map((material) => ({ name: material.name, source: material.source || null })),
@@ -5764,8 +5807,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // `nolighting`, 5 its `noshadow`, 6 its `spheremap`, 7 a group's
 // `matswap`, 8 jumping and ricochet in `gameplay`, 9 its flags there, 10
 // the `metadata` block, 11 a `drawInfo` block's lines and points, 12 only
-// its first `lod`'s draw commands.
-const WORLD_FORMAT = 12;
+// its first `lod`'s draw commands, 13 a physics driver's `angular`, 14 a
+// plugin's objects apart from the unread, 15 the drivers by index.
+const WORLD_FORMAT = 15;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).
@@ -6079,6 +6123,11 @@ function buildWorldFile(map, { gameConfig, serverBzdb, puffClouds, defaultMapSiz
     // The map's `metadata` block -- title, authors, licence -- `null` when it
     // has none (docs/bzw.md, "Metadata").
     metadata: map.metadata,
+    // The drivers that move a tank, by upstream's index, which a move names
+    // (`pd`) for a client to predict another tank on (dead-reckoning.mjs).
+    physicsDrivers: (map.physicsDrivers || [])
+      .filter((driver) => driver.linear || driver.angular)
+      .map(({ index, linear, angular }) => ({ index, linear, angular })),
     // `gameplay` -- how this map drives and shoots, for a Map Viewer preview
     // to lay over its own `gameConfig` (see `applyWorldData` in client.js).
     // Only what the map itself states, so a preview of a map that says

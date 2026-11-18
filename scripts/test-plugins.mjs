@@ -701,6 +701,127 @@ ${extra}end
   assert.deepEqual(team.state.team, [{ team: 1, text: 'Your team is King of the Hill!  Entire team must leave hill to retake it.' }]);
 }
 
+// laptimer: crossing the map's finishline the right way starts a lap and the
+// next crossing finishes it, once every checkpoint has been crossed in order,
+// for a point and a place among the map's records; crossing back, or dying,
+// drops the lap under way.
+{
+  const map = `finishline
+  position 0 0 0
+  heading 180
+  width 30
+  height 10
+end
+checkpoint
+  position 0 100 0
+  heading 0
+end
+`;
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-laptimer-'));
+  const said = [];
+  const wins = [];
+  const tanks = new Map([[1, { playerID: 1, callsign: 'racer', bzID: '42', spawned: true }]]);
+  const realNow = Date.now;
+  let now = 0;
+  Date.now = () => now;
+  const host = createPluginHost({
+    dirs: [bundledDir],
+    settings: { laptimer: true },
+    api: {
+      BZ_SERVER: -2, BZ_ALLUSERS: -1,
+      bz_customMapObjects: (name) => scanCustomMapObjects(map, name),
+      bz_getDataDir: () => dataDir,
+      bz_getMapName: () => 'track',
+      bz_getPlayerByIndex: (id) => tanks.get(id) ?? null,
+      bz_incrementPlayerWins: (id, count) => { wins.push([id, count]); return true; },
+      bz_sendTextMessage: (from, to, text, params) => { said.push({ to, text, params }); return true; },
+    },
+  });
+  host.loadAll();
+  assert.deepEqual([...host.mapObjects()], ['FINISHLINE', 'CHECKPOINT'],
+    'a BZFlag client\'s world skips its objects, as bzfs does');
+  const move = (x, at) => {
+    now = at;
+    host.callEvents('bz_ePlayerUpdateEvent', { playerID: 1, state: { pos: [x, 5, 1] } });
+  };
+  move(10, 0);
+  move(-10, 1000);
+  assert.equal(said.at(-1).text, 'Lap started.', 'crossing westward starts a lap');
+  move(10, 2000);
+  move(-10, 3000);
+  assert.equal(said.at(-1).text, 'Lap started.', 'crossing back drops it, and the next crossing starts afresh');
+  move(-20, 4000);
+  // Round the track: through the checkpoint, and back to the line from the
+  // east.
+  const at = (x, y, when) => {
+    now = when;
+    host.callEvents('bz_ePlayerUpdateEvent', { playerID: 1, state: { pos: [x, y, 1] } });
+  };
+  at(-10, 60, 10000);
+  at(-10, 100, 11000);
+  at(10, 100, 12000);
+  at(60, 60, 30000);
+  move(10, 63000);
+  move(-10, 64000);
+  assert.deepEqual(wins, [[1, 1]], 'a lap is a point');
+  assert.equal(said.at(-1).text, '{player}: lap {lap} in {time} -- a new lap record!');
+  assert.deepEqual(said.at(-1).params, { player: 'racer', lap: 1, time: '1:01.00', place: 1 },
+    'timed from crossing to crossing, each halfway between its two moves');
+  // Round again without the checkpoint: no lap, and the next one starts.
+  at(-60, -60, 65000);
+  at(60, -60, 66000);
+  move(10, 67000);
+  move(-10, 68000);
+  assert.deepEqual(wins, [[1, 1]], 'a lap that missed a checkpoint is no lap');
+  assert.equal(said.at(-1).text, 'Lap not counted: missed checkpoint {checkpoint}. Lap started.');
+  assert.deepEqual(said.at(-1).params, { checkpoint: 1 });
+  host.callEvents('bz_ePlayerDieEvent', { playerID: 1 });
+  move(10, 70000);
+  move(-10, 71000);
+  assert.equal(said.at(-1).text, 'Lap started.', 'a death drops the lap under way');
+  move(10, 72000);
+  move(80, 72100);
+  move(-10, 72200);
+  assert.deepEqual(wins, [[1, 1]], 'a teleport-sized jump across the line is no crossing');
+  // A BZFlag client tells its position about once a second on a conveyor:
+  // a long step at a plausible speed is still a crossing, and one that climbs
+  // as only a teleporter does is not.
+  move(100, 73000);
+  move(-10, 73800);
+  assert.equal(said.at(-1).text, 'Lap started.', 'a step a second long still crosses');
+  const before = said.length;
+  now = 75000;
+  host.callEvents('bz_ePlayerUpdateEvent', { playerID: 1, state: { pos: [10, 5, 120] } });
+  now = 76000;
+  host.callEvents('bz_ePlayerUpdateEvent', { playerID: 1, state: { pos: [-10, 5, 1] } });
+  assert.equal(said.length, before, 'a teleporter up and back down across the line crosses nothing');
+  const saved = JSON.parse(fs.readFileSync(path.join(dataDir, 'laptimer.json'), 'utf8'));
+  assert.deepEqual(saved.track.map(({ bzid, callsign, ms }) => ({ bzid, callsign, ms })),
+    [{ bzid: '42', callsign: 'racer', ms: 61000 }], 'the best lap is kept per map, by BZID');
+  tanks.set(2, { playerID: 2, callsign: 'Ace', spawned: true, bot: true });
+  const botMove = (x, y, when) => {
+    now = when;
+    host.callEvents('bz_ePlayerUpdateEvent', { playerID: 2, state: { pos: [x, y, 1] } });
+  };
+  botMove(10, 5, 80000);
+  botMove(-10, 5, 81000);
+  botMove(-10, 60, 82000);
+  botMove(-10, 100, 83000);
+  botMove(10, 100, 84000);
+  botMove(60, 60, 90000);
+  botMove(10, 5, 100000);
+  botMove(-10, 5, 101000);
+  assert.equal(said.at(-1).text, '{player}: lap {lap} in {time}', "a bot's lap is announced");
+  assert.deepEqual(wins.at(-1), [2, 1], 'and scores');
+  host.slashCommand(1, 0, '/laps');
+  assert.deepEqual(said.slice(-2).map((line) => line.text), ['Fastest laps on this map:', '{place}. {time} {player}']);
+  host.unload('laptimer');
+  assert.deepEqual([...host.mapObjects()], [], 'and stops skipping it once the plugin is gone');
+  Date.now = realNow;
+  fs.rmSync(dataDir, { recursive: true, force: true });
+}
+
 // holdtheflag: only its team plays, a capture scores the capper and resets
 // the flags, and the match end names the winner.
 {

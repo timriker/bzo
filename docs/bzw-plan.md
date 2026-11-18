@@ -74,7 +74,7 @@ be playing something else by the time you read this.
 | box/pyramid non-vertical `spin` | `bmbz.ducatileague.org:6002` | INCOMING! :: by ahs3 |
 | `spheremap` | `bmbz.ducatileague.org:5185` | FATALITY by tankatek |
 | `occluder` | `1purplepanzer.mooo.com:4101` | Desert War |
-| `angular`/`slide` physics | `bmbz.ducatileague.org:5179` | BMBZ: Eria Ziel |
+| `slide` physics | `bmbz.ducatileague.org:5179` | BMBZ: Eria Ziel |
 | an `arc` bzo refuses to build | `bmbz.ducatileague.org:5162` | Pool Table by GEP |
 
 Group-placed teleporter links are broken on import for a different reason --
@@ -255,11 +255,10 @@ two different upstream mechanisms rather than one:
 
 What's left:
 
-- [ ] `angular` (a rotation about a point) and `slide` (removes friction
-      rather than pushing) -- parsed as recognized-but-unread keywords inside
-      a `physics` block, so a map defining one still loads and round-trips
-      cleanly, but not wired to motion. No real map sampled uses either; add
-      the motion side once one does.
+- [ ] `slide` (removes friction rather than pushing) -- parsed as a
+      recognized-but-unread keyword inside a `physics` block, so a map
+      defining one still loads and round-trips cleanly, but not wired to
+      motion. BMBZ: Eria Ziel uses it.
 - [ ] `radial` -- parsed the same way, but likely never needs a motion side
       at all: upstream itself never applies it either (no
       `PhysicsDriver::getRadialVel`/`getRadialPos` consumer anywhere in its

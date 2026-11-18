@@ -199,8 +199,8 @@ export class BotDriver {
   }
 
   // A move packet, sent as a client sends one: when a speed changed, on a jump
-  // or a landing, before a shot, onto or off a base, and otherwise as a
-  // heartbeat.
+  // or a landing, before a shot, onto or off a base or a physics driver, and
+  // otherwise as a heartbeat.
   report(dt, force, jumpStarted = false) {
     const packet = {
       type: 'm',
@@ -210,9 +210,12 @@ export class BotDriver {
       ct: round(this.clock, 3),
     };
     const last = this.lastSent;
+    // Onto another physics driver too, as a client sends then: the others
+    // predict the bot on the one its last move named.
     const changed = !last
       || Math.abs(packet.fs - last.fs) > VELOCITY_THRESHOLD
-      || Math.abs(packet.rs - last.rs) > VELOCITY_THRESHOLD;
+      || Math.abs(packet.rs - last.rs) > VELOCITY_THRESHOLD
+      || packet.pd !== last.pd;
     if (!force && !changed && this.clock - this.lastSentAt < HEARTBEAT_SECONDS) return;
     this.lastSent = packet;
     this.lastSentAt = this.clock;

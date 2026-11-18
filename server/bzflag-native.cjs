@@ -13,6 +13,7 @@
 'use strict';
 
 const { toBzfsChatText, splitBzfsChat } = require('./bzfs-session.cjs');
+const { relativeMotion, absoluteMotion } = require('../public/js/dead-reckoning.mjs');
 
 const CALLSIGN_LEN = 32;
 const MOTTO_LEN = 128;
@@ -31,6 +32,7 @@ const COMPUTER_PLAYER = 1;
 const STATUS_ALIVE = 1 << 0;
 const STATUS_FLAG_ACTIVE = 1 << 4;
 const STATUS_FALLING = 1 << 6;
+const STATUS_ON_DRIVER = 1 << 7;
 // `BlowedUpReason` (playing.h:128).
 const DEATH_REASONS = {
   // The match's end blowing every tank up is the server's word alone,
@@ -105,11 +107,20 @@ function packTeams(teams) {
 // frame. bzo carries a ground speed as a fraction of the tank's top speed
 // along its heading, or along `sd` where the tank is sliding some other way;
 // in the air, the velocity itself.
-function moveFromBzfs(update, config) {
+//
+// On a physics driver upstream sends the whole velocity, the driver's push
+// and spin in it, and names the driver. bzo's move states the tank's own
+// motion and names the driver (`pd`) for the prediction to add it back, so
+// the driver comes out here as `Player::calcRelativeMotion` takes it out.
+// `driverAt(index)` is the world's driver of that index, or null.
+function moveFromBzfs(update, config, driverAt = () => null) {
   const [x, y, z] = update.pos;
   const a = update.azimuth;
-  const [vx, vy, vv] = update.velocity;
+  const vv = update.velocity[2];
   const air = (update.status & STATUS_FALLING) !== 0;
+  const onDriver = !air && (update.status & STATUS_ON_DRIVER) !== 0;
+  const driver = onDriver ? driverAt(update.phydrv) : null;
+  const { vx, vy, angVel } = relativeMotion(update.velocity[0], update.velocity[1], update.angVel, x, y, driver);
   const tankSpeed = Number(config.TANK_SPEED) || 25;
   const along = (vx * Math.cos(a)) + (vy * Math.sin(a));
   const speed = Math.hypot(vx, vy);
@@ -121,7 +132,7 @@ function moveFromBzfs(update, config) {
     z: round2(z),
     a: round2(a),
     fs: round2(along / tankSpeed),
-    rs: round2(update.angVel / (Number(config.TANK_ROTATION_SPEED) || 0.785398)),
+    rs: round2(angVel / (Number(config.TANK_ROTATION_SPEED) || 0.785398)),
     vv: round2(air ? vv : 0),
     vx: round2(air ? vx : 0),
     vy: round2(air ? vy : 0),
@@ -134,6 +145,7 @@ function moveFromBzfs(update, config) {
     move.sd = round2(Math.atan2(vy, vx));
     move.fs = round2(speed / tankSpeed);
   }
+  if (driver) move.pd = update.phydrv;
   return move;
 }
 
@@ -174,11 +186,12 @@ function decodeClientMessage(payload) {
 // the handshake gave this connection; `options.config()` is the live game
 // config, for speeds. `options.scoreOf(id)` is a player's score as the
 // server tallies it, which bzo's own clients tally for themselves and a
-// BZFlag client is sent, as bzfs sends it.
+// BZFlag client is sent, as bzfs sends it. `options.driverAt(index)` is the
+// world's physics driver of that index, or null.
 class NativeTranslator {
   constructor({
     selfSlot, send, teamIndex, config, flagName = () => '', guidedShots = () => [],
-    addressOf = () => null, selfIsAdmin = () => false, scoreOf = () => null,
+    addressOf = () => null, selfIsAdmin = () => false, scoreOf = () => null, driverAt = () => null,
   }) {
     this.selfSlot = selfSlot;
     this.write = send;
@@ -191,6 +204,7 @@ class NativeTranslator {
     this.addressOf = addressOf;
     this.selfIsAdmin = selfIsAdmin;
     this.scoreOf = scoreOf;
+    this.driverAt = driverAt;
     // The last flag MsgNearFlag named, so an unchanged answer is not repeated.
     this.lastNearFlag = null;
     this.selfBzoId = null;
@@ -363,21 +377,29 @@ class NativeTranslator {
     const vv = Number(move.vv) || 0;
     let vx = Number(move.vx) || 0;
     let vy = Number(move.vy) || 0;
+    const ownAngVel = (Number(move.rs) || 0) * (config.TANK_ROTATION_SPEED || 0);
     if (vv === 0 && vx === 0 && vy === 0) {
       const heading = typeof move.sd === 'number' && Number.isFinite(move.sd) ? move.sd : a;
       const speed = (Number(move.fs) || 0) * (Number(config.TANK_SPEED) || 25);
       vx = Math.cos(heading) * speed;
       vy = Math.sin(heading) * speed;
     }
-    const w = new Writer(48)
+    // The physics driver the move names: upstream's update carries the whole
+    // velocity and turn, the driver's in them, and names it for the client to
+    // take out again (`Player::calcRelativeMotion`).
+    const driver = Number.isInteger(move.pd) ? this.driverAt(move.pd) : null;
+    if (driver) status |= STATUS_ON_DRIVER;
+    const motion = absoluteMotion(vx, vy, ownAngVel, Number(move.x) || 0, Number(move.y) || 0, driver);
+    const w = new Writer(52)
       .f32(this.timestamp())
       .u8(this.slotFor(move.id))
       .i32(order)
       .i16(status)
       .vec3([Number(move.x) || 0, Number(move.y) || 0, Number(move.z) || 0])
-      .vec3([vx, vy, vv])
+      .vec3([motion.vx, motion.vy, vv])
       .f32(a)
-      .f32((Number(move.rs) || 0) * (config.TANK_ROTATION_SPEED || 0));
+      .f32(motion.angVel);
+    if (driver) w.i32(move.pd);
     this.write('pu', w.done());
   }
 

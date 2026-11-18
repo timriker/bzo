@@ -2427,11 +2427,14 @@ const NORMAL_OBJECTS = {
   transform: (w) => CUSTOM.transform(w),
 };
 
-function readWorldStream(world, input, list) {
+function readWorldStream(world, input, list, customObjects = new Set()) {
   let groupDef = world.world;
   let object = null;
   let newObject = null;
   const OPTIONS = { options: true };
+  // A loaded plugin's own object (bz_registerCustomMapObject): its lines are
+  // the plugin's, and none of it is the world's.
+  const CUSTOM_OBJECT = { custom: true };
   let gotWorld = false;
   while (input.good()) {
     if (newObject) {
@@ -2444,7 +2447,7 @@ function readWorldStream(world, input, list) {
       // blank or comment
     } else if (t === 'end') {
       if (object) {
-        if (object !== OPTIONS) {
+        if (object !== OPTIONS && object !== CUSTOM_OBJECT) {
           if (object.toManager) object.toManager();
           else if (object.write) object.write(groupDef);
           else list.push(object);
@@ -2477,7 +2480,9 @@ function readWorldStream(world, input, list) {
         gotWorld = true;
       }
     } else if (object) {
-      if (object !== OPTIONS) object.read(token, input);
+      if (object !== OPTIONS && object !== CUSTOM_OBJECT) object.read(token, input);
+    } else if (customObjects.has(token.toUpperCase())) {
+      newObject = CUSTOM_OBJECT;
     } else {
       // unknown object type, skipped
     }
@@ -2548,7 +2553,9 @@ const compareHeights = (a, b) => {
 // the server's own variables (a Map of names to raw strings) under the map's.
 // `textureName(name)`, when given, renames each material's textures as the
 // world is sent: how a server points native clients at its own `/img/`.
-function compileBzwWorld(bzwText, { bzdb = null, textureName = null } = {}) {
+// `customObjects` names the objects loaded plugins registered, upper case,
+// which the world skips as bzfs's reader does.
+function compileBzwWorld(bzwText, { bzdb = null, textureName = null, customObjects = new Set() } = {}) {
   // bzfs reads a `metadata` block's lines as objects of their own; this
   // drops the block whole, as a bzfs that knows it would (bzw-metadata.cjs).
   const { text } = splitBzwMetadata(bzwText);
@@ -2557,7 +2564,7 @@ function compileBzwWorld(bzwText, { bzdb = null, textureName = null } = {}) {
   const world = new World(makeBzdb(vars));
   const input = new Stream(text);
   const list = [];
-  if (!readWorldStream(world, input, list)) throw new Error('the world file failed to load');
+  if (!readWorldStream(world, input, list, customObjects)) throw new Error('the world file failed to load');
 
   // makeWalls (bzfs.cxx:1061).
   if (!world.bzdb.isTrue('noWalls')) {

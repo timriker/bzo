@@ -49,6 +49,7 @@ the server.
 ## Open questions
 
 - Arrival radius default, and whether arrival needs the player on the ground.
-- Whether a waypoint survives the player's death.
+- Whether a waypoint survives the player's death. A race keeps it
+  ([race-plan.md](race-plan.md)); other uses may not.
 - How a proxied target's players get one: an upstream target's plugins cannot
   set it.

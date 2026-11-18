@@ -324,17 +324,34 @@ function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt
   const { config } = world;
   const onSupport = state.onGround || state.onObstacle;
   const driver = resolvePhysicsDriverAt(state.lastObstacle, state.x, state.y, state.z);
+  // What the driver adds this step, kept apart so the move can report the
+  // tank's own motion without it.
+  let driverVelocityX = 0;
+  let driverVelocityY = 0;
+  let driverSpin = 0;
   if (driver && driver.linear) {
     const push = driverLinear(driver);
     velocityZ += push.z;
     if (onSupport) {
-      velocityX += push.x;
-      velocityY += push.y;
+      driverVelocityX += push.x;
+      driverVelocityY += push.y;
     }
   }
+  // `angular` (LocalPlayer.cxx:416-425): the surface turns the tank with it
+  // and carries it round the driver's centre, at the velocity a point that far
+  // out on a turntable has.
+  if (driver && driver.angular && onSupport) {
+    const [av, cx, cy] = driver.angular;
+    driverSpin = av;
+    driverVelocityX -= av * (state.y - cy);
+    driverVelocityY += av * (state.x - cx);
+  }
+  velocityX += driverVelocityX;
+  velocityY += driverVelocityY;
+  angularVelocity += driverSpin;
   const tankScale = getTankDimensionScale(tank.flag ?? null);
   const phased = drivesThroughBuildings(tank.flag ?? null, tank.zoned === true);
-  return resolveTankMotion({
+  const step = resolveTankMotion({
     x: state.x,
     y: state.y,
     z: state.z,
@@ -378,6 +395,7 @@ function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt
     stuckEscapeSpeed: STUCK_ESCAPE_SPEED_SHARE * (config.TANK_SPEED || 0),
     stuckEscapeVertical: canJump(tank.motionFlag ?? null, config.ALLOW_JUMPING, false, 1, false),
   });
+  return { ...step, driverVelocityX, driverVelocityY, driverSpin };
 }
 
 function noDriveEvents() {
@@ -578,8 +596,8 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
     z: step.z,
     // Whatever the resolver took away from the step, which the slide reporting
     // keys off.
-    altered: Math.abs((step.x - state.x) - (velocityX * dt)) > 1e-6
-      || Math.abs((step.y - state.y) - (velocityY * dt)) > 1e-6,
+    altered: Math.abs((step.x - state.x) - ((velocityX + step.driverVelocityX) * dt)) > 1e-6
+      || Math.abs((step.y - state.y) - ((velocityY + step.driverVelocityY) * dt)) > 1e-6,
     trajectoryDeltaX: step.velocityX * dt,
     trajectoryDeltaY: step.velocityY * dt,
   };
@@ -682,11 +700,16 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
   events.drivenUpward = isDrivenUpward(state.lastObstacle, state.x, state.y, state.z);
   events.burrowEntered = old.z >= 0 && state.z < 0;
 
-  const actualDeltaX = state.x - old.x;
-  const actualDeltaY = state.y - old.y;
-  events.moved = Math.hypot(actualDeltaX, actualDeltaY);
-  const trajectoryDeltaX = Number.isFinite(result.trajectoryDeltaX) ? result.trajectoryDeltaX : actualDeltaX;
-  const trajectoryDeltaY = Number.isFinite(result.trajectoryDeltaY) ? result.trajectoryDeltaY : actualDeltaY;
+  events.moved = Math.hypot(state.x - old.x, state.y - old.y);
+  // The tank's own travel, the driver's carry taken out
+  // (`Player::calcRelativeMotion`): what the move reports, and the others add
+  // the driver back to.
+  const drivenX = events.teleported ? 0 : step.driverVelocityX * dt;
+  const drivenY = events.teleported ? 0 : step.driverVelocityY * dt;
+  const actualDeltaX = state.x - old.x - drivenX;
+  const actualDeltaY = state.y - old.y - drivenY;
+  const trajectoryDeltaX = Number.isFinite(result.trajectoryDeltaX) ? result.trajectoryDeltaX - drivenX : actualDeltaX;
+  const trajectoryDeltaY = Number.isFinite(result.trajectoryDeltaY) ? result.trajectoryDeltaY - drivenY : actualDeltaY;
 
   // Where the step slid the tank off its own heading -- off its jump's, in the
   // air -- the direction it actually went, for the packet.
@@ -708,10 +731,11 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
     } else if (airControl && !jumpStarted) {
       // Wings changes its horizontal velocity every frame, so what others
       // extrapolate from is this frame's actual travel.
-      setAirVelocity(state, actualDeltaX / dt, actualDeltaY / dt, config);
+      setAirVelocity(state, (actualDeltaX + drivenX) / dt, (actualDeltaY + drivenY) / dt, config);
     } else if (result.altered) {
-      const newX = trajectoryDeltaX / dt;
-      const newY = trajectoryDeltaY / dt;
+      // A tank leaving a driver keeps what it carried.
+      const newX = (trajectoryDeltaX + drivenX) / dt;
+      const newY = (trajectoryDeltaY + drivenY) / dt;
       setAirVelocity(state, newX, newY, config);
       if (Math.hypot(newX - priorAirVelocityX, newY - priorAirVelocityY) > AIR_VELOCITY_THRESHOLD) {
         events.forceSend = true;
@@ -752,7 +776,7 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
     if (!wasInAir || airControl) {
       // The short way round: a heading crossing +/-PI otherwise reads as a turn
       // of nearly a full circle the other way.
-      const turned = normalizeAngle(state.azimuth - old.azimuth);
+      const turned = normalizeAngle(state.azimuth - old.azimuth - (step.driverSpin * dt));
       const maxRS = getMaxAngVelFactor(motionFlag);
       state.rotationSpeed = Math.max(-maxRS, Math.min(maxRS, (turned / dt) / config.TANK_ROTATION_SPEED));
     }
@@ -760,9 +784,20 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
   return events;
 }
 
+// The physics driver the tank stands on, by upstream's index, or -1: what a
+// move names (`PlayerState::OnDriver`), so the others predict it as it goes.
+// Only one that moves a tank, and only while it rests on it.
+export function standingDriverIndex(state) {
+  if (!(state.onGround || state.onObstacle) || !state.lastObstacle) return -1;
+  const driver = resolvePhysicsDriverAt(state.lastObstacle, state.x, state.y, state.z);
+  return Number.isInteger(driver?.index) && (driver.linear || driver.angular) ? driver.index : -1;
+}
+
 // A move packet's motion, as the tank's state spells it -- the speeds rounded to
 // what goes on the wire. `jumpStarted` sends the jump's own speed rather than
-// the frame's measured one, and `stopped` a dead stick's zero.
+// the frame's measured one, and `stopped` a dead stick's zero. On a physics
+// driver they are the tank's own motion, the driver's taken out
+// (`Player::calcRelativeMotion`), and `pd` names the driver to add it back.
 export function movePacketFields(state, { jumpStarted = false, stopped = false } = {}) {
   const airborne = state.jumpDirection !== null;
   const fields = {
@@ -783,6 +818,8 @@ export function movePacketFields(state, { jumpStarted = false, stopped = false }
   };
   const slide = airborne ? state.slideDirection : state.groundSlideDirection;
   if (slide !== null && slide !== undefined) fields.sd = Number(slide.toFixed(2));
+  const driver = standingDriverIndex(state);
+  if (driver >= 0) fields.pd = driver;
   return fields;
 }
 

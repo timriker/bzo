@@ -857,6 +857,8 @@ metadata
   title HiX
   version 3
   author Tim Riker <timriker@gmail.com>
+  created 2025-06-01
+  sourceurl https://github.com/timriker/bzo/blob/main/maps/hix.bzw
   license AGPL-3.0-only
   description A team play world on stilts.
   description A second line of the same description.
@@ -868,14 +870,16 @@ Every field is a list, and saying a key again adds to it -- two `author`
 lines are two authors, two `description` lines two lines of one description.
 Any key is kept, so a map may carry a field of its own; the proposal suggests
 an `x-` prefix for one. `license` is an
-[SPDX expression](https://spdx.org/licenses/) where one fits.
+[SPDX expression](https://spdx.org/licenses/) where one fits. `created` and
+`sourceurl` are bzo's, not the proposal's: the date the map was made,
+`YYYY-MM-DD`, and where it was published, such as its forum thread.
 
-bzo shows the title in the map list's pane on the `/list` page, with the
-authors, version, licence and description beside it, and lets the filter box
-find a map by title, author or version. The in-client map picker shows title
-and authors in a row's tooltip. A client gets the block in the world it
-downloads, as `metadata`; a BZFlag client gets nothing, since its world has no
-room for it.
+bzo shows the title in the map list's pane on the `/list` page, linked to
+`sourceurl`, with the authors, date, version, licence and description beside
+it, and lets the filter box find a map by title, author or version. The
+in-client map picker shows title, authors and date in a row's tooltip. A
+client gets the block in the world it downloads, as `metadata`; a BZFlag
+client gets nothing, since its world has no room for it.
 
 Write a description as repeated `description` lines rather than the
 proposal's `metablock description` ... `endmetablock`. bzo reads both, but a
@@ -1708,13 +1712,15 @@ plain box or pyramid member regardless of whether that member set its own.
   (`LocalPlayer::getHitBuilding`/`collectInsideBuildings`,
   LocalPlayer.cxx:927-937, 986-992), against any face the tank's box
   currently overlaps, before ever asking whether that face blocks anything.
+- `angular <rotations/s> <x> <y>` -- a turntable: a tank resting on it turns
+  with it and is carried round the point `x y` at the speed a point that far
+  out has (`LocalPlayer.cxx:416-425`). Like the horizontal `linear`, only
+  while the tank is on the surface.
 
-Not yet read: `angular` (a rotation rate about a point, adding both a spin
-and an orbital velocity) and `slide` (removes friction instead of pushing,
-so a tank drifts toward its own desired heading rather than snapping to it).
-Neither is exercised by a real map sampled yet -- see `docs/bzw-plan.md`,
-"Physics drivers". `radial` is parsed by upstream itself and never applied
-by any of its own renderers either -- no client code anywhere reads
+Not yet read: `slide` (removes friction instead of pushing, so a tank drifts
+toward its own desired heading rather than snapping to it) -- see
+`docs/bzw-plan.md`, "Physics drivers". `radial` is parsed by upstream itself
+and never applied by any of its own renderers either -- no client code anywhere reads
 `PhysicsDriver::getRadialVel`/`getRadialPos` -- so bzo treats it the same
 way, permanently rather than provisionally.
 

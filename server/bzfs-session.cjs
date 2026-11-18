@@ -796,6 +796,8 @@ class BzfsSession {
           paused: (update.status & PLAYER_STATUS.PAUSED) !== 0,
           falling: (update.status & PLAYER_STATUS.FALLING) !== 0,
           zoned: (update.status & PLAYER_STATUS.FLAG_ACTIVE) !== 0,
+          // The physics driver it stands on, by upstream's index, or -1.
+          phydrv: (update.status & PLAYER_STATUS.ON_DRIVER) !== 0 ? update.phydrv : -1,
           at: Date.now(),
         };
         this.state.motion.set(update.id, motion);
@@ -1002,9 +1004,13 @@ class BzfsSession {
   // `PlayerState::pack`'s long encoding. bzo sends the long one whatever the
   // numbers, since the short one is a size optimisation and this end is not
   // where the bytes are scarce.
-  sendPlayerUpdate({ pos, velocity = [0, 0, 0], azimuth = 0, angVel = 0, status = PLAYER_STATUS.ALIVE }) {
+  sendPlayerUpdate({
+    pos, velocity = [0, 0, 0], azimuth = 0, angVel = 0, status = PLAYER_STATUS.ALIVE, phydrv = -1,
+  }) {
     this.order += 1;
-    const payload = Buffer.alloc(4 + 1 + 4 + 2 + 12 + 12 + 4 + 4);
+    // `OnDriver` names the driver after the turn (`PlayerState::pack`).
+    const onDriver = (status & PLAYER_STATUS.ON_DRIVER) !== 0;
+    const payload = Buffer.alloc(4 + 1 + 4 + 2 + 12 + 12 + 4 + 4 + (onDriver ? 4 : 0));
     let at = 0;
     payload.writeFloatBE((Date.now() - this.startedAt) / 1000, at); at += 4;
     payload.writeUInt8(this.playerId, at); at += 1;
@@ -1013,6 +1019,7 @@ class BzfsSession {
     for (const value of [...pos, ...velocity]) { payload.writeFloatBE(value, at); at += 4; }
     payload.writeFloatBE(azimuth, at); at += 4;
     payload.writeFloatBE(angVel, at); at += 4;
+    if (onDriver) payload.writeInt32BE(phydrv, at);
     this.send('pu', payload);
   }
 

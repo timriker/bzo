@@ -236,6 +236,11 @@ player credited scores them itself.
 live map's text, since bzo reads the map before plugins load.
 `bz.bz_CustomZoneObject` is upstream's box-or-cylinder zone.
 
+bzo's own parse reads an unknown word at the top level whose lines reach
+`end` before any object of the map's as such a block, and says nothing of it
+to players. A world compiled for a BZFlag client skips the blocks a loaded
+plugin registered, as bzfs does, and server.log names any no plugin reads.
+
 ### Permissions
 
 Upstream's names over bzo's groups, which are upstream's defaults: EVERYONE,
@@ -317,8 +322,10 @@ TimeLimit and wwzones. Of allejo's: ctfOverseer (`_disallowSelfCap` and
 `_delayTeamFlagGrab`; on, 1 and 20 as allejo's) and mapchange, on
 `bz_changeMap`. bzo's own: compassletters, the compass letters a native
 client sees, and discord, a Discord channel's chat both ways and Linked Roles
-(`docs/discord.md`), the job upstream's ircRelay did for IRC; and matrix, a
-Matrix room's chat both ways (`docs/matrix.md`). Each is off until
+(`docs/discord.md`), the job upstream's ircRelay did for IRC; matrix, a
+Matrix room's chat both ways (`docs/matrix.md`); and laptimer, which times
+laps across a map's `finishline` object through its `checkpoint`s in order,
+scores a point a lap and keeps each map's ten fastest (`/laps`). Each is off until
 `server.json` names it, and when on does what its upstream does by default.
 
 ## Behind the proxy

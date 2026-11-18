@@ -124,4 +124,31 @@ for (const flag of ['BU', 'WG']) {
   assert.equal(wings([['_wingsJumpVelocity', '0']]).JUMP_VELOCITY, 19, 'and the jump stays');
 }
 
+// An `angular` driver (LocalPlayer.cxx:416-425), parsed in rotations a second
+// and kept in radians: a tank standing still on it turns with it, and is
+// carried round its centre at the speed a point that far out has.
+{
+  const { parseBZWMap } = createRequire(import.meta.url)('../server/bzw-parse.cjs');
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-angular-'));
+  const file = path.join(dir, 'turntable.bzw');
+  fs.writeFileSync(file, 'physics\n  name turn\n  angular 0.25 0 0\nend\n'
+    + 'box\n  position 0 0 0\n  size 20 20 4\n  phydrv turn\nend\n');
+  const world = parseBZWMap(file, { quiet: true });
+  fs.rmSync(dir, { recursive: true, force: true });
+  const table = world.obstacles.find((obs) => obs.type === 'box');
+  assert.deepEqual(table.phydrv.angular, [Math.PI / 2, 0, 0], 'a quarter turn a second, in radians');
+
+  const state = createDriveState({ x: 10, y: 0, z: 4, azimuth: 0 });
+  Object.assign(state, { onObstacle: true, onGround: false, inAir: false, lastObstacle: table });
+  const dt = 0.01;
+  stepDrive(state, { forward: 0, rotation: 0, jumpTriggered: false }, { flag: null, motionFlag: null },
+    { config: CONFIG, colliders: [], topOf: () => 4 }, { now: 0, random: () => 0.5 }, dt);
+  assert.ok(Math.abs(state.azimuth - (Math.PI / 2) * dt) < 1e-9, `turned with it, to ${state.azimuth}`);
+  assert.ok(Math.abs(state.y - 10 * (Math.PI / 2) * dt) < 1e-9 && Math.abs(state.x - 10) < 1e-9,
+    `carried round its centre, to ${state.x},${state.y}`);
+}
+
 console.log('drive tests passed');

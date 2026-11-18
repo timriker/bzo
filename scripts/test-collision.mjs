@@ -1102,6 +1102,18 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
   assert.equal(client.resolvePhysicsDriverAt(mesh, 0, 0, 5), driver, 'standing over the driver face');
   assert.equal(server.resolvePhysicsDriverAt(mesh, 0, 0, 5), driver, 'server agrees');
   assert.equal(client.resolvePhysicsDriverAt(mesh, 100, -100, 5), null, 'off the mesh entirely');
+  // Upstream takes the driver of the face the tank rests on, wherever under
+  // it: a tank whose centre is past the edge, its track still on the belt,
+  // rides it.
+  assert.equal(client.resolvePhysicsDriverAt(mesh, 12.4, 0, 5), driver, 'centre past the edge, footprint on the face');
+  assert.equal(server.resolvePhysicsDriverAt(mesh, 12.4, 0, 5), driver, 'server agrees');
+  assert.equal(client.resolvePhysicsDriverAt(mesh, 14, 0, 5), null, 'clear of it');
+  // Upstream takes the driver of the face the tank rests on, wherever under
+  // it: a tank whose centre is past the edge, its track still on the belt,
+  // rides it. Time Trial's lanes meet that way, and a tank there sat still.
+  assert.equal(client.resolvePhysicsDriverAt(mesh, 12.4, 0, 5), driver, 'centre past the edge, footprint on the face');
+  assert.equal(server.resolvePhysicsDriverAt(mesh, 12.4, 0, 5), driver, 'server agrees');
+  assert.equal(client.resolvePhysicsDriverAt(mesh, 14, 0, 5), null, 'clear of it');
 
   // A face at a height float32 cannot hold exactly sits just under a tank
   // standing on it: whammo.bmbz.org:5162's belts at 0.19 carried nobody.

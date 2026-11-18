@@ -618,6 +618,9 @@ function handleM(player, ws, message) {
     player.rotationSpeed = rs;
     player.verticalVelocity = vv;
     player.slideAzimuth = d; // Store slide direction (undefined if not sliding)
+    // The physics driver the move names, for the others to predict the tank
+    // on. The server's own drift check finds its own (`getExtrapolatedPosition`).
+    player.physicsDriver = Number.isInteger(message.pd) && message.pd >= 0 ? message.pd : -1;
     // The accepted move as the shot check reads it: a shot the client
     // fires next inherits the velocity these numbers state
     // (`packetVelocity`), whatever the server's own reading of the jump.
@@ -661,6 +664,7 @@ function handleM(player, ws, message) {
     if (d !== undefined) {
       pmPacket.sd = d;
     }
+    if (player.physicsDriver >= 0) pmPacket.pd = player.physicsDriver;
 
     // Queued rather than broadcast here: one WS frame per move meant
     // one per recipient per move, O(players^2) frames a tick. Batched
