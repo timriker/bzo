@@ -29,13 +29,6 @@ laptimer); the rest is a plan. Upstream paths are under `$HOME/bzflag/`.
   ghost of [challenge-course-plan.md](challenge-course-plan.md) too. His level
   is how closely he holds it.
 
-## The record in the title
-
-The lap record's holder and time follow the server's description on both
-lists, bzo's `/list` and the BZFlag list, e.g. "Time Trial -- record Name
-1:23.45". A plugin sets the suffix through the API, and the next list push
-carries it; it is never written into `server.json`.
-
 ## Flags on the track
 
 Flags laid on the track, the lane deciding which: the inside lane one kind,
@@ -51,5 +44,6 @@ off except for what a flag gives.
 4. Ace's race job: built, Ace driving to his waypoint
    ([waypoints.md](waypoints.md)). Physics-aware steering is still to do.
 5. Recording the best lap as the racing line; Ace follows it.
-6. A plugin's description suffix on both lists, and laptimer's record in it.
+6. A plugin's description suffix on both lists: built, laptimer putting
+   today's fastest registered player in it ([plugins.md](plugins.md)).
 7. Flags by lane.

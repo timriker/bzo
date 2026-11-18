@@ -722,7 +722,12 @@ end
   const said = [];
   const wins = [];
   const waypoints = new Map();
-  const tanks = new Map([[1, { playerID: 1, callsign: 'racer', bzID: '42', spawned: true }]]);
+  const tanks = new Map([[1, {
+    playerID: 1, callsign: 'racer', bzID: '42', spawned: true, team: 1, lastKnownState: { pos: [0, 5, 1] },
+  }]]);
+  const fired = [];
+  const ended = [];
+  let titleSuffix = null;
   const realNow = Date.now;
   let now = 0;
   Date.now = () => now;
@@ -738,6 +743,10 @@ end
       bz_incrementPlayerWins: (id, count) => { wins.push([id, count]); return true; },
       bz_sendTextMessage: (from, to, text, params) => { said.push({ to, text, params }); return true; },
       bz_setWaypoint: (id, x, y, z, label) => { waypoints.set(id, { x, y, label }); return true; },
+      bz_fireServerShot: (type, origin, vector, color) => { fired.push({ type, origin, vector, color }); return fired.length; },
+      bz_endServerShot: (id) => { ended.push(id); return [0, 5, 120]; },
+      bz_lineIsClear: () => true,
+      bz_setPublicDescriptionSuffix: (text) => { titleSuffix = text; return true; },
     },
   });
   host.loadAll();
@@ -774,6 +783,16 @@ end
   assert.equal(said.at(-1).text, '{player}: lap {lap} in {time} -- a new lap record!');
   assert.deepEqual(said.at(-1).params, { player: 'racer', lap: 1, time: '1:01.00', place: 1 },
     'timed from crossing to crossing, each halfway between its two moves');
+  assert.equal(fired.length, 4, "a record's fireworks: its first wave of rockets at once");
+  assert.ok(fired.every((shot) => shot.type === 'GM' && shot.origin[2] === 5 && shot.vector[2] > 0.88),
+    'missiles launched steeply upward from just over the racer');
+  await new Promise((resolve) => { setTimeout(resolve, 1600); });
+  assert.deepEqual(ended.slice(0, 4).sort(), [1, 2, 3, 4], 'each ended in the air');
+  const bursts = fired.filter((shot) => shot.type === 'SW');
+  assert.ok(bursts.length >= 4 && bursts.every((shot) => shot.origin[2] === 120), 'where a Shock Wave bursts');
+  assert.ok(fired.filter((shot) => shot.type === '').every((shot) => shot.vector[2] >= 0),
+    'with a star of shots, none aimed below level');
+  assert.equal(titleSuffix, 'today racer 1:01.00', "and today's fastest follows the title on the lists");
   // Round again without the checkpoint: no lap, and the next one starts.
   at(-60, -60, 65000);
   at(60, -60, 66000);
@@ -803,8 +822,10 @@ end
   host.callEvents('bz_ePlayerUpdateEvent', { playerID: 1, state: { pos: [-10, 5, 1] } });
   assert.equal(said.length, before, 'a teleporter up and back down across the line crosses nothing');
   const saved = JSON.parse(fs.readFileSync(path.join(dataDir, 'laptimer.json'), 'utf8'));
-  assert.deepEqual(saved.track.map(({ bzid, callsign, ms }) => ({ bzid, callsign, ms })),
+  assert.deepEqual(saved.track.all.map(({ bzid, callsign, ms }) => ({ bzid, callsign, ms })),
     [{ bzid: '42', callsign: 'racer', ms: 61000 }], 'the best lap is kept per map, by BZID');
+  assert.deepEqual(saved.track.days.map(({ callsign, ms, day }) => ({ callsign, ms, day })),
+    [{ callsign: 'racer', ms: 61000, day: new Date().toISOString().slice(0, 10) }], "and today's");
   tanks.set(2, { playerID: 2, callsign: 'Ace', spawned: true, bot: true });
   const botMove = (x, y, when) => {
     now = when;
@@ -822,8 +843,25 @@ end
   assert.deepEqual(wins.at(-1), [2, 1], 'and scores');
   host.slashCommand(1, 0, '/laps');
   assert.deepEqual(said.slice(-2).map((line) => line.text), ['Fastest laps on this map:', '{place}. {time} {player}']);
+  // And a page of every map's, at /plugins/laptimer/.
+  const recordsPage = host.webPage('laptimer');
+  const pageFor = (period) => {
+    const body = [];
+    const response = { AddHeader: () => {}, AddBodyData: (text) => body.push(text) };
+    recordsPage.vdir.GeneratePage({ Resource: '/plugins/laptimer/', GetParamater: () => period }, response);
+    return body.join('');
+  };
+  const page = pageFor(null);
+  assert.ok(page.includes('<strong>All time</strong>'), 'all time unless asked');
+  assert.match(pageFor('day'), /<strong>Today<\/strong>[\s\S]*<td>1:01.00<\/td><td>racer<\/td>/, "and today's");
+  assert.match(pageFor('week'), /<strong>Last 7 days<\/strong>/);
+  const section = (title) => page.split(`<h3>${title}</h3>`)[1]?.split('<h3>')[0] ?? '';
+  assert.match(section('Registered players'), /<td>1:01.00<\/td><td>racer<\/td>/, 'the page lists the record');
+  assert.ok(!section('Registered players').includes('Ace'), "and a bot's lap is not a registered player's");
+  assert.match(section('Everyone, bots included'), /<td>Ace<\/td><td>bot<\/td>/, 'but is on the board of everyone');
   host.unload('laptimer');
   assert.deepEqual([...host.mapObjects()], [], 'and stops skipping it once the plugin is gone');
+  assert.equal(titleSuffix, '', 'and the title is its own again');
   Date.now = realNow;
   fs.rmSync(dataDir, { recursive: true, force: true });
 }

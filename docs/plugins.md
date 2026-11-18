@@ -156,6 +156,9 @@ Where bzo differs:
   as "Shock Wave (+SW)", where upstream's says "Red team flag".
 - A player record has `bot`, bzo's: a robot, whether this server runs it or
   a client joined as one. Upstream's record cannot tell.
+- And `client`, bzo's: what the player is playing on now, `bzflag` for a
+  BZFlag client, and for bzo's `vr` while a headset session runs, then
+  `mobile` or `desktop`; and `autopilot`, whether a pilot drives for them.
 
 ## API
 
@@ -199,6 +202,14 @@ bzo's own:
   `bz_clearWaypoint(playerID)`: the one point a player is to drive to,
   reached within `radius` (5; 0 never), when `bz_eWaypointArrivalEvent` fires
   ([waypoints.md](waypoints.md)).
+- `bz_setPublicDescriptionSuffix(text)`: words after the server's title on
+  both lists, from the next push to each, '' for none; never written into
+  `server.json`. The BZFlag list's title is cut to fit, the map's name kept.
+- `bz_endServerShot(shotID)` ends a server shot still flying, drawn as if it
+  struck something there, and answers where, `[x, y, z]`, or null for one
+  already gone: a firework's burst.
+- `bz_lineIsClear(from, to)`: whether a shot would get from one point to the
+  other, shoot-through obstacles and all, without meeting anything.
 - `bz_sendRelayMessage(network, name, text)` says a line from another
   network -- a Discord channel, IRC -- to every player. A BZFlag client reads
   the server message `[network] name: text`; bzo's own puts it with the chat.
@@ -331,8 +342,17 @@ client sees, and discord, a Discord channel's chat both ways and Linked Roles
 Matrix room's chat both ways (`docs/matrix.md`); and laptimer, which times
 laps across a map's `finishline` object through its `checkpoint`s in order,
 points each racer's waypoint at the next line, scores a point a lap and keeps
-each map's ten fastest (`/laps`). Each is off until
-`server.json` names it, and when on does what its upstream does by default.
+each map's ten fastest: registered players on any client, then BZFlag
+clients, bzo on mobile, desktop and in VR, then everyone, bots and
+autopilots included, each for today, the last seven days (UTC) and all
+time (`/laps` the first of all time, every board at
+`/plugins/laptimer/`). A lap that beats a personal best, today's fastest, a
+place or the record sets off fireworks over the racer: server Guided
+Missiles launched steeply up and burst high overhead in a Shock Wave and a
+star of shots, none where a roof or a sign is in the way. Today's fastest
+registered player follows the server's title on both lists. Each
+is off until `server.json` names it, and when on does what its upstream does
+by default.
 
 ## Behind the proxy
 

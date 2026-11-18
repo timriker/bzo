@@ -13225,7 +13225,7 @@ function computeListServerStatus() {
     // What that world costs, so a bzo row can say the same things the bzfs
     // pane beside it says about an imported one.
     world: measureLiveWorld(),
-    title: serverConfig.title || '',
+    title: listTitle(),
     // People, which is what the list sorts on. Bots are in the team counts,
     // as upstream's ping has them, and counted on their own beside this.
     players: [...players.values()]
@@ -14017,11 +14017,23 @@ async function seatNativeClient(link, payload) {
 // list server's column holds 80 and its insert does not check, so a longer
 // title is accepted with `MSG: adding` and never listed (bzfls2's
 // `addServer`).
+// A plugin's words after the title (`bz_setPublicDescriptionSuffix`) come
+// before the map's, and the title is cut first.
 const BZFLAG_TITLE_MAX = 80;
 function bzflagListTitle() {
   const base = String(serverConfig.title || '').trim();
-  const suffix = ` - ${path.basename(MAP_SOURCE).replace(/\.bzw$/i, '')}`;
+  const suffix = `${pluginTitleSuffix ? ` | ${pluginTitleSuffix}` : ''}`
+    + ` - ${path.basename(MAP_SOURCE).replace(/\.bzw$/i, '')}`;
   return `${base.slice(0, Math.max(0, BZFLAG_TITLE_MAX - suffix.length))}${suffix}`;
+}
+
+// What a plugin adds to the title on both lists, a lap record say: carried by
+// the next push to each, never written into server.json.
+const PLUGIN_TITLE_SUFFIX_MAX = 48;
+let pluginTitleSuffix = '';
+function listTitle() {
+  const base = String(serverConfig.title || '').trim();
+  return pluginTitleSuffix ? `${base} | ${pluginTitleSuffix}` : base;
 }
 
 // The far side of a native teleport: where the client says it came out, which
@@ -18734,6 +18746,11 @@ function pluginRecord(player) {
     clientVersion: player.clientVersion ?? '',
     // bzo's: a robot, one this server runs or a client that joined as one.
     bot: !isRealPlayer(player),
+    // bzo's: what the player is playing on now, `bzflag` for a BZFlag
+    // client, and for bzo's `vr` while a headset session runs, then `mobile`
+    // or `desktop`; and whether Ace or Roger is driving for them.
+    client: player.native ? 'bzflag' : (player.xr ? 'vr' : (player.mobile ? 'mobile' : 'desktop')),
+    autopilot: player.autopilot === true,
   };
 }
 
@@ -18919,6 +18936,12 @@ const PLUGIN_API = Object.freeze({
   // bz_getPublicDescription (bzfsAPI.cxx:3395): the server's title, as the
   // list server shows it.
   bz_getPublicDescription: () => serverConfig.title || '',
+  // bzo's: words after the title on both lists, '' for none, from the next
+  // push to each (`listTitle`).
+  bz_setPublicDescriptionSuffix: (text) => {
+    pluginTitleSuffix = String(text ?? '').replace(/[\r\n]+/g, ' ').trim().slice(0, PLUGIN_TITLE_SUFFIX_MAX);
+    return true;
+  },
   // bz_getPublicAddr (bzfsAPI.cxx:3387): where players reach this server --
   // here the first `publicUrl`, a URL where upstream's is host:port, since a
   // plugin's links need the scheme too. Empty when none is set.
@@ -19042,6 +19065,39 @@ const PLUGIN_API = Object.freeze({
     const id = fireServerShot(type, { x: origin[0], y: origin[1], z: origin[2] },
       { x: vector[0] || 0, y: vector[1] || 0, z: vector[2] || 0 }, team, Date.now(), target);
     return Number(id);
+  },
+  // bzo's: ends a server shot still flying, as if it struck something there --
+  // a firework's burst -- and answers where, or null for one already gone.
+  bz_endServerShot: (shotId) => {
+    const id = String(shotId);
+    const proj = projectiles.get(id);
+    if (!proj || proj.playerId !== WORLD_WEAPON_PLAYER_ID) return null;
+    projectiles.delete(id);
+    const at = { x: proj.x, y: proj.y, z: proj.z };
+    broadcastAll({ type: 'shotEnd', id, reason: 0, x: at.x, y: at.y, z: at.z });
+    logShotEnd(proj, 'plugin', at);
+    return [at.x, at.y, at.z];
+  },
+  // bzo's: whether a shot from `from` reaches `to` with nothing it cannot pass
+  // between, the ground included.
+  bz_lineIsClear: (from, to) => {
+    if (!Array.isArray(from) || !Array.isArray(to) || from.length < 3 || to.length < 3) return false;
+    const dx = to[0] - from[0];
+    const dy = to[1] - from[1];
+    const dz = to[2] - from[2];
+    const distance = Math.hypot(dx, dy, dz);
+    if (!(distance > 0)) return true;
+    const step = traceShotStep({
+      obstacles: getCollisionColliders(),
+      x: from[0], y: from[1], z: from[2],
+      dirX: dx / distance, dirY: dy / distance, dirZ: dz / distance,
+      distance,
+      radius: SHOT_COLLISION_RADIUS,
+      ricochet: false,
+      justTeleported: false,
+      backtrack: 0,
+    });
+    return !step.obstacle && !step.ground;
   },
   bz_CustomZoneObject: CustomZoneObject,
 
