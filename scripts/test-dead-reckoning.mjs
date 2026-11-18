@@ -14,7 +14,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import {
-  createDriveState, movePacketFields, sentMoveStrayed, stepDrive, stepDriveFor,
+  createDriveState, movePacketFields, packetVelocity, sentMoveStrayed, stepDrive, stepDriveFor,
 } from '../public/js/drive.mjs';
 import { deadReckon } from '../public/js/dead-reckoning.mjs';
 
@@ -136,6 +136,19 @@ const near = (a, b, tolerance, what) => {
     'held back by a wall');
   assert.ok(!sentMoveStrayed({ ...carried.move, air: 1 }, { ...ground, x: 10, y: 0, z: 0 }, 1, CONFIG, conveyor),
     'not judged in the air');
+}
+
+// A shot takes the tank's whole velocity, the belt's push and a turntable's
+// carry with its own (LocalPlayer::fireShot), though the move names only the
+// tank's own and the driver.
+{
+  const move = { x: 10, y: 0, a: Math.PI / 2, fs: 1, air: 0 };
+  const own = packetVelocity(move, CONFIG);
+  assert.ok(Math.abs(own.y - 25) < 1e-9 && Math.abs(own.x) < 1e-9, 'its own speed, with no driver');
+  const belt = packetVelocity(move, CONFIG, { linear: [0, 100, 0], angular: null });
+  assert.ok(Math.abs(belt.y - 125) < 1e-9, `a belt's push added: ${belt.y}`);
+  const spun = packetVelocity(move, CONFIG, { linear: null, angular: [Math.PI / 2, 0, 0] });
+  assert.ok(Math.abs(spun.y - (25 + (Math.PI / 2) * 10)) < 1e-9, "and a turntable's carry at the tank");
 }
 
 // A driver whose push only lifts is not named: it makes a tank fall, and a

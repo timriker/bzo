@@ -23,8 +23,10 @@ const runCountdown = (state, now = 1000) => {
   // cmdPause is one toggle; the server reads it as start, cancel or resume.
   assert.equal(state.pressPauseKey(), true);
   runCountdown(state);
-  assert.equal(state.isFrozen(), true, 'a countdown freezes the tank, not just the pause');
+  assert.equal(state.isFrozen(), true, 'a countdown is a pause on its way, for the key and menus to undo');
+  assert.equal(state.stopsTank(), false, 'but the tank drives on through it, as upstream\'s does');
   state.pausedByServer();
+  assert.equal(state.stopsTank(), true, 'and stops once the pause lands');
   assert.equal(state.paused, true);
   assert.equal(state.countdownStart, 0);
   assert.equal(state.pressPauseKey(), true);

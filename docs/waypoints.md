@@ -24,6 +24,10 @@ A waypoint outlives a death. A new connection starts with none.
 - A white marker on the heading tape.
 - The label on the status line, under anything more pressing there (Paused,
   Sealed).
+- A soft bell from the point once a second, quieter than a shot and fainter
+  with distance, and a rising two-note chime on reaching it: cleared or moved
+  on while the tank is within 40 of it. bzo's own sounds
+  (`scripts/make-waypoint-sounds.mjs`).
 
 ## Ace
 

@@ -64,7 +64,7 @@ import {
   testOrigRectTank,
   TANK,
 } from './collision.mjs';
-import { deadReckon } from './dead-reckoning.mjs';
+import { absoluteMotion, deadReckon } from './dead-reckoning.mjs';
 import { normalizeAngle, resolveTankMotion } from './motion.mjs';
 import { getMuzzleVelocity } from './shots.mjs';
 
@@ -889,11 +889,18 @@ export function movePacketFields(state, { jumpStarted = false, stopped = false }
 // this, and the server checks it against the same numbers off the move it
 // accepted, so the two never depend on separate guesses about whether the tank
 // is airborne.
-export function packetVelocity(fields, config) {
+//
+// `driver` is the physics driver the move names (`pd`): its push and spin at
+// the tank go back in, since the move states the tank's own motion and a shot
+// takes the tank's whole velocity (`LocalPlayer::fireShot`, :1248).
+export function packetVelocity(fields, config, driver = null) {
   if (fields.air === 1) return { x: fields.vx || 0, y: fields.vy || 0, z: fields.vv || 0 };
   const azimuth = Number.isFinite(fields.sd) ? fields.sd : fields.a;
   const speed = (fields.fs || 0) * (config.TANK_SPEED ?? 25);
-  return { x: Math.cos(azimuth) * speed, y: Math.sin(azimuth) * speed, z: 0 };
+  const own = { x: Math.cos(azimuth) * speed, y: Math.sin(azimuth) * speed, z: 0 };
+  if (!driver || !Number.isFinite(fields.x) || !Number.isFinite(fields.y)) return own;
+  const carried = absoluteMotion(own.x, own.y, 0, fields.x, fields.y, driver);
+  return { x: carried.vx, y: carried.vy, z: 0 };
 }
 
 // A `shoot` message for a tank: from its muzzle -- under the tank for a shock

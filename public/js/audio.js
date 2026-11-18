@@ -180,6 +180,12 @@ export const GAME_SOUNDS = Object.freeze({
   // in your sights it pings once a second, positioned at that tank, which is
   // the one thing in bzo that says which way to drive with a sound alone.
   hunt: { file: 'hunt.wav', sfx: 'SFX_HUNT' },
+  // bzo's own, with no upstream sample: a soft bell sounded at the player's
+  // waypoint while one is set (docs/waypoints.md), and a rising two-note chime
+  // on reaching it. Synthesized by scripts/make-waypoint-sounds.mjs, and well
+  // under a shot's loudness.
+  waypointPing: { file: 'waypoint_ping.wav', sfx: null },
+  waypointArrive: { file: 'waypoint_arrive.wav', sfx: null },
 });
 
 export const GAME_SOUND_NAMES = Object.freeze(Object.keys(GAME_SOUNDS));

@@ -361,6 +361,7 @@ export class Ace extends AceFighter {
     this.flagZones = view.flagZones || null;
     this.noteFlagTypes(view);
     this.winning = this.isWinning(view);
+    this.shotsNeedFlag = view.world?.shotsNeedFlag === true;
     this.viewBases = view.bases;
     this.teamColor = view.self.teamColor;
     this.noteShooters(view);
@@ -765,7 +766,9 @@ export class Ace extends AceFighter {
     if (type === 'ID') return this.winning;
     // Thief, only with a flag near enough to take with it.
     if (type === 'TH') return this.stealableNear === true;
-    if (isBadFlag(type) || HARD_FLAGS.has(type)) return false;
+    if (isBadFlag(type)) return false;
+    // Any flag is a gun where only a flag carrier fires (`_shotsNeedFlag`).
+    if (HARD_FLAGS.has(type)) return this.shotsNeedFlag === true;
     return this.isFlagUseful(type);
   }
 

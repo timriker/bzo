@@ -311,6 +311,38 @@ function meshTransformMovers(ops) {
   return { movePoint, moveNormal, moveVector };
 }
 
+// A group's ordered transforms as one scale, then one spin about the
+// vertical, then one shift -- the shape the box path places by -- or null
+// where they cannot be put that way: a scale unequal across x and y after a
+// spin, which leans the axes. Each op acts on everything before it, as
+// upstream's matrix does.
+function composeGroupTransform(ops) {
+  let scale = [1, 1, 1];
+  let spin = 0;
+  let pos = [0, 0, 0];
+  for (const op of ops) {
+    const [a, b, c, d] = op.data;
+    if (op.type === 'shift') {
+      pos = [pos[0] + a, pos[1] + b, pos[2] + c];
+    } else if (op.type === 'spin') {
+      if (Math.abs(a) > 1e-6 || Math.abs(b) > 1e-6 || Math.abs(c) < 1e-6) return null;
+      const angle = d * Math.sign(c);
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      pos = [(pos[0] * cos) - (pos[1] * sin), (pos[0] * sin) + (pos[1] * cos), pos[2]];
+      spin += angle;
+    } else if (op.type === 'scale') {
+      const turned = Math.abs(Math.sin(spin)) > 1e-9;
+      if (turned && Math.abs(a - b) > 1e-9) return null;
+      scale = [scale[0] * a, scale[1] * b, scale[2] * c];
+      pos = [pos[0] * a, pos[1] * b, pos[2] * c];
+    } else {
+      return null;
+    }
+  }
+  return { scale, spin, pos };
+}
+
 function applyMeshTransform(mesh) {
   const movers = meshTransformMovers(mesh.transformOps);
   if (!movers) return mesh;
@@ -3989,6 +4021,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       const [, color] = line.split(/\s+/);
       const team = parseInt(color, 10);
       current.team = Number.isInteger(team) ? Math.max(1, Math.min(4, team)) : 1;
+    } else if (current && current.type === 'group' && token === 'team') {
+      // `CustomGroup.cxx:48`: every base the group places takes this team,
+      // an outer group's over an inner one's (`ObstacleModifier.cxx:70`).
+      const team = parseInt(line.split(/\s+/)[1], 10);
+      if (Number.isInteger(team) && team >= 1 && team <= 4) current.groupTeam = team;
     } else if (current && current.type === 'group' && token === 'matswap') {
       // `CustomGroup.cxx:98-118`: every face of this placement wearing the
       // first material wears the second instead. Each line names its own
@@ -4154,12 +4191,25 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // `GroupDefinition` holds its nested `group` instances the same way,
         // recursing into them only once something actually places *this*
         // definition (`GroupDefinition::makeGroups`).
+        // Upstream applies the group's transforms in the order written
+        // (`MeshTransform::Tool::processTransforms`): `shift` then `spin`
+        // carries the shift round the map's centre. Folded here into the one
+        // scale, spin and shift the box path places by, or marked tipped
+        // where they cannot be -- a scale off the axes a spin left behind.
+        const composed = current.tipped ? null : composeGroupTransform([
+          ...(current.xformSize ? [{ type: 'scale', data: [...current.xformSize, 0] }] : []),
+          ...(current.xformRotation ? [{ type: 'spin', data: [0, 0, 1, current.xformRotation] }] : []),
+          ...(current.xformPos ? [{ type: 'shift', data: [...current.xformPos, 0] }] : []),
+          ...current.transformOps,
+        ]);
+        if (!current.tipped && !composed) current.tipped = true;
         const instanceRequest = {
           groupDefName: current.groupDefName,
           name: current.name || null,
-          pos: [current.pos?.[0] || 0, current.pos?.[1] || 0, current.pos?.[2] || 0],
-          spin: current.spin || 0,
-          scale: current.scale || [1, 1, 1],
+          pos: composed ? composed.pos : [current.pos?.[0] || 0, current.pos?.[1] || 0, current.pos?.[2] || 0],
+          spin: composed ? composed.spin : (current.spin || 0),
+          scale: composed ? composed.scale : (current.scale || [1, 1, 1]),
+          team: current.groupTeam ?? null,
           driveThrough: !!current.driveThrough,
           shootThrough: !!current.shootThrough,
           ricochet: !!current.ricochet,
@@ -4591,6 +4641,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         driveThrough: !!member.driveThrough || request.driveThrough,
         shootThrough: !!member.shootThrough || request.shootThrough,
         ricochet: !!member.ricochet || request.ricochet,
+        // The group's team on every base it places; an outer group, applied
+        // after an inner one, has the last word, as upstream's does.
+        ...(member.kind === 'base' && request.team ? { team: request.team } : {}),
         // A member already named -- one that came back from a nested `group`,
         // already carrying its own instance prefix -- keeps that name; only a
         // still-bare plain obstacle falls back to its place in the
@@ -5808,8 +5861,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // `matswap`, 8 jumping and ricochet in `gameplay`, 9 its flags there, 10
 // the `metadata` block, 11 a `drawInfo` block's lines and points, 12 only
 // its first `lod`'s draw commands, 13 a physics driver's `angular`, 14 a
-// plugin's objects apart from the unread, 15 the drivers by index.
-const WORLD_FORMAT = 15;
+// plugin's objects apart from the unread, 15 the drivers by index, 16 a
+// group's transforms in the order written and its team on a base.
+const WORLD_FORMAT = 16;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).

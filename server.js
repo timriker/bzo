@@ -213,7 +213,7 @@ const {
 } = require('./public/js/spawn.mjs');
 const { MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, normalizeAngle } = require('./public/js/motion.mjs');
 const { packetVelocity } = require('./public/js/drive.mjs');
-const { deadReckon } = require('./public/js/dead-reckoning.mjs');
+const { absoluteMotion, deadReckon } = require('./public/js/dead-reckoning.mjs');
 const { BZDB_DEFAULTS } = require('./public/js/bzdb-defaults.mjs');
 const {
   BZDB_CONFIG_VARS,
@@ -579,6 +579,8 @@ function setContentEtag(res, filePath) {
   if (digest) res.setHeader('ETag', `"${digest}"`);
 }
 
+const OVERVIEW_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
 function setStaticHeaders(res, filePath) {
   setContentEtag(res, filePath);
   // `MAP_CACHE_DIR` (below) is named for the file's own content hash, so
@@ -586,8 +588,16 @@ function setStaticHeaders(res, filePath) {
   // to change -- checked first because this same function is also the
   // `cacheControl` callback `precompress.middleware()` uses for its brotli
   // responses, and the two representations of a map file must agree.
-  if (filePath.startsWith(MAP_CACHE_DIR) || filePath.startsWith(OVERVIEW_CACHE_DIR)) {
+  if (filePath.startsWith(MAP_CACHE_DIR)) {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return;
+  }
+  // A map's picture keeps its name when bzo redraws it after a parser fix,
+  // for a site that links it, so a cache holds it a month -- the pace the
+  // list's own checks revisit a server -- and the ETag answers after that.
+  // Lengthen it once the drawing stops changing.
+  if (filePath.startsWith(OVERVIEW_CACHE_DIR)) {
+    res.setHeader('Cache-Control', `public, max-age=${OVERVIEW_MAX_AGE_SECONDS}`);
     return;
   }
   if (/\.(?:html|css|js|mjs)$/.test(filePath) || filePath.includes(`${path.sep}icons${path.sep}`)) {
@@ -7293,14 +7303,22 @@ function registerWorldFile(fileName, world, { keepWorld = true } = {}) {
 
   // The overview picture (`server/map-overview.cjs`, issue #147), in the one
   // directory every picture lives in, under the name a reader knows the world
-  // by (`overviewNameFor`). Written only when missing, because the name
-  // already says which world it is.
+  // by (`overviewNameFor`). The name says which world it is, but not how bzo
+  // read it, so a picture that comes out different -- a parser fix -- is
+  // written over the old one; an unchanged one is left alone, ETag and all.
   const overviewName = overviewNameFor(fileName, hash);
   const overviewUrl = `/overviews/${overviewName}.svg`;
   const overviewPath = path.join(OVERVIEW_CACHE_DIR, `${overviewName}.svg`);
   if (world.overviewError) logError(`Could not build map overview for ${fileName}: ${world.overviewError}`);
   let hasOverview = fs.existsSync(overviewPath);
-  if (!hasOverview && world.svg) {
+  const drawnDiffers = () => {
+    try {
+      return !fs.readFileSync(overviewPath).equals(Buffer.from(world.svg));
+    } catch {
+      return true;
+    }
+  };
+  if (world.svg && (!hasOverview || drawnDiffers())) {
     try {
       fs.writeFileSync(overviewPath, world.svg);
       precompress.consider(overviewUrl, overviewPath, Buffer.from(world.svg));
@@ -12455,7 +12473,7 @@ function getShotVelocityRejection(player, velocity, now) {
 // tank the move says is in the air, and on the ground `fs` along the slide
 // heading or the tank's own. `fields` is the move's own, `a`, `sd`, `vx`, `vy`.
 function moveVelocity(fields) {
-  return packetVelocity(fields, GAME_CONFIG);
+  return packetVelocity(fields, GAME_CONFIG, getNamedSupportPhysicsDriver(fields.x, fields.y, fields.z, fields.pd));
 }
 
 function reportShotRejection(player, reason, message, fatal) {
@@ -18036,10 +18054,15 @@ function getPlayerMotion(player, flagType, now) {
   }
   const azimuth = player.slideAzimuth ?? player.azimuth;
   const speed = (player.forwardSpeed || 0) * GAME_CONFIG.TANK_SPEED;
+  // Its own motion with the physics driver's push and spin put back, as the
+  // tank really moves.
+  const moving = absoluteMotion(Math.cos(azimuth) * speed, Math.sin(azimuth) * speed,
+    (player.rotationSpeed || 0) * GAME_CONFIG.TANK_ROTATION_SPEED, player.x, player.y,
+    getNamedSupportPhysicsDriver(player.x, player.y, player.z, player.physicsDriver));
   return {
-    airborne, gravity, vx: Math.cos(azimuth) * speed, vy: Math.sin(azimuth) * speed, vz: 0,
+    airborne, gravity, vx: moving.vx, vy: moving.vy, vz: 0,
     // Its turn, radians a second: where a shot meets it depends on it.
-    angVel: (player.rotationSpeed || 0) * GAME_CONFIG.TANK_ROTATION_SPEED,
+    angVel: moving.angVel,
   };
 }
 
@@ -18214,6 +18237,8 @@ function botSharedView(now) {
       jumpVelocity: GAME_CONFIG.JUMP_VELOCITY,
       jumpFlagVelocity: GAME_CONFIG.JUMP_FLAG_VELOCITY,
       gravity: GAME_CONFIG.GRAVITY,
+      // `_shotsNeedFlag`: any flag is a weapon, Useless included.
+      shotsNeedFlag: GAME_CONFIG.SHOTS_NEED_FLAG === true,
       lockOnAngle: getFlagTuning().lockOnAngle,
       shotLimits: Object.fromEntries(SHOT_LIMITS),
       mapSize: GAME_CONFIG.MAP_SIZE,

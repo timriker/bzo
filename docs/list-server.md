@@ -286,14 +286,17 @@ the same map differently. Measured -- `hix.bzw` is `c5aaf2140a11` here and
 `clouds`. The hash is right, since the JSON really does differ; the cost is one
 fetch and one drawing per instance rather than a shared one.
 
-Every picture lives in `cache/overviews/`, drawn once and never copied, and is
+Every picture lives in `cache/overviews/`, never copied, and is
 pointed at by an absolute `overviewUrl` on each public row, so every other
 instance's `/list` embeds one `<img>` and nothing else. A bzo world is
 `/overviews/<bzo hash>.svg`; a BZFlag world is `/overviews/bzfs-<p hash>.svg`,
 named by the hash bzfs itself reports, which is the name anyone else can find
-it by. A picture is deleted once nothing has used it for a day, counted only
-while every listed server has a current hash (`purgeUnreferencedOverviews`),
-and the day is kept across restarts in `cache/overviews-unused.json`.
+it by. An import or a restart redraws a picture that comes out different,
+after a parser fix, under the same name, so a browser caches one for a month
+rather than for good. A picture is deleted once nothing has used it for a
+day, counted only while every listed server has a current hash
+(`purgeUnreferencedOverviews`), and the day is kept across restarts in
+`cache/overviews-unused.json`.
 
 ## One list, not two
 

@@ -60,11 +60,18 @@ export class PauseState {
     this.undoWhenAnswered = false;
   }
 
-  // What freezes the tank. The countdown counts as well as the pause itself,
-  // because the menu path starts one and the tank has to stop when the menu
-  // opens rather than five seconds later.
+  // Whether a pause is held or on its way: the countdown counts as well as the
+  // pause itself, for what a menu or the pause key has to undo.
   isFrozen() {
     return this.paused || this.countdownStart > 0;
+  }
+
+  // Whether the tank is stopped: only once the pause lands. Through the
+  // countdown it drives, and a physics driver carries it, as upstream's does
+  // ("no cheating through instantaneous pausing", playing.cxx:1253), however
+  // the pause was asked for -- the key, a menu, or a hidden window.
+  stopsTank() {
+    return this.paused;
   }
 
   // --- what the server said ------------------------------------------------

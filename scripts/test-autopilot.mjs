@@ -2357,4 +2357,16 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(ro.fire, false);
 }
 
+// Useless is a flag Roger has no use for, unless only a flag carrier may fire
+// (`_shotsNeedFlag`): then it is his only gun, and kept.
+{
+  const ask = (shotsNeedFlag) => {
+    const out = {};
+    new Roger().dropHardFlags({ me: { flag: 'US' }, out, view: { world: { shotsNeedFlag } } });
+    return out.dropFlag === true;
+  };
+  assert.equal(ask(false), true, 'dropped where any tank may fire');
+  assert.equal(ask(true), false, 'kept where shots need a flag');
+}
+
 console.log('autopilot tests passed');

@@ -1319,6 +1319,24 @@ export function updateRadar() {
     });
   }
 
+  // drawFlagOnTank() for every other carrier (RadarRenderer.cxx:639): a
+  // superflag, good or bad, crosses its tank's blip in its own radar colour,
+  // on top of it as the cross on your own tank is.
+  // A team flag is drawn with the rest of the flags below, on its carrier, so
+  // it is left out here rather than drawn twice.
+  const carriedSuperflags = new Map();
+  if (!isPreviewingAltWorld()) {
+    flags.forEach((flag) => {
+      if (flag.status !== FLAG_STATUS.ON_TANK || flag.owner === client.myPlayerId) return;
+      if (getFlagTeamIndex(flag.type) !== null) return;
+      carriedSuperflags.set(flag.owner, flag);
+    });
+  }
+  const carriedCrossHalf = Math.max(
+    radarFlagOnTankRadii() * (radarWorldHalfExtent / Math.max(radarDistance, 1e-6)),
+    RADAR_FLAG_ON_TANK_MIN_HALF_PX,
+  );
+
   // Draw tanks within radar distance, or as edge dots if beyond
   client.tanks.forEach((tank, playerId) => {
     if (!tank.position) return;
@@ -1419,6 +1437,21 @@ export function updateRadar() {
       client.radarCtx.fill();
     }
     client.radarCtx.restore();
+    // Over the blip, as the cross on your own tank is, so the blip does not
+    // hide it.
+    const carriedFlag = carriedSuperflags.get(playerId);
+    if (carriedFlag) {
+      client.radarCtx.save();
+      client.radarCtx.strokeStyle = getFlagRadarStyle(carriedFlag);
+      client.radarCtx.lineWidth = 1.5;
+      client.radarCtx.beginPath();
+      client.radarCtx.moveTo(pos.x - carriedCrossHalf, pos.y);
+      client.radarCtx.lineTo(pos.x + carriedCrossHalf, pos.y);
+      client.radarCtx.moveTo(pos.x, pos.y - carriedCrossHalf);
+      client.radarCtx.lineTo(pos.x, pos.y + carriedCrossHalf);
+      client.radarCtx.stroke();
+      client.radarCtx.restore();
+    }
     if (ringTheHunted) drawRadarMarkerRing(pos.x, pos.y, RADAR_HUNT_RING_COLOR);
   });
 

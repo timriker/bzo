@@ -252,7 +252,7 @@ export class BotDriver {
       y: this.drive.y,
       z: this.drive.z,
       azimuth: this.drive.azimuth,
-      tankVelocity: packetVelocity(fields, config),
+      tankVelocity: packetVelocity(fields, config, this.lastSent ? this.lastSentDriver : standingDriver(this.drive)),
       config,
       shockwave: getShotEffects(fired).shockwave,
       // The stock tank's muzzle, its reach grown and shrunk with the tank.

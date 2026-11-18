@@ -1429,6 +1429,13 @@ pyramids and teleporters stay upright, and the load names how many.
 `bmbz.ducatileague.org:5172`'s helicopter tail rotors are a `group` spun
 90° about `0 1 0` around a spinning `blades` mesh.
 
+A group's `shift`, `scale` and vertical `spin` act in the order written, as
+upstream's do: `shift 0 600 0` then `spin 120 0 0 1` carries the shift round
+the map's centre, where `spin` then `shift` turns the group in place. A
+`scale` unequal across x and y after a spin leans the axes, and is placed
+as a tipped group is. A group's `team` sets the team of every base it
+places, an outer group's over an inner one's.
+
 **All of that is about a `box`, a `pyramid` or a `group` line.** On anything
 that builds a mesh, the same four keywords are read as upstream's own
 `MeshTransform` instead, with none of those limits -- see **Mesh transforms**

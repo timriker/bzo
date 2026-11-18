@@ -78,6 +78,8 @@ These are deliberate. Do not "fix" them without being asked.
   unlike upstream's, because the server is what decides whether a tank may be
   hit -- so the client keeps a copy of it, and `public/js/pause.mjs` holds the
   rules over both, which is what stops the two ways to pause drifting apart.
+  The tank stops only once the pause lands (`stopsTank`): through the
+  countdown it drives and is carried, as upstream's does, whoever asked.
 
   **A pause belongs to the life it was taken in, and the asking outlives it.**
   Upstream abandons a countdown the moment the tank stops being alive

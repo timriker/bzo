@@ -741,6 +741,7 @@ end
       bz_getDataDir: () => dataDir,
       bz_getMapName: () => 'track',
       bz_getPlayerByIndex: (id) => tanks.get(id) ?? null,
+      bz_getPlayerBySlotOrCallsign: (name) => [...tanks.values()].find((tank) => tank.callsign === name) ?? null,
       bz_incrementPlayerWins: (id, count) => { wins.push([id, count]); return true; },
       bz_sendTextMessage: (from, to, text, params) => { said.push({ to, text, params }); return true; },
       bz_setWaypoint: (id, x, y, z, label) => { waypoints.set(id, { x, y, label }); return true; },
@@ -781,7 +782,7 @@ end
   at(60, 60, 30000);
   move(10, 63000);
   move(-10, 64000);
-  assert.deepEqual(wins, [[1, 1]], 'a lap is a point');
+  assert.deepEqual(wins, [], 'a lap leaves the scoreboard to kills');
   assert.equal(said.at(-1).text, '{player}: lap {lap} in {time} -- a new lap record!');
   assert.deepEqual(said.at(-1).params, { player: 'racer', lap: 1, time: '1:01.00', place: 1 },
     'timed from crossing to crossing, each halfway between its two moves');
@@ -800,7 +801,7 @@ end
   at(60, -60, 66000);
   move(10, 67000);
   move(-10, 68000);
-  assert.deepEqual(wins, [[1, 1]], 'a lap that missed a checkpoint is no lap');
+  assert.equal(said.filter((line) => line.text.startsWith('{player}: lap')).length, 1, 'a lap that missed a checkpoint is no lap');
   assert.equal(said.at(-1).text, 'Lap not counted: missed checkpoint {checkpoint}. Lap started.');
   assert.deepEqual(said.at(-1).params, { checkpoint: 1 });
   host.callEvents('bz_ePlayerDieEvent', {
@@ -817,7 +818,7 @@ end
   move(10, 72000);
   move(80, 72100);
   move(-10, 72200);
-  assert.deepEqual(wins, [[1, 1]], 'a teleport-sized jump across the line is no crossing');
+  assert.equal(said.filter((line) => line.text.startsWith('{player}: lap')).length, 1, 'a teleport-sized jump across the line is no crossing');
   // A BZFlag client tells its position about once a second on a conveyor:
   // a long step at a plausible speed is still a crossing, and one that climbs
   // as only a teleporter does is not.
@@ -849,7 +850,16 @@ end
   botMove(10, 5, 100000);
   botMove(-10, 5, 101000);
   assert.equal(said.at(-1).text, '{player}: lap {lap} in {time}', "a bot's lap is announced");
-  assert.deepEqual(wins.at(-1), [2, 1], 'and scores');
+  assert.deepEqual(wins, [], 'and scores nothing either');
+  // `/fireworks`: a goal's show on demand, over yourself or a named player.
+  const beforeShow = fired.length;
+  host.slashCommand(1, 0, '/fireworks personal');
+  assert.deepEqual(fired.slice(beforeShow).map((shot) => shot.type), ['GM'], "a personal best's one rocket, over the asker");
+  assert.equal(said.at(-1).text, '{goal} fireworks over {player}.');
+  host.slashCommand(1, 0, '/fireworks today racer');
+  assert.equal(fired.slice(beforeShow).filter((shot) => shot.type === 'GM').length, 4, "today's three more, by callsign");
+  host.slashCommand(1, 0, '/fireworks nobody');
+  assert.equal(said.at(-1).text, 'No player {player} to set fireworks off over.');
   host.slashCommand(1, 0, '/laps');
   assert.deepEqual(said.slice(-2).map((line) => line.text), ['Fastest laps on this map:', '{place}. {time} {player}']);
   // And a page of every map's, at /plugins/laptimer/.

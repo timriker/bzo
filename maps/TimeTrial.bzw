@@ -11,22 +11,33 @@ endmetadata
 
 options
 	-set _tankSpeed 35
+	# Shots fast enough to catch a racer on the fastest belt (35 + 100): a
+	# Guided Missile flies at this speed whatever the tank's. _shotRange stays
+	# 350, so they reach no farther.
+	-set _shotSpeed 250
 	-set _wingsJumpCount 12
 	-j
 	-ms 1
+	# A teammate may be shot -- a BZFlag client joins a team so its waypoint
+	# has a team flag to show -- and the one who shoots them does not die
+	# for it.
+	-tk
 	# bzo's own: only a flag carrier fires. -setforced, as a stock bzfs refuses
 	# to -set a name it does not know.
 	-setforced _shotsNeedFlag 1
+	# A flag dropped unused goes home to its zone rather than lying on the
+	# track where it fell.
+	-set _maxFlagGrabs 1
 	-f good
 	-f bad
 	# Flags may sit on buildings: the track is one.
 	-fb
 	# Flags may sit on buildings: the track is one.
 	-fb
-	-sl US 1
-	-sl GM 1
-	-sl L 1
-	-sl SW 1
+	-sl US 3
+	-sl GM 3
+	-sl L 3
+	-sl SW 3
 end
 
 # Spawn on the track just before the finish line, which racers cross heading
@@ -45,7 +56,7 @@ finishline
 	height 10
 end
 
-# Weapons on the course, one shot each, across the lanes past checkpoint 1.
+# Weapons on the course, three shots each, across the lanes past checkpoint 1.
 # Shots need a flag here (_shotsNeedFlag, above).
 
 zone

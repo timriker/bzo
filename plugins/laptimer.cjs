@@ -33,8 +33,8 @@
 // finish line until a lap starts, then each checkpoint in turn, then the
 // finish line again.
 //
-// Each lap is a point on the scoreboard. Each map keeps its ten fastest on
-// several boards (`BOARDS`): registered players on any client, then each
+// The scoreboard is left to kills, as BZFlag keeps it. Each map keeps its
+// ten fastest on several boards (`BOARDS`): registered players on any client, then each
 // client, then everyone, bots and autopilots included -- today's, the last
 // seven days' and all time's (`PERIODS`), kept in the data directory. `/laps`
 // lists the first board of all time, and a web page, `/plugins/laptimer/`,
@@ -98,10 +98,10 @@ function formatTime(ms) {
 // one Ace or Roger drove for a player, counts only on the last.
 const BOARDS = [
   { id: 'registered', title: 'Registered players', counts: (e) => Boolean(e.bzid) && !e.auto },
-  { id: 'bzflag', title: 'BZFlag clients', counts: (e) => e.client === 'bzflag' && !e.auto },
-  { id: 'mobile', title: 'bzo on mobile', counts: (e) => e.client === 'mobile' && !e.auto },
   { id: 'desktop', title: 'bzo on desktop', counts: (e) => e.client === 'desktop' && !e.auto },
+  { id: 'mobile', title: 'bzo on mobile', counts: (e) => e.client === 'mobile' && !e.auto },
   { id: 'vr', title: 'bzo in VR', counts: (e) => e.client === 'vr' && !e.auto },
+  { id: 'bzflag', title: 'BZFlag clients', counts: (e) => e.client === 'bzflag' && !e.auto },
   { id: 'everyone', title: 'Everyone, bots included', counts: () => true },
 ];
 const CLIENT_NAMES = { bzflag: 'BZFlag', mobile: 'mobile', desktop: 'desktop', vr: 'VR' };
@@ -187,10 +187,15 @@ function recordsPage(records, current, period, today) {
   td:nth-child(2) { font-variant-numeric: tabular-nums; }
   tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.05); }
   tbody tr:hover { background: rgba(76, 175, 80, 0.15); }
+  a.action {
+    padding: 0.2rem 0.7rem; background: rgba(76, 175, 80, 0.15); border: 1px solid #4CAF50;
+    border-radius: 4px; color: #4CAF50; text-decoration: none; font-size: 1rem; margin-left: 0.75rem;
+  }
+  a.action:hover { background: rgba(76, 175, 80, 0.35); border-color: #66bb6a; }
 </style>
 </head><body><main>
 <p class="nav"><a href="/">bzo</a> | <a href="/list">servers</a> | ${nav}</p>
-<h1>Fastest laps</h1>
+<h1>Fastest laps<a class="action" href="/">Play</a></h1>
 ${period.id === 'all' ? '' : '<p class="muted">Days are UTC.</p>'}
 ${tables.length ? tables.join('\n') : '<p>No laps recorded yet.</p>'}
 </main></body></html>
@@ -236,6 +241,11 @@ module.exports = {
     });
     bz.bz_registerCustomSlashCommand('laps',
       (playerID) => this.listRecords(playerID), { help: '- the fastest laps on this map' });
+    bz.bz_registerCustomSlashCommand('fireworks',
+      (playerID, channel, command, message) => this.showFireworks(playerID, message), {
+        help: `[${Object.keys(FIREWORKS).join('|')}] [player] - set off a lap's fireworks over yourself or a player`,
+        operator: true,
+      });
     this.timers = new Set();
     this.titled = null;
     this.title();
@@ -256,12 +266,41 @@ module.exports = {
     bz.bz_setPublicDescriptionSuffix?.(text);
   },
 
-  // Rockets from over the racer, each burst high overhead.
+  // `/fireworks [goal] [player]`: a goal's fireworks on demand, the record's
+  // over the one asking unless they name a goal or a player, by callsign or
+  // number.
+  showFireworks(playerID, message) {
+    const { bz } = this;
+    const words = String(message || '').trim().split(/\s+/).filter(Boolean);
+    const goal = words[0] && FIREWORKS[words[0].toLowerCase()] ? words.shift().toLowerCase() : 'record';
+    const name = words.join(' ');
+    let target = name ? null : bz.bz_getPlayerByIndex(playerID);
+    if (name && /^#?\d+$/.test(name)) target = bz.bz_getPlayerByIndex(Number(name.replace('#', '')));
+    if (name && !target) target = bz.bz_getPlayerBySlotOrCallsign(name);
+    if (!target) {
+      this.say(playerID, 'No player {player} to set fireworks off over.', { player: name });
+      return true;
+    }
+    if (!target.spawned) {
+      this.say(playerID, '{player} is not in play.', { player: target.callsign });
+      return true;
+    }
+    if (this.fireworks(target, goal) === 0) {
+      this.say(playerID, 'No clear sky over {player} for fireworks.', { player: target.callsign });
+    } else {
+      this.say(playerID, '{goal} fireworks over {player}.', { goal, player: target.callsign });
+    }
+    return true;
+  },
+
+  // Rockets from over the racer, each burst high overhead. Answers how many
+  // of the first wave went up: none where something solid is overhead.
   fireworks(player, goal) {
     const { bz } = this;
     const show = FIREWORKS[goal];
     const pos = player.lastKnownState?.pos;
-    if (!show || !pos) return;
+    if (!show || !pos) return 0;
+    let launched = 0;
     const origin = [pos[0], pos[1], pos[2] + ROCKET_RISE];
     const speed = bz.bz_getBZDBDouble?.('_shotSpeed') || 100;
     const colorOf = (n) => {
@@ -282,10 +321,12 @@ module.exports = {
           const color = colorOf(rocket + wave);
           const id = bz.bz_fireServerShot('GM', origin, dir, color);
           if (!id) continue;
+          if (wave === 0) launched += 1;
           this.later(flight, () => this.burst(id, color, show.star));
         }
       });
     }
+    return launched;
   },
 
   // A rocket's burst where it has got to: a Shock Wave, and a star of shots
@@ -489,18 +530,29 @@ module.exports = {
     racer.laps += 1;
     const personal = racer.best === null || ms < racer.best;
     if (personal) racer.best = ms;
-    bz.bz_incrementPlayerWins(playerID, 1);
     const player = bz.bz_getPlayerByIndex(playerID);
     if (!player) return;
-    const { place, todayPlace } = this.record(player, ms);
+    const { place, todayPlace, made } = this.record(player, ms);
     this.title();
     const params = { player: player.callsign, lap: racer.laps, time: formatTime(ms), place };
-    // The biggest goal the lap made; a bot's or an autopilot's makes none.
-    const goal = place === 1 ? 'record' : (place ? 'place' : (todayPlace === 1 ? 'today'
-      : (personal && racer.laps > 1 ? 'personal' : null)));
-    if (goal && !player.bot && !player.autopilot) this.fireworks(player, goal);
+    // The biggest goal the lap made, on any board of any period; a bot's or
+    // an autopilot's makes none.
+    const human = !player.bot && !player.autopilot;
+    const best = human ? made[0] : null;
+    const allTimeFirst = made.some((m) => m.place === 1 && m.period.id === 'all');
+    const goal = (place === 1 || (human && allTimeFirst)) ? 'record'
+      : ((place || best) ? 'place' : (todayPlace === 1 ? 'today'
+        : (personal && racer.laps > 1 ? 'personal' : null)));
+    if (goal && human) {
+      const rockets = this.fireworks(player, goal);
+      bz.bz_debugMessage?.(1, `laptimer: ${goal} fireworks over ${player.callsign}, ${rockets} rocket(s)`);
+    }
     if (place === 1) this.say(bz.BZ_ALLUSERS, '{player}: lap {lap} in {time} -- a new lap record!', params);
     else if (place) this.say(bz.BZ_ALLUSERS, '{player}: lap {lap} in {time} -- #{place} on this map', params);
+    else if (best) {
+      this.say(bz.BZ_ALLUSERS, '{player}: lap {lap} in {time} -- #{place} {board}, {period}',
+        { ...params, place: best.place, board: best.board.title, period: best.period.title.toLowerCase() });
+    }
     else if (todayPlace === 1) this.say(bz.BZ_ALLUSERS, "{player}: lap {lap} in {time} -- today's fastest", params);
     else if (personal && racer.laps > 1) this.say(bz.BZ_ALLUSERS, '{player}: lap {lap} in {time} -- a personal best', params);
     else this.say(bz.BZ_ALLUSERS, '{player}: lap {lap} in {time}', params);
@@ -557,7 +609,21 @@ module.exports = {
     }
     this.records[map] = kept;
     if (changed) this.save();
-    return { place, todayPlace };
+    // Every board, of every period, the lap made the ten fastest of, best
+    // place first, an all-time one ahead of a shorter period's.
+    const dayLap = kept.days.find((entry) => entry.day === today && sameKind(entry) && entry.ms === ms);
+    const made = [];
+    for (const period of PERIODS) {
+      const entry = period.id === 'all' ? lap : dayLap;
+      if (!entry) continue;
+      const laps = period.laps(kept, today);
+      for (const which of BOARDS) {
+        const at = board(laps, which).indexOf(entry) + 1;
+        if (at > 0) made.push({ place: at, board: which, period });
+      }
+    }
+    made.sort((a, b) => a.place - b.place || (a.period.id === 'all' ? -1 : 0) - (b.period.id === 'all' ? -1 : 0));
+    return { place, todayPlace, made };
   },
 
   // The first board with laps on it: registered players' where there are any.
@@ -599,6 +665,7 @@ module.exports = {
 
   Cleanup() {
     this.bz.bz_removeCustomSlashCommand('laps');
+    this.bz.bz_removeCustomSlashCommand('fireworks');
     clearInterval(this.titleTimer);
     for (const timer of this.timers) clearTimeout(timer);
     this.bz.bz_setPublicDescriptionSuffix?.('');

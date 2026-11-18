@@ -14246,6 +14246,7 @@ function buildAutopilotView() {
       jumpFlagVelocity: gameConfig.JUMP_FLAG_VELOCITY,
       gravity: gameConfig.GRAVITY,
       lockOnAngle: getFlagTuning().lockOnAngle,
+      shotsNeedFlag: gameConfig.SHOTS_NEED_FLAG === true,
       shotLimits: gameConfig.SHOT_LIMITS || {},
       mapSize: Number.isFinite(currentWorldMapSize) ? currentWorldMapSize : DEFAULT_MAP_SIZE,
       shockOutRadius: getShotEffects('SW').shockOutRadius,
@@ -14709,7 +14710,7 @@ function handleInputEvents() {
   // second opinion every bug in this path came out of.
   showMotionSurfaceDebug(lastMotionObstacle);
 
-  if (pauseState.isFrozen() || entryDialogFreeze) return;
+  if (pauseState.stopsTank() || entryDialogFreeze) return;
   if (isMyTankFrozenByDeath()) return;
 
   runAutopilot();
@@ -14783,7 +14784,7 @@ function handleMotion(deltaTime) {
   // them.
   if (isObserver() && !isPhantomDriving()) return;
   if (entryDialogFreeze) return;
-  if (pauseState.isFrozen()) {
+  if (pauseState.stopsTank()) {
     sendFrozenHeartbeat();
     return;
   }
@@ -15047,7 +15048,7 @@ function handleMotion(deltaTime) {
   const sentFS = motionFields.fs;
   const sentRS = motionFields.rs;
   const sentVV = motionFields.vv;
-  shotTankVelocity = packetVelocity(motionFields, gameConfig);
+  shotTankVelocity = packetVelocity(motionFields, gameConfig, physicsDriverByIndex(motionFields.pd));
 
   if (shouldSendUpdate && !isObserver() && gameplayJoinConfirmed
     && ws && ws.readyState === WebSocket.OPEN) {
@@ -15333,9 +15334,31 @@ let antidotePosition = null;
 let myWaypoint = null;
 
 function receiveWaypoint(message) {
+  const previous = myWaypoint;
   myWaypoint = Number.isFinite(message.x) && Number.isFinite(message.y)
     ? { x: message.x, y: message.y, z: Number(message.z) || 0, label: String(message.label || '') }
     : null;
+  // Reached: a waypoint cleared or moved on while the tank is at it -- a
+  // plugin's arrival radius, or laptimer moving it at the line just crossed.
+  if (previous && myTank && isMyTankAlive()
+    && Math.hypot(myX - previous.x, myY - previous.y) <= WAYPOINT_ARRIVE_DISTANCE) {
+    renderManager.playLocalSound('waypointArrive');
+  }
+  nextWaypointPingAt = 0;
+}
+
+// How near the old waypoint the tank must be for its clearing or moving on
+// to count as reached: a checkpoint line's half width and a little more.
+const WAYPOINT_ARRIVE_DISTANCE = 40;
+// The bell at the waypoint, once a second while one is set.
+const WAYPOINT_PING_MS = 1000;
+let nextWaypointPingAt = 0;
+
+function updateWaypointPing() {
+  if (!myWaypoint || !isMyTankAlive() || isPreviewingAltWorld()) return;
+  if (frameEpochMs < nextWaypointPingAt) return;
+  nextWaypointPingAt = frameEpochMs + WAYPOINT_PING_MS;
+  renderManager.playSound('waypointPing', { x: myWaypoint.x, y: myWaypoint.y, z: myWaypoint.z + 2 });
 }
 // The flag node pool is keyed by flag index, and the antidote is not a flag in
 // the world, so it takes a key of its own and gets the cloth, the billboarding
@@ -16268,6 +16291,13 @@ function updateFlags(deltaTime) {
       // A carrier whose tank is gone or dead carries nothing visible; the
       // server's drop is already on its way.
       if (!carrier || !carrier.visible) {
+        // Once per carrying, to see whether a flag a live tank holds is ever
+        // hidden this way.
+        if (flag.unseenCarrierLogged !== flag.owner) {
+          flag.unseenCarrierLogged = flag.owner;
+          debugLog(`flag ${flag.index} (${flag.type}) held by ${flag.owner}: `
+            + `${carrier ? 'tank not visible' : 'no tank'}, alive ${Boolean(getPlayerStateOf(flag.owner)?.alive)}`);
+        }
         renderManager.hideFlag(flag.index);
         return;
       }
@@ -18511,6 +18541,7 @@ function animate(frameTime) {
   // With the lock marker, and for the same reason: both ask what is in the
   // sights this frame, and upstream runs them back to back (playing.cxx:6893).
   updateHuntBearing();
+  updateWaypointPing();
 
   updateFps();
   // None of the DOM HUD is on screen in a session -- the XR panels stand in for

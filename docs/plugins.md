@@ -341,15 +341,19 @@ client sees, and discord, a Discord channel's chat both ways and Linked Roles
 (`docs/discord.md`), the job upstream's ircRelay did for IRC; matrix, a
 Matrix room's chat both ways (`docs/matrix.md`); and laptimer, which times
 laps across a map's `finishline` object through its `checkpoint`s in order,
-points each racer's waypoint at the next line, scores a point a lap and keeps
-each map's ten fastest: registered players on any client, then BZFlag
-clients, bzo on mobile, desktop and in VR, then everyone, bots and
+points each racer's waypoint at the next line, leaves the scoreboard to
+kills, and keeps each map's ten fastest: registered players on any client,
+then bzo on
+desktop, mobile and in VR, then BZFlag clients, then everyone, bots and
 autopilots included, each for today, the last seven days (UTC) and all
 time (`/laps` the first of all time, every board at
-`/plugins/laptimer/`). A lap that beats a personal best, today's fastest, a
-place or the record sets off fireworks over the racer: server Guided
+`/plugins/laptimer/`). A lap that beats a personal best, today's fastest, or
+makes the ten fastest of any board of any period -- first of all time being a
+record -- sets off fireworks over the racer: server Guided
 Missiles launched steeply up and burst high overhead in a Shock Wave and a
-star of shots, none where a roof or a sign is in the way. Today's fastest
+star of shots, none where a roof or a sign is in the way; an admin's
+`/fireworks [personal|today|place|record] [player]` sets any of them off over
+themselves or a player named or numbered. Today's fastest
 registered player follows the server's title on both lists. Each
 is off until `server.json` names it, and when on does what its upstream does
 by default.

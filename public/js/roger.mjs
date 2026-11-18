@@ -273,6 +273,9 @@ export class Roger {
 
   dropHardFlags(ctx) {
     const { me, out } = ctx;
+    // Where only a flag carrier fires (`_shotsNeedFlag`), a flag Roger has no
+    // other use for is still his only gun.
+    if (ctx.view.world?.shotsNeedFlag && HARD_FLAGS.has(me.flag)) return;
     if (HARD_FLAGS.has(me.flag) || (me.flag === 'PZ' && !me.zoned)) out.dropFlag = true;
   }
 

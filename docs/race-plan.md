@@ -5,7 +5,7 @@ a lap honest and lead the way, Ace racing as players do, and flags on the
 track. What is built is laptimer ([plugins.md](plugins.md)): laps, checkpoints,
 each racer's waypoint ([waypoints.md](waypoints.md)), a racer killed on the
 course back where they died, the records page, fireworks, today's fastest on
-both lists, and one-shot flags on the course with `_shotsNeedFlag`
+both lists, and flags of a few shots on the course with `_shotsNeedFlag`
 ([flags.md](flags.md)). The rest is a plan. Upstream paths are under
 `$HOME/bzflag/`.
 
@@ -24,7 +24,7 @@ both lists, and one-shot flags on the course with `_shotsNeedFlag`
 ## Flags by lane
 
 Flags laid on the track, the lane deciding which: the inside lane one kind,
-the outside another, each one shot. Today one zone lays one of each across
+the outside another, each a few shots. Today one zone lays one of each across
 every lane.
 
 ## Steps
@@ -37,5 +37,5 @@ every lane.
 5. Recording the best lap as the racing line and a ghost; Ace follows it.
 6. A plugin's description suffix on both lists: built, laptimer putting
    today's fastest registered player in it.
-7. Flags by lane: one-shot flags on the course and `_shotsNeedFlag` built;
+7. Flags by lane: flags of a few shots on the course and `_shotsNeedFlag` built;
    the lane choosing the flag is still to do.

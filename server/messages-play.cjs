@@ -627,7 +627,7 @@ function handleM(player, ws, message) {
     // (`packetVelocity`), whatever the server's own reading of the jump.
     // As the move states them, which `moveVelocity` reads.
     player.lastMoveFields = {
-      a: r, fs, sd: d, vv, vx, vy, air: Number(message.air) === 1 ? 1 : 0, at: now,
+      x, y, z, a: r, fs, sd: d, vv, vx, vy, air: Number(message.air) === 1 ? 1 : 0, pd: player.physicsDriver, at: now,
     };
     if (hasAirVelocity) {
       player.airVelocityX = vx;

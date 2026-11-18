@@ -255,7 +255,9 @@ cursor is parked, so it would never hand anything back.
 
 **Menus pause, unless the autopilot is driving.** Opening Settings, Help or
 any other menu starts the pause countdown, and closing it puts the tank back
-as it was: a tank you had paused yourself stays paused. With the autopilot
+as it was: a tank you had paused yourself stays paused. Until the countdown
+ends the tank goes on moving, a conveyor or turntable carrying it, as any
+pause's countdown does. With the autopilot
 driving, a menu does not pause: the pilot goes on while the menu has the keys,
 and turning it off from the menu starts the pause then. A hidden window pauses
 either way.
