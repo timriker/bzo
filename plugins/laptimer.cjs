@@ -18,12 +18,16 @@
 // degrees (0 east, 90 north), `width` how far the line reaches either side,
 // and `height` how far above `position` a tank still counts. Crossing it the
 // right way starts a lap, and the next crossing finishes it and starts the
-// next. Crossing it backwards, dying or leaving drops the lap under way.
+// next. Crossing it backwards or leaving drops the lap under way.
 //
 // `checkpoint` blocks are lines of the same shape, with `order` for which
 // comes first (file order where none is given). A lap counts only once every
 // checkpoint has been crossed in order since it started, so no teleporter or
 // cut across the infield is a shortcut.
+//
+// A racer killed on the course comes back where they died, the lap and its
+// clock still running, and any flag they held goes back to where it lies in
+// wait. Whoever killed them has driven on, so it is rarely a spawn kill.
 //
 // Each racer's waypoint (docs/waypoints.md) is the next line to cross: the
 // finish line until a lap starts, then each checkpoint in turn, then the
@@ -213,6 +217,7 @@ module.exports = {
     bz.bz_registerCustomMapObject('CHECKPOINT', (name, data) => this.mapObject(name, data));
     bz.Register(bz.bz_ePlayerUpdateEvent);
     bz.Register(bz.bz_ePlayerDieEvent);
+    bz.Register(bz.bz_eGetPlayerSpawnPosEvent);
     bz.Register(bz.bz_ePlayerSpawnEvent);
     bz.Register(bz.bz_ePlayerPartEvent);
     bz.bzhttp_RegisterVDir({
@@ -354,10 +359,23 @@ module.exports = {
         this.onUpdate(data.playerID, data.state.pos);
         break;
       case bz.bz_ePlayerSpawnEvent:
-      case bz.bz_ePlayerDieEvent:
-        this.drop(data.playerID);
+        this.racer(data.playerID).pos = null;
         this.aim(data.playerID);
         break;
+      case bz.bz_ePlayerDieEvent:
+        this.died(data);
+        break;
+      case bz.bz_eGetPlayerSpawnPosEvent: {
+        // Back where they died, facing the way they were.
+        const racer = this.racer(data.playerID);
+        if (racer.diedAt) {
+          data.pos = [...racer.diedAt.pos];
+          data.rot = racer.diedAt.rot;
+          data.handled = true;
+          racer.diedAt = null;
+        }
+        break;
+      }
       case bz.bz_ePlayerPartEvent:
         this.racers.delete(data.playerID);
         break;
@@ -375,14 +393,17 @@ module.exports = {
     return racer;
   },
 
-  // A death or a respawn: the lap under way is lost, and the next position is
-  // not a step from the last one.
-  drop(playerID) {
-    const racer = this.racer(playerID);
+  // A death on a course: where, for the respawn, and the flag held goes home.
+  // The lap under way keeps running.
+  died(data) {
+    const racer = this.racer(data.playerID);
     racer.pos = null;
-    racer.lapStart = null;
-    racer.next = 0;
-    racer.aimed = null;
+    if (this.finishes.length === 0) return;
+    const pos = data.state?.pos;
+    if (Array.isArray(pos) && pos.every(Number.isFinite)) {
+      racer.diedAt = { pos: [...pos], rot: Number.isFinite(data.state.rotation) ? data.state.rotation : 0 };
+    }
+    if (data.flagHeldWhenKilled >= 0) this.bz.bz_resetFlag?.(data.flagHeldWhenKilled);
   },
 
   onUpdate(playerID, pos) {

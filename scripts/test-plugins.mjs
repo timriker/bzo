@@ -727,6 +727,7 @@ end
   }]]);
   const fired = [];
   const ended = [];
+  const resetFlags = [];
   let titleSuffix = null;
   const realNow = Date.now;
   let now = 0;
@@ -746,6 +747,7 @@ end
       bz_fireServerShot: (type, origin, vector, color) => { fired.push({ type, origin, vector, color }); return fired.length; },
       bz_endServerShot: (id) => { ended.push(id); return [0, 5, 120]; },
       bz_lineIsClear: () => true,
+      bz_resetFlag: (index) => { resetFlags.push(index); return true; },
       bz_setPublicDescriptionSuffix: (text) => { titleSuffix = text; return true; },
     },
   });
@@ -801,10 +803,17 @@ end
   assert.deepEqual(wins, [[1, 1]], 'a lap that missed a checkpoint is no lap');
   assert.equal(said.at(-1).text, 'Lap not counted: missed checkpoint {checkpoint}. Lap started.');
   assert.deepEqual(said.at(-1).params, { checkpoint: 1 });
-  host.callEvents('bz_ePlayerDieEvent', { playerID: 1 });
+  host.callEvents('bz_ePlayerDieEvent', {
+    playerID: 1, state: { pos: [-30, 5, 1], rotation: 3 }, flagHeldWhenKilled: 7,
+  });
+  assert.deepEqual(resetFlags, [7], "a racer's flag goes home when they die");
+  const spawnAt = host.callEvents('bz_eGetPlayerSpawnPosEvent', { playerID: 1, pos: [0, 0, 0], rot: 0, handled: false });
+  assert.deepEqual([spawnAt.pos, spawnAt.rot, spawnAt.handled], [[-30, 5, 1], 3, true], 'and they come back where they died');
+  host.callEvents('bz_ePlayerSpawnEvent', { playerID: 1 });
   move(10, 70000);
   move(-10, 71000);
-  assert.equal(said.at(-1).text, 'Lap started.', 'a death drops the lap under way');
+  assert.equal(said.at(-1).text, 'Lap not counted: missed checkpoint {checkpoint}. Lap started.',
+    'the lap under way kept running through the death');
   move(10, 72000);
   move(80, 72100);
   move(-10, 72200);

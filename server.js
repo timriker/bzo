@@ -3938,6 +3938,11 @@ const GAME_CONFIG = {
   REJOIN_TIME: null,
   JUMP_VELOCITY: 19, // BZFlag _jumpVelocity default
   JUMP_FLAG_VELOCITY: 0, // bzo's _jumpFlagVelocity: a Jumping flag's Super Jump; 0 is off
+  // bzo's _shotsNeedFlag: only a tank carrying a flag may fire, as on a race
+  // whose weapons are the flags on the course. Today's BZFlag client does not
+  // read it: it fires, and its shot is ended before anyone else sees it
+  // (`refuseFlaglessShot`).
+  SHOTS_NEED_FLAG: false,
   GRAVITY: -9.8, // BZFlag _gravity: an acceleration, negative down
   // Wings' four BZDB variables. Locked upstream, which means the server sets
   // them and the client obeys, so they travel with the rest of the world's
@@ -8819,6 +8824,16 @@ async function runRemoteCommand(line, { callsign, bzid = '', admin = false, via 
 // The reply in English, and with `params` its msgid beside it so a bzo client
 // shows it in the player's language (`localized`); a reply with no params is
 // a fixed sentence, which the client looks up whole.
+// A BZFlag client's shot fired with no flag where shots need one: it is
+// already flying on that client's screen, so it is ended there and goes no
+// further, and the player is told why the first time.
+function refuseFlaglessShot(player, translator, shotId) {
+  translator.endOwnShot(shotId);
+  if (player.toldShotsNeedFlag) return;
+  player.toldShotsNeedFlag = true;
+  replyToPlayer(player, 'Shots need a flag here: pick one up on the course.');
+}
+
 function replyToPlayer(player, text, params) {
   sendToPlayer(player, {
     type: 'message',
@@ -12325,6 +12340,9 @@ function getShotRejection(player, shotX, shotY, shotZ, now = Date.now()) {
   if (GAME_CONFIG.SHOT_MAX_ACTIVE === 0) {
     return { reason: 'this world has no shot slots', fatal: true };
   }
+  if (GAME_CONFIG.SHOTS_NEED_FLAG && !getPlayerFlag(player.id)) {
+    return { reason: 'shots need a flag on this server', fatal: true };
+  }
 
   // invalidPlayerAction() (bzfs.cxx:4352) kicks a paused player who shoots, and
   // a paused tank cannot be shot back at. Not fatal for the same reason the dead
@@ -12915,9 +12933,13 @@ const MAP_FORBIDDEN_FLAGS = Object.freeze(mapServerOptions.forbiddenFlags || [])
 // carrying: on a jumping world `JP` grants what every tank already has, and on
 // one without it `NJ` takes away what no tank had. `R` goes the same way as
 // `JP`: on a world where every shot already ricochets it grants nothing.
-function getForbiddenFlags() {
+//
+// `pool: false` leaves out the map's own `-f`, which upstream applies only to
+// the pool random slots draw from (`flagDisallowed`): a `+f` or a `zoneflag`
+// it names is still laid (CmdLineOptions.cxx:1703, `forbidden`).
+function getForbiddenFlags({ pool = true } = {}) {
   // -f upstream, whatever the map took out of the pool by name or by quality.
-  const forbidden = [...MAP_FORBIDDEN_FLAGS];
+  const forbidden = pool ? [...MAP_FORBIDDEN_FLAGS] : [];
   // A world that gives JP a Super Jump (`_jumpFlagVelocity`) keeps it.
   if (!ALLOW_JUMPING) forbidden.push('NJ');
   else if (!(GAME_CONFIG.JUMP_FLAG_VELOCITY > 0)) forbidden.push('JP');
@@ -13939,6 +13961,10 @@ async function seatNativeClient(link, payload) {
         return;
       }
       if (shot.player !== link.id) return;
+      if (GAME_CONFIG.SHOTS_NEED_FLAG && !getPlayerFlag(seated.id)) {
+        refuseFlaglessShot(seated, translator, shot.id);
+        return;
+      }
       translator.ownShotPending = shot.id;
       say(shootFromBzfs(shot));
       translator.ownShotPending = null;
@@ -15206,13 +15232,15 @@ function createFlags() {
   const teamFlagTeams = CTF_ENABLED
     ? TEAM_MODE.teams.filter((team) => isColorTeam(team) && getTeamBases(getTeamColorIndex(team)).length > 0)
     : [];
-  const zoneForbiddenFlags = getForbiddenFlags();
+  const zoneForbiddenFlags = getForbiddenFlags({ pool: false });
+  // "if none allowed then no extra flags either" (CmdLineOptions.cxx:1779).
+  const superCount = getSuperFlagPool().length > 0 ? SUPER_FLAGS.count : 0;
   const { slots, skipped: skippedZoneFlags } = flagSpawn.planFlagSlots({
     teamColors: teamFlagTeams.map(getTeamColorIndex),
     requiredCounts: REQUIRED_FLAG_COUNTS,
     zones: MAP_ZONES,
     forbidden: zoneForbiddenFlags,
-    superCount: SUPER_FLAGS.count,
+    superCount,
   });
   flags.push(...slots);
 
@@ -15241,9 +15269,9 @@ function createFlags() {
       + (skippedUnforbidden.length > 0 ? `; skipped ${skippedUnforbidden.join(', ')}` : '')
     );
   }
-  if (SUPER_FLAGS.count > 0) {
+  if (superCount > 0) {
     log(
-      `Flags: ${SUPER_FLAGS.count} superflag slots (${getSuperFlagPool().join(', ')});` +
+      `Flags: ${superCount} superflag slots (${getSuperFlagPool().join(', ')});` +
       ` flagsOnBuildings=${FLAGS_ON_BUILDINGS}` +
       (MAP_FORBIDDEN_FLAGS.length > 0 ? `; map forbids ${MAP_FORBIDDEN_FLAGS.join(', ')}` : '')
     );
@@ -18229,7 +18257,7 @@ function botOwnView(bot, now) {
       shotSpeed: GAME_CONFIG.SHOT_SPEED * getShotEffects(myType).velocityFactor,
       shotLifetime: getWorldReloadSeconds(GAME_CONFIG) * getShotEffects(myType).lifeFactor,
       ricochet: shotRicochets(myType, GAME_CONFIG.ALL_SHOTS_RICOCHET),
-      canFire: findFreeShotSlot(me.shotSlotFreeAt, maxShots, now) >= 0,
+      canFire: findFreeShotSlot(me.shotSlotFreeAt, maxShots, now) >= 0 && (!GAME_CONFIG.SHOTS_NEED_FLAG || Boolean(myFlag)),
       freeShots: countFreeShotSlots(me.shotSlotFreeAt, maxShots, now),
       // Whom its missiles steer at, as its Identify last locked.
       lockTargetId: getLockTarget(me.id)?.id ?? null,
@@ -19153,7 +19181,7 @@ function registerPluginFlag(abbr, name, help, quality) {
 // boot, which a plugin has now registered: its slots join the world, as
 // upstream's would have had the plugin loaded first.
 function addPluginZoneFlags(abbreviation) {
-  if (getForbiddenFlags().includes(abbreviation)) return;
+  if (getForbiddenFlags({ pool: false }).includes(abbreviation)) return;
   MAP_ZONES.forEach((zone) => {
     const count = zone.unknownFlagCounts?.get(abbreviation) || 0;
     for (let slot = 0; slot < count; slot++) {

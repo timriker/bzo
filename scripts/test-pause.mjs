@@ -79,6 +79,41 @@ const runCountdown = (state, now = 1000) => {
   assert.equal(observer.isFrozen(), false);
 }
 
+// A phone suspends the page the moment it is hidden, so the server's answer
+// to the window's pause is read only after the window is back. That answer is
+// the window's to undo, however late it comes.
+{
+  const state = new PauseState();
+  assert.equal(state.syncMenu({ covered: true }), true, 'hidden: ask for a pause');
+  assert.equal(state.syncMenu({ covered: false }), false, 'back before any answer: nothing to undo yet');
+  assert.equal(state.countdownStarted(1000), true, 'the countdown, read late, is called off at once');
+  assert.equal(state.pausedByServer(), false, 'and only once, if the pause itself was already queued');
+  state.unpausedByServer();
+  assert.equal(state.isFrozen(), false);
+}
+{
+  const state = new PauseState();
+  state.syncMenu({ covered: true });
+  state.syncMenu({ covered: false });
+  assert.equal(state.pausedByServer(), true, 'a pause read late, with no countdown before it, is undone too');
+}
+{
+  const state = new PauseState();
+  state.syncMenu({ covered: true });
+  assert.equal(state.countdownStarted(1000), false, 'answered while still hidden: the pause stands');
+  assert.equal(state.pausedByServer(), false);
+  assert.equal(state.syncMenu({ covered: false }), true, 'and the window coming back undoes it');
+}
+{
+  const state = new PauseState();
+  state.syncMenu({ covered: true });
+  state.syncMenu({ covered: false });
+  state.cancelledByServer();
+  assert.equal(state.countdownStarted(1000), false, 'a refused pause leaves nothing to undo later');
+  assert.equal(state.pressPauseKey(), true);
+  assert.equal(state.pausedByServer(), false, "and the player's own pause is never undone for them");
+}
+
 // --- a life ending, which is issue #48 -------------------------------------
 
 // Both ways in reach the same rule, which is the point of one state machine: a

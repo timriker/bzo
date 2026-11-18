@@ -1049,7 +1049,11 @@ this stays unread on purpose rather than pending.
 `-f` is a switch that happens to name its target: disallows accumulate, nothing
 puts one back, and `good` or `bad` takes a whole quality out at once. It filters
 the pool a slot draws from, next to the two types the game style already forbids
-(`JP` or `NJ` by the jumping switch, `R` on a `+r` world).
+(`JP` or `NJ` by the jumping switch, `R` on a `+r` world). A `+f` or a
+`zoneflag` of a type `-f` names is still laid, as upstream's is, so `-f good
+-f bad` with zone flags gives a world of those alone. A `+f` or a
+`zoneflag` of a type `-f` names is still laid, as upstream's is: `-f good -f
+bad` with zone flags gives a world of those alone.
 
 `+f <abbrev>[{count}]` pins that many of one type in the world, one by default;
 `+f good` or `+f bad` pins one of every type of that quality. They are placed

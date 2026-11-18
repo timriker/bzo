@@ -166,4 +166,20 @@ assert.deepEqual(chatTo({ text: 'hello' }), ['hello'], 'a plain line as written'
   assert.equal(waypoints.waypointTimer, null, 'as they do when the connection closes');
 }
 
+// A shot the server refused, where shots need a flag, ends on the client that
+// fired it: MsgShotEnd for its own slot and shot, faded rather than exploded.
+{
+  const sent = [];
+  const native = new NativeTranslator({
+    selfSlot: 4,
+    send: (code, payload) => sent.push({ code, payload: Buffer.from(payload) }),
+    teamIndex: () => 0,
+    config: () => ({ TANK_SPEED, TANK_ROTATION_SPEED: Math.PI / 4, SHOT_SPEED: 100 }),
+  });
+  native.accepted = true;
+  native.endOwnShot(12);
+  const end = sent.find((f) => f.code === 'se').payload;
+  assert.deepEqual([end.readUInt8(0), end.readUInt16BE(1), end.readUInt16BE(3)], [4, 12, 1]);
+}
+
 console.log('test-bzflag-native: ok');

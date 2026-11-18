@@ -495,6 +495,13 @@ class NativeTranslator {
   }
 
   // The connection is gone: nothing more to send it.
+  // Ends a shot the client fired, as one of its own it already sees flying,
+  // which the server refused: it vanishes from the client's screen and goes
+  // nowhere else.
+  endOwnShot(shotId) {
+    this.handle({ type: 'shotEndOwn', shotId });
+  }
+
   close() {
     clearInterval(this.waypointTimer);
     this.waypointTimer = null;
@@ -745,6 +752,11 @@ class NativeTranslator {
       case 'waypoint':
         if (this.accepted) this.waypoint(message);
         break;
+      case 'shotEndOwn': {
+        if (!this.accepted) break;
+        this.write('se', new Writer(5).u8(this.selfSlot).u16(message.shotId).u16(1).done());
+        break;
+      }
       case 'shotEnd': {
         if (!this.accepted) break;
         const shot = this.shots.get(message.id);

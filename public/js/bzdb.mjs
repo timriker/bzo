@@ -194,6 +194,10 @@ export const BZDB_CONFIG_VARS = new Map([
   // may jump, a Super Jump, and what keeps JP in that world's pool. Unset or
   // 0, and on a world without jumping, JP is upstream's.
   ['_jumpFlagVelocity', { key: 'JUMP_FLAG_VELOCITY' }],
+  // bzo's own: only a tank carrying a flag may fire. A name, not a server.json
+  // switch, so a BZFlag client that one day honours it is told it as any
+  // other variable.
+  ['_shotsNeedFlag', { key: 'SHOTS_NEED_FLAG', parse: bzdbIsTrue }],
   ['_shotSpeed', { key: 'SHOT_SPEED' }],
   ['_shotRange', { key: 'SHOT_RANGE' }],
   ['_shotRadius', { key: 'SHOT_RADIUS' }],

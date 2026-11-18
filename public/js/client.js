@@ -9522,7 +9522,8 @@ function receiveAutopilot(message) {
 
 function receivePauseCountdown(message) {
   if (message.playerId === myPlayerId) {
-    pauseState.countdownStarted(sampleEpochClock());
+    // A menu's pause answered after the menu went away is undone at once.
+    if (pauseState.countdownStarted(sampleEpochClock())) sendToServer({ type: 'pause' });
     pauseAlertSecondsShown = 0;
     updatePauseCountdown();
   }
@@ -9541,7 +9542,7 @@ function receivePauseCancelled(message) {
 
 function receivePlayerPaused(message) {
   if (message.playerId === myPlayerId) {
-    pauseState.pausedByServer();
+    if (pauseState.pausedByServer()) sendToServer({ type: 'pause' });
     pauseAlertSecondsShown = 0;
     // setAlert(1, NULL) clears the countdown the moment it runs out.
     setHudAlert(PAUSE_ALERT_SLOT, null, 0);
@@ -14200,7 +14201,8 @@ function buildAutopilotView() {
       // Whom its missiles steer at, as Identify last locked.
       lockTargetId: playerLockTargets.get(myPlayerId) ?? null,
       canFire: findFreeShotSlot(
-        myShotSlotFreeAt, normalizeShotSlotCount(gameConfig.SHOT_MAX_ACTIVE), frameEpochMs) >= 0,
+        myShotSlotFreeAt, normalizeShotSlotCount(gameConfig.SHOT_MAX_ACTIVE), frameEpochMs) >= 0
+        && (gameConfig.SHOTS_NEED_FLAG !== true || Boolean(getMyFlag()?.type)),
       freeShots: countFreeShotSlots(
         myShotSlotFreeAt, normalizeShotSlotCount(gameConfig.SHOT_MAX_ACTIVE), frameEpochMs),
       // The round trip to the server, in seconds, which a foe's last move is
@@ -14971,7 +14973,11 @@ function handleMotion(deltaTime) {
   else if (firePress) triggerOpen = fireNow >= nextTapShotAt;
   else if (fireHeld) triggerOpen = fireNow >= nextHeldShotAt;
   const maxActiveShots = normalizeShotSlotCount(gameConfig?.SHOT_MAX_ACTIVE);
-  const shotSlot = triggerOpen && fireNow >= shotJamUntil
+  // Where only a flag carrier may fire (`shotsNeedFlag`), the trigger does
+  // nothing empty-handed but say so, once a press.
+  const flagless = gameConfig?.SHOTS_NEED_FLAG === true && !getMyFlag()?.type;
+  if (flagless && firePress) showMessage(t('Shots need a flag here: pick one up on the course.'));
+  const shotSlot = triggerOpen && !flagless && fireNow >= shotJamUntil
     ? findFreeShotSlot(myShotSlotFreeAt, maxActiveShots, fireNow)
     : -1;
   if (shotSlot >= 0) forceMoveSend = true;

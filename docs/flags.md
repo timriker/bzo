@@ -137,6 +137,15 @@ otherwise; with none it shows nothing. A
 BZFlag client gets upstream's "N shots left" in chat on the first shot, every
 fifth and each of the last three.
 
+bzo's `_shotsNeedFlag` variable lets only a tank carrying a flag fire, as on
+a race whose weapons are the flags laid on the course: with `-ms 1` and a
+`-sl` of 1 on each, every flag is one shot. A map sets it with
+`-setforced _shotsNeedFlag 1`, as a stock bzfs refuses a name it does not
+know. A browser's trigger does nothing empty-handed but say so, and a bot
+does not try. A BZFlag client is sent the variable with the rest, but today's
+does not read it: it fires, and the server ends the shot on that client
+(MsgShotEnd) before anyone else sees it, saying why the first time.
+
 ## Intentional differences from BZFlag
 
 Each of these is deliberate. Do not "fix" one without being asked.

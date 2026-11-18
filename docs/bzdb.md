@@ -90,6 +90,7 @@ flag scales both halves and not equally -- see AGENTS.md's **Shot timing**.
 | `_velocityAd`, `_angularAd` | 1.5, 1.5 | how much faster `V` Velocity drives and `QT` Quick Turn turns |
 | `_tinyFactor`, `_obeseFactor` | 0.4, 2.5 | the size `T` Tiny and `O` Obesity make a tank |
 | `_narrowFactor` | 0.001 | how thin `N` Narrow makes a tank; bzo's own, upstream draws it flat |
+| `_shotsNeedFlag` | 0 | bzo's own: only a tank carrying a flag may fire ([flags.md](flags.md)) |
 | `_agilityAdVel`, `_agilityTimeWindow`, `_agilityVelDelta` | 2.25, 1, 0.3 | `A` Agility's burst: how fast, how long, and how big a change of speed sets it off |
 | `_srRadiusMult` | 2 | how far `SR` Steamroller reaches, in tank radii |
 | `_wingsJumpCount` | 1 | how many times `WG` Wings flaps before it needs the ground again |

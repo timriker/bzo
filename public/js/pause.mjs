@@ -37,6 +37,27 @@ export class PauseState {
     // The player's own asking, which a life ending does not cancel: the tank
     // comes back and asks again, and the pause key still cancels it.
     this.wantedNextLife = false;
+    // A menu's pause sent and not yet answered, and whether the menu went
+    // away before the answer came: a phone that suspends the page the moment
+    // it is hidden reads the server's countdown and pause only after the
+    // page is back, and that answer is then the menu's to undo.
+    this.menuAsked = false;
+    this.undoWhenAnswered = false;
+  }
+
+  // The answer to a menu's pause, a countdown or the pause itself, arriving
+  // after the menu went away: returns whether the caller should send the
+  // toggle that undoes it.
+  answered() {
+    this.menuAsked = false;
+    if (!this.undoWhenAnswered) return false;
+    this.undoWhenAnswered = false;
+    return true;
+  }
+
+  forgetMenuAsk() {
+    this.menuAsked = false;
+    this.undoWhenAnswered = false;
   }
 
   // What freezes the tank. The countdown counts as well as the pause itself,
@@ -48,13 +69,17 @@ export class PauseState {
 
   // --- what the server said ------------------------------------------------
 
+  // Each of these two returns whether the caller should send a toggle: the
+  // menu that asked for the pause has gone since (`answered`).
   countdownStarted(now) {
     this.countdownStart = now;
+    return this.answered();
   }
 
   pausedByServer() {
     this.paused = true;
     this.countdownStart = 0;
+    return this.answered();
   }
 
   unpausedByServer() {
@@ -62,6 +87,7 @@ export class PauseState {
     this.countdownStart = 0;
     this.byMenu = false;
     this.wantedNextLife = false;
+    this.forgetMenuAsk();
   }
 
   // The countdown ended in anything but a pause: the player asked again, or the
@@ -70,6 +96,7 @@ export class PauseState {
   cancelledByServer() {
     this.countdownStart = 0;
     this.wantedNextLife = false;
+    this.forgetMenuAsk();
   }
 
   // --- the pause key -------------------------------------------------------
@@ -100,13 +127,21 @@ export class PauseState {
       if (this.byMenu || this.isFrozen()) return false;
       if (observer || !alive) return false;
       this.byMenu = true;
+      this.menuAsked = true;
+      this.undoWhenAnswered = false;
       return true;
     }
     if (!this.byMenu) return false;
     this.byMenu = false;
-    // Nothing to undo if the pause never landed -- a countdown the tank died
+    if (this.isFrozen()) {
+      this.forgetMenuAsk();
+      return true;
+    }
+    // Not frozen yet: the answer is still on its way, and is undone when it
+    // lands. Nothing to undo if it never does -- a countdown the tank died
     // under, or one the server refused.
-    return this.isFrozen();
+    if (this.menuAsked) this.undoWhenAnswered = true;
+    return false;
   }
 
   // --- a life ending, and the next one beginning --------------------------
@@ -128,6 +163,7 @@ export class PauseState {
     this.paused = false;
     this.countdownStart = 0;
     this.byMenu = false;
+    this.forgetMenuAsk();
     return true;
   }
 
@@ -141,6 +177,7 @@ export class PauseState {
     this.paused = false;
     this.countdownStart = 0;
     this.byMenu = false;
+    this.forgetMenuAsk();
     const wanted = this.wantedNextLife;
     this.wantedNextLife = false;
     if (this.syncMenu({ covered, alive, observer })) return true;
