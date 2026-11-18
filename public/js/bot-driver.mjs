@@ -14,7 +14,9 @@ import {
   movePacketFields,
   packetVelocity,
   readDriveInput,
+  sentMoveStrayed,
   shotFromTank,
+  standingDriver,
   stepDrive,
 } from './drive.mjs';
 import { TANK, getStockMuzzle } from './collision.mjs';
@@ -28,6 +30,9 @@ const HEARTBEAT_SECONDS = 1;
 // The smallest change in a reported speed worth a packet, as a client's
 // VELOCITY_THRESHOLD.
 const VELOCITY_THRESHOLD = 0.01;
+// The most moves a second a stray position sends, as a client's
+// `_updateThrottleRate`.
+const STRAY_SECONDS = 1 / 30;
 
 const round = (value, places) => Number(value.toFixed(places));
 
@@ -199,8 +204,9 @@ export class BotDriver {
   }
 
   // A move packet, sent as a client sends one: when a speed changed, on a jump
-  // or a landing, before a shot, onto or off a base or a physics driver, and
-  // otherwise as a heartbeat.
+  // or a landing, before a shot, onto or off a base or a physics driver, when
+  // the tank strays from where its last move predicts, and otherwise as a
+  // heartbeat.
   report(dt, force, jumpStarted = false) {
     const packet = {
       type: 'm',
@@ -215,9 +221,12 @@ export class BotDriver {
     const changed = !last
       || Math.abs(packet.fs - last.fs) > VELOCITY_THRESHOLD
       || Math.abs(packet.rs - last.rs) > VELOCITY_THRESHOLD
-      || packet.pd !== last.pd;
+      || packet.pd !== last.pd
+      || (this.clock - this.lastSentAt >= STRAY_SECONDS
+        && sentMoveStrayed(last, this.drive, this.clock - this.lastSentAt, this.env.config(), this.lastSentDriver));
     if (!force && !changed && this.clock - this.lastSentAt < HEARTBEAT_SECONDS) return;
     this.lastSent = packet;
+    this.lastSentDriver = standingDriver(this.drive);
     this.lastSentAt = this.clock;
     this.env.send(packet);
   }

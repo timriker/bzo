@@ -791,6 +791,12 @@ export class Ace extends AceFighter {
       const foe = this.closeFoe(ctx);
       return foe ? this.fightClose(ctx, foe) : false;
     }
+    // A waypoint is where a plugin wants him, as a racer's next checkpoint:
+    // he drives there, stopping only for a foe close enough to fight.
+    if (ctx.view.waypoint) {
+      const foe = ctx.me.canFire ? this.closeFoe(ctx) : null;
+      return foe ? this.fightClose(ctx, foe) : false;
+    }
     if (this.antidoteTarget(ctx)) return false;
     // Whoever has Ace's flag comes before anything else, however far off.
     const carrier = this.ourFlagCarrier(ctx);
@@ -1071,6 +1077,7 @@ export class Ace extends AceFighter {
   lookForFlag(ctx) {
     // A team flag in hand goes home before any other flag is looked at.
     if (ctx.me.flagTeam !== null) return false;
+    if (ctx.view.waypoint) return this.goTo(ctx, pointOf(ctx.view.waypoint), 'waypoint');
     const antidote = this.antidoteTarget(ctx);
     if (antidote) return this.goTo(ctx, antidote, 'antidote');
     // Holding a flag that will not drop, no other is his to take.

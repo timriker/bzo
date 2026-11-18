@@ -11879,14 +11879,19 @@ function getSupportPhysicsDriver(x, y, z) {
 // The driver a move named, where one of the surfaces under the tank is it:
 // at a seam two drivers' surfaces overlap, and the tank is on the one it
 // says. Otherwise the first the server finds, so a name alone explains
-// nothing.
+// nothing. A move that names none is on none: where a driver's face overlaps
+// a plain one, the tank may rest on the plain one, and the driver's carry
+// predicted for it is drift it never made. Naming none hides nothing, since
+// a carried tank then drifts from the prediction.
 function getNamedSupportPhysicsDriver(x, y, z, named) {
-  if (Number.isInteger(named) && named >= 0) {
-    for (const obs of getCollisionColliders()) {
-      if (!findPhysicsSurfaceObstacle([obs], x, y, z, 2, 2)) continue;
-      const driver = resolvePhysicsDriverAt(obs, x, y, z);
-      if (driver?.index === named) return driver;
-    }
+  if (!Number.isInteger(named) || named < 0) return null;
+  // Anywhere under the tank, not only at its centre: a tank rests on a face
+  // its footprint reaches (`resolvePhysicsDriverAt`), so one whose centre is
+  // past the named driver's edge is still on it.
+  for (const obs of getCollisionColliders()) {
+    if (!findPhysicsSurfaceObstacle([obs], x, y, z, TANK.radius, 2)) continue;
+    const driver = resolvePhysicsDriverAt(obs, x, y, z);
+    if (driver?.index === named) return driver;
   }
   return getSupportPhysicsDriver(x, y, z);
 }
@@ -13541,7 +13546,10 @@ function bzflagGameSettings() {
     style: GAME_TYPE,
     gameOptionsBits: computeLocalGameOptionsBits(),
     maxShots: GAME_CONFIG.SHOT_MAX_ACTIVE,
-    numFlags: flags.length,
+    // One past the world's own: the slot a BZFlag client is shown its
+    // waypoint's flag in (`NativeTranslator.waypoint`). A client sizes its
+    // flag table from this, and drops an update for an index past it.
+    numFlags: flags.length + 1,
     linearAcceleration: GAME_CONFIG.LINEAR_ACCELERATION,
     angularAcceleration: GAME_CONFIG.ANGULAR_ACCELERATION,
     shakeTimeout: FLAG_SHAKE_TIMEOUT,
@@ -13753,6 +13761,7 @@ async function seatNativeClient(link, payload) {
     teamIndex: bzflagTeamIndex,
     config: () => GAME_CONFIG,
     driverAt: physicsDriverAt,
+    waypointFlagIndex: () => flags.length,
     flagName: (type) => getFlagType(type)?.name || '',
     addressOf: (id) => players.get(id)?.clientIP ?? null,
     scoreOf: (id) => {
@@ -13811,6 +13820,7 @@ async function seatNativeClient(link, payload) {
   const close = () => {
     if (socket.readyState !== 1) return;
     socket.readyState = 3;
+    translator.close();
     socket.emit('close');
     if (!link.closed) link.close();
     // No cookie carries it, so nothing could come back to it.
@@ -14002,9 +14012,12 @@ async function seatNativeClient(link, payload) {
 }
 
 // The title with the live map's name on the end, which bzfs has no way to
-// say: `HiX 3 - bzo` on bzo.bzw. Held to bzfs's 127 characters
-// (CmdLineOptions.cxx:1044), cutting the title rather than the map.
-const BZFLAG_TITLE_MAX = 127;
+// say: `HiX 3 - bzo` on bzo.bzw. Held to 80 characters, cutting the title
+// rather than the map: bzfs allows 127 (CmdLineOptions.cxx:1044), but the
+// list server's column holds 80 and its insert does not check, so a longer
+// title is accepted with `MSG: adding` and never listed (bzfls2's
+// `addServer`).
+const BZFLAG_TITLE_MAX = 80;
 function bzflagListTitle() {
   const base = String(serverConfig.title || '').trim();
   const suffix = ` - ${path.basename(MAP_SOURCE).replace(/\.bzw$/i, '')}`;
@@ -15304,6 +15317,33 @@ function updateFlags(now) {
 const VOICE_ROSTER_REFRESH_INTERVAL = 200;
 const MAX_VOICE_SDP_LENGTH = 128 * 1024;
 const MAX_VOICE_CANDIDATE_LENGTH = 16 * 1024;
+
+// A player's waypoint (docs/waypoints.md): one point at a time for them to
+// drive to, shown on their bzo client. Null clears it. False for a player who
+// is not in the game or a point that is not one.
+function setWaypoint(player, waypoint) {
+  if (!player?.joined) return false;
+  if (waypoint && ![waypoint.x, waypoint.y, waypoint.z, waypoint.radius].every(Number.isFinite)) return false;
+  player.waypoint = waypoint
+    ? { x: waypoint.x, y: waypoint.y, z: waypoint.z, radius: waypoint.radius,
+      label: String(waypoint.label ?? '').slice(0, 80) }
+    : null;
+  const { x, y, z, label } = player.waypoint || {};
+  sendToPlayer(player, player.waypoint ? { type: 'waypoint', x, y, z, label } : { type: 'waypoint' });
+  return true;
+}
+
+// Reaching the waypoint clears it, and tells the plugins.
+function checkWaypointArrival(player) {
+  const waypoint = player.waypoint;
+  if (!waypoint) return;
+  if (Math.hypot(player.x - waypoint.x, player.y - waypoint.y) > waypoint.radius) return;
+  if (Math.abs(player.z - waypoint.z) > waypoint.radius) return;
+  setWaypoint(player, null);
+  pluginEvent('bz_eWaypointArrivalEvent', () => ({
+    playerID: Number(player.id), pos: [waypoint.x, waypoint.y, waypoint.z], label: waypoint.label,
+  }));
+}
 
 function sendToPlayer(player, message) {
   if (player?.remote) {
@@ -17195,16 +17235,17 @@ function requestServerRestart(reason) {
 // Bounds any client-claimed interval to the server's own measured arrival gap,
 // widened by at most SDT_JITTER_ALLOWANCE. The server's measure is the gap
 // between packet arrivals, which is the send interval plus whatever the
-// network did to it -- when jitter shortens it, an honest client's own account
-// of the same span looks impossible by comparison. So the claim is bounded
-// rather than believed: it may only widen what the server saw, never narrow
-// it, and only by this much. A modified client buys at most that much benefit
-// of the doubt, whether it is spending it on acceleration (below) or on
-// extrapolation (`getExtrapolatedPosition`'s caller in `validateMovement`).
+// network did to it: jitter shortens or lengthens it, and the move covers the
+// sender's own interval either way. So the claim is believed below the arrival
+// gap, where it only makes both checks stricter -- less travel predicted, a
+// shorter window to change speed in -- and bounded above it: a modified client
+// buys at most SDT_JITTER_ALLOWANCE of benefit of the doubt, whether it is
+// spending it on acceleration (below) or on extrapolation
+// (`getExtrapolatedPosition`'s caller in `validateMovement`).
 function clampToArrivalGap(arrivalGap, claimedSeconds) {
   if (!Number.isFinite(arrivalGap) || arrivalGap <= 0) return 0;
   const claimed = Number(claimedSeconds);
-  if (!Number.isFinite(claimed) || claimed <= arrivalGap) return arrivalGap;
+  if (!Number.isFinite(claimed) || claimed <= 0) return arrivalGap;
   return Math.min(claimed, arrivalGap + SDT_JITTER_ALLOWANCE);
 }
 
@@ -17780,6 +17821,7 @@ messagesPlay.useServer({
   broadcastTeamScores,
   captureFlag,
   checkAntidote,
+  checkWaypointArrival,
   clampToArrivalGap,
   clearPauseTimers,
   countFlagShot,
@@ -18157,6 +18199,8 @@ function botOwnView(bot, now) {
     // Agility gives it the burst, Wings flies it.
     flag: myFlag ? { type: myType, zoned: myFlag.zoned === true, index: myFlag.index } : null,
     antidote: me.antidote ? { x: me.antidote.x, y: me.antidote.y, z: me.antidote.z } : null,
+    // Where a plugin sends it, as a person's waypoint (docs/waypoints.md).
+    waypoint: me.waypoint ? { x: me.waypoint.x, y: me.waypoint.y, z: me.waypoint.z } : null,
     // What Identify names, as `searchFlag` tells a person carrying it: the
     // nearest flag on the ground in range, to this bot alone.
     identified: botIdentifiedFlag(me, myType),
@@ -18827,6 +18871,12 @@ const PLUGIN_API = Object.freeze({
     killPlayer(victim, killer, DEATH_REASON.SHOT, null, killer ? killer.id : WORLD_WEAPON_PLAYER_ID);
     return true;
   },
+  // bzo's own (docs/waypoints.md): the one point a player is to drive to,
+  // reached within `radius`, and clearing it.
+  bz_setWaypoint: (id, x, y, z = 0, label = '', radius = 5) => setWaypoint(players.get(String(id)), {
+    x: Number(x), y: Number(y), z: Number(z), label, radius: Number(radius),
+  }),
+  bz_clearWaypoint: (id) => setWaypoint(players.get(String(id)), null),
   // The flag a player holds, by abbreviation, or null.
   bz_getPlayerFlag: (id) => getPlayerFlag(String(id))?.type ?? null,
   bz_getPlayerFlagID: (id) => getPlayerFlag(String(id))?.index ?? -1,

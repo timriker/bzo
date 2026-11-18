@@ -45,10 +45,11 @@ off except for what a flag gives.
 ## Steps
 
 1. Checkpoints: built, laptimer's `checkpoint` ([plugins.md](plugins.md)).
-2. Waypoints, as in [waypoints-plan.md](waypoints-plan.md), with laptimer
-   moving each racer's along the course.
+2. Waypoints: built, laptimer moving each racer's along the course
+   ([waypoints.md](waypoints.md)).
 3. Respawn where the racer died, keeping the lap and the waypoint.
-4. Ace's race job and physics-aware steering.
+4. Ace's race job: built, Ace driving to his waypoint
+   ([waypoints.md](waypoints.md)). Physics-aware steering is still to do.
 5. Recording the best lap as the racing line; Ace follows it.
 6. A plugin's description suffix on both lists, and laptimer's record in it.
 7. Flags by lane.

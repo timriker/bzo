@@ -1033,9 +1033,11 @@ upstream's does: a move carries `ct` (seconds since the client's
 `clientClockOrigin`), and `validateMovement` extrapolates over the difference
 from the last *accepted* move's `ct` (`lastClientTimestamp`), clamped by
 `clampToArrivalGap` to the server's own arrival gap plus
-`SDT_JITTER_ALLOWANCE` -- so a client's clock can refine the interval but
-never exceed what the server saw, and network jitter stays out of the drift
-it judges. Each server handler reads `Date.now()` once and passes `now` down,
+`SDT_JITTER_ALLOWANCE` -- so a client's clock sets the interval, shorter
+than the arrival gap when the network held the move (or the bot worker
+batched it), but never longer than what the server saw, and network jitter
+stays out of the drift it judges. Each server handler reads `Date.now()` once
+and passes `now` down,
 so an extrapolation and the check it feeds agree about *now*; the client
 samples once per frame (`sampleEpochClock`). `server/lag.cjs` measures lag,
 jitter and loss for `/lagstats`, and `docs/lag-plan.md` is the plan for acting
@@ -2608,7 +2610,10 @@ speed, where the eye tracks the motion and expects it to be even.
 
 The step is also clamped to `MAX_FRAME_DELTA_SECONDS`, because a hidden tab
 delivers no frames and the first one back would otherwise spend the whole gap at
-once.
+once. The tank's drive alone covers up to `MAX_DRIVE_CATCHUP_SECONDS` of a long
+frame, in steps of at most `MAX_DRIVE_STEP_SECONDS` (`stepDriveFor`), so a
+client drawing one frame a second still drives in real time, as upstream's
+does and as the server predicts it.
 
 **The local position is never rounded.** `playerX/Y/Z` carry full precision;
 `toFixed(2)` belongs to the move packet, the debug ghost mesh, and the teleport
@@ -4662,11 +4667,16 @@ On a physics driver, a move states the tank's **own** motion: `fs`, `rs` and
 `sd` with the driver's push and spin taken out (`stepDrive`, as upstream's
 `calcRelativeMotion`), and `pd`, the driver's upstream index, naming the
 driver to add back. A move goes out the frame the tank steps onto another
-driver, as upstream's `isDeadReckoningWrong` sends one. A client looks the
+driver, as upstream's `isDeadReckoningWrong` sends one, and whenever the
+tank strays `_positionTolerance` from where its last move predicts
+(`sentMoveStrayed`), clients and bots alike. A client looks the
 driver up in the world's `physicsDrivers`. The server takes the named driver
-only where one of the surfaces under the tank has it -- at a seam two
-drivers' surfaces overlap -- and its own finding otherwise, since a driver it
-took on the client's word alone would explain away any drift. A client
+only where one of the surfaces under the tank's footprint has it -- at a seam
+two drivers' surfaces overlap -- and its own finding otherwise, since a driver
+it took on the client's word alone would explain away any drift. A move that
+names none is predicted on none: where a driver's face overlaps a plain one
+the tank may rest on the plain one, and a carried tank that names none only
+drifts. A client
 predicts a tank a driver carries for as long as it would a moving one, even
 when its own speeds are zero.
 

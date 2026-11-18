@@ -13,7 +13,9 @@
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { createDriveState, movePacketFields, stepDrive } from '../public/js/drive.mjs';
+import {
+  createDriveState, movePacketFields, sentMoveStrayed, stepDrive, stepDriveFor,
+} from '../public/js/drive.mjs';
 import { deadReckon } from '../public/js/dead-reckoning.mjs';
 
 const CONFIG = {
@@ -98,6 +100,42 @@ const near = (a, b, tolerance, what) => {
   const driving = driveAndPredict(box(turntable), { forward: 1 });
   // Farther out, so a frame's straight-line carry spirals out a little more.
   near(driving.driven, driving.predicted, 1, 'driving on a turntable');
+}
+
+// A client drawing one frame a second drives the whole second of it, as
+// upstream's does, rather than the tenth a single step allows: on a turntable
+// it is carried as far as the prediction says.
+{
+  const turntable = { type: 'box', pos: [0, 0, 0], size: [200, 200, 4], angle: 0,
+    phydrv: { index: 5, linear: null, angular: [Math.PI / 2, 0, 0] } };
+  const world = { config: CONFIG, colliders: [turntable], topOf: () => 4 };
+  const drive = (frame) => {
+    const state = createDriveState({ x: 10, y: 0, z: 4, azimuth: Math.PI / 2 });
+    Object.assign(state, { onObstacle: true, onGround: false, inAir: false, lastObstacle: turntable });
+    for (let t = 0; t < 1 - 1e-9; t += frame) {
+      stepDriveFor(state, { forward: 0, rotation: 0, jumpTriggered: false },
+        { flag: null, motionFlag: null }, world, { now: 0, random: () => 0.5 }, frame);
+    }
+    return state;
+  };
+  const predicted = deadReckon({ x: 10, y: 0, z: 4, azimuth: Math.PI / 2, forwardSpeed: 0, rotationSpeed: 0,
+    verticalVelocity: 0, jumpAzimuth: null }, 1, CONFIG, turntable.phydrv);
+  near(drive(FRAME), predicted, 0.3, 'carried round a turntable frame by frame');
+  near(drive(1), predicted, 1.5, 'and at one frame a second');
+}
+
+// A tank where its last move predicts has not strayed; one a wall holds back
+// on a conveyor has, and sends again (Player::isDeadReckoningWrong).
+{
+  const conveyor = { index: 3, linear: [0, -50, 0], angular: null };
+  const carried = driveAndPredict(box(conveyor));
+  const ground = { ...carried.driven, jumpDirection: null };
+  assert.ok(!sentMoveStrayed(carried.move, { ...ground, ...carried.predicted }, 1, CONFIG, conveyor),
+    'carried as predicted');
+  assert.ok(sentMoveStrayed(carried.move, { ...ground, x: carried.move.x, y: carried.move.y }, 1, CONFIG, conveyor),
+    'held back by a wall');
+  assert.ok(!sentMoveStrayed({ ...carried.move, air: 1 }, { ...ground, x: 10, y: 0, z: 0 }, 1, CONFIG, conveyor),
+    'not judged in the air');
 }
 
 // A driver whose push only lifts is not named: it makes a tank fall, and a

@@ -135,6 +135,7 @@ walls keep their old tiling, until the next map, as for a BZFlag client.
 | `_notRespondingTime` | 5 | how long a playing tank may go unheard before it is marked not responding: `[nr]` on the scoreboard, its flag dropped where it was last seen, a new rabbit if it was one, and no lock on it until its next move. Never less than two of bzo's idle heartbeats (`MAX_UPDATE_INTERVAL`) |
 | `_scoreSaveTime` | 120 (bzo's) | seconds a player's score is kept after they leave; back on rejoining with the same callsign from the same address. 0 keeps none. Not upstream's: it is allejo's [ScoreRestorer](https://github.com/allejo/ScoreRestorer) plugin, which many servers run; a restart for new code (nodemon, a Docker upgrade) keeps them the same way, but not one onto a changed map or changed server options (`scores.json`). A server bot's waits with no time limit |
 | `_angleTolerance` | 0.05 | how far a tank's heading may drift from what its last move predicts before its client sends another, radians |
+| `_positionTolerance` | 0.09 | how far a tank's position may drift, on any axis, from what its last move predicts before its client sends another |
 | `_endShotDetection` | 5 | read, no effect: bzfs kicks a client that reports more shot ends than this, and a bzo client reports none |
 | `_coldetDepth`, `_coldetElements`, `_cullDepth` | 6, 4, 6 | read, no effect: they tune upstream's collision and cull octrees, which bzo does not build |
 

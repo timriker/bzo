@@ -721,6 +721,7 @@ end
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-laptimer-'));
   const said = [];
   const wins = [];
+  const waypoints = new Map();
   const tanks = new Map([[1, { playerID: 1, callsign: 'racer', bzID: '42', spawned: true }]]);
   const realNow = Date.now;
   let now = 0;
@@ -736,6 +737,7 @@ end
       bz_getPlayerByIndex: (id) => tanks.get(id) ?? null,
       bz_incrementPlayerWins: (id, count) => { wins.push([id, count]); return true; },
       bz_sendTextMessage: (from, to, text, params) => { said.push({ to, text, params }); return true; },
+      bz_setWaypoint: (id, x, y, z, label) => { waypoints.set(id, { x, y, label }); return true; },
     },
   });
   host.loadAll();
@@ -745,9 +747,12 @@ end
     now = at;
     host.callEvents('bz_ePlayerUpdateEvent', { playerID: 1, state: { pos: [x, 5, 1] } });
   };
+  host.callEvents('bz_ePlayerSpawnEvent', { playerID: 1 });
+  assert.deepEqual(waypoints.get(1), { x: 0, y: 0, label: 'Finish line' }, 'a racer is pointed at the line first');
   move(10, 0);
   move(-10, 1000);
   assert.equal(said.at(-1).text, 'Lap started.', 'crossing westward starts a lap');
+  assert.deepEqual(waypoints.get(1), { x: 0, y: 100, label: 'Checkpoint 1 of 1' }, 'then at each checkpoint');
   move(10, 2000);
   move(-10, 3000);
   assert.equal(said.at(-1).text, 'Lap started.', 'crossing back drops it, and the next crossing starts afresh');
@@ -761,6 +766,7 @@ end
   at(-10, 60, 10000);
   at(-10, 100, 11000);
   at(10, 100, 12000);
+  assert.equal(waypoints.get(1).label, 'Finish line', 'and back at the line once they are all crossed');
   at(60, 60, 30000);
   move(10, 63000);
   move(-10, 64000);

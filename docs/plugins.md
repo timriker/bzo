@@ -137,6 +137,7 @@ the copy already loaded runs until the next restart.
 - Polls: `bz_eAllowPollEvent`, `bz_ePollStartEvent`, `bz_ePollVoteEvent`,
   `bz_ePollVetoEvent`, `bz_ePollEndEvent`.
 - `bz_ePermissionModificationEvent`.
+- bzo's own: `bz_eWaypointArrivalEvent`, a player reaching their waypoint.
 
 Where bzo differs:
 
@@ -194,6 +195,10 @@ Upstream's, by its names:
 bzo's own:
 
 - `bz_changeMap` starts a new game on another map, as the panel does.
+- `bz_setWaypoint(playerID, x, y, z, label, radius)` and
+  `bz_clearWaypoint(playerID)`: the one point a player is to drive to,
+  reached within `radius` (5; 0 never), when `bz_eWaypointArrivalEvent` fires
+  ([waypoints.md](waypoints.md)).
 - `bz_sendRelayMessage(network, name, text)` says a line from another
   network -- a Discord channel, IRC -- to every player. A BZFlag client reads
   the server message `[network] name: text`; bzo's own puts it with the chat.
@@ -325,7 +330,8 @@ client sees, and discord, a Discord channel's chat both ways and Linked Roles
 (`docs/discord.md`), the job upstream's ircRelay did for IRC; matrix, a
 Matrix room's chat both ways (`docs/matrix.md`); and laptimer, which times
 laps across a map's `finishline` object through its `checkpoint`s in order,
-scores a point a lap and keeps each map's ten fastest (`/laps`). Each is off until
+points each racer's waypoint at the next line, scores a point a lap and keeps
+each map's ten fastest (`/laps`). Each is off until
 `server.json` names it, and when on does what its upstream does by default.
 
 ## Behind the proxy

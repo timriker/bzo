@@ -175,6 +175,7 @@ function buildView(bot, self, shared) {
     ...getProbes(),
     findRoute: getRouter(),
     antidote: own.antidote,
+    waypoint: own.waypoint ?? null,
   };
 }
 

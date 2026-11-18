@@ -16,8 +16,9 @@ Issue #174: native BZFlag clients on a bzo server. Configured by server.json's
   15 minutes, one request at a time as bzfs sends them, and removes itself on
   shutdown. The request goes over IPv4, since the list checks that
   `publicAddr` resolves to the address it came from. The title is
-  server.json's `title` with the live map's name after it, `- bzo` on bzo.bzw, held
-  to bzfs's 127 characters.
+  server.json's `title` with the live map's name after it, `- bzo` on bzo.bzw,
+  cut to the 80 characters the list stores: it takes a longer one without
+  complaint and never lists it, though bzfs allows 127.
 - **The counts.** They follow bzfs's ping: humans only, the rabbit and hunters
   counted as rogues.
 

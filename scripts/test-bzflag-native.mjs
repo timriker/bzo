@@ -12,7 +12,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { NativeTranslator, moveFromBzfs } = require('../server/bzflag-native.cjs');
-const { decodePlayerUpdate } = require('../server/bzfs-session.cjs');
+const { decodePlayerUpdate, decodeFlagUpdate, decodeShotBegin } = require('../server/bzfs-session.cjs');
 const { channelTeam, teamChannel } = require('../server/player-ids.cjs');
 
 const TANK_SPEED = 25;
@@ -126,6 +126,44 @@ assert.deepEqual(chatTo({ text: 'hello' }), ['hello'], 'a plain line as written'
   assert.equal(plain.update.phydrv, 0, 'no driver, none named');
   assert.equal(plain.update.status & (1 << 7), 0);
   assert.equal(plain.back.pd, undefined);
+}
+
+// A waypoint, as a BZFlag client is shown one: its own team's flag in the
+// spare slot, hovering out of a grab's reach; the label from the server; and
+// a server shot straight up from clear over the point. Clearing it takes the
+// flag away and stops the shots.
+{
+  const sent = [];
+  const waypoints = new NativeTranslator({
+    selfSlot: 3,
+    send: (code, payload) => sent.push({ code, payload: Buffer.from(payload) }),
+    teamIndex: (team) => ({ rogue: 0, red: 1, blue: 3 }[team] ?? 0),
+    config: () => ({ TANK_SPEED, TANK_ROTATION_SPEED: Math.PI / 4, SHOT_SPEED: 100 }),
+    waypointFlagIndex: () => 7,
+  });
+  waypoints.accepted = true;
+  waypoints.selfBzoId = '9';
+  waypoints.players.set('9', { id: '9', team: 'blue' });
+  waypoints.handle({ type: 'waypoint', x: 10, y: 20, z: 2, label: 'Checkpoint 1 of 5' });
+  const flag = decodeFlagUpdate(sent.find((f) => f.code === 'fu').payload)[0];
+  assert.equal(flag.index, 7, 'in the spare slot');
+  assert.equal(flag.type, 'B*', "the player's own team's flag");
+  assert.equal(flag.status, 1, 'on the ground');
+  near(flag.position, [10, 20, 2.3], 'hovering out of reach of a grab');
+  assert.ok(sent.some((f) => f.code === 'mg' && f.payload.includes('Checkpoint 1 of 5')), 'the label, once');
+  const shot = decodeShotBegin(sent.find((f) => f.code === 'sb').payload);
+  assert.equal(shot.player, 253, "the server's");
+  near(shot.pos, [10, 20, 12], 'from clear over the point');
+  near(shot.velocity, [0, 0, 100], 'straight up');
+  assert.equal(shot.flag, 'PZ', 'a zoned shot, through whatever covers the point');
+  assert.ok(waypoints.waypointTimer, 'and again every half second');
+  sent.length = 0;
+  waypoints.handle({ type: 'waypoint' });
+  assert.equal(decodeFlagUpdate(sent.find((f) => f.code === 'fu').payload)[0].status, 0, 'cleared, the flag goes');
+  assert.equal(waypoints.waypointTimer, null, 'and the shots stop');
+  waypoints.handle({ type: 'waypoint', x: 0, y: 0 });
+  waypoints.close();
+  assert.equal(waypoints.waypointTimer, null, 'as they do when the connection closes');
 }
 
 console.log('test-bzflag-native: ok');

@@ -22,6 +22,16 @@ const VERSION_LEN = 60;
 const NO_PLAYER = 255;
 const ALL_PLAYERS = 254;
 const SERVER_PLAYER = 253;
+// Flag statuses, as `FlagStatus` numbers them.
+const FLAG_NO_EXIST = 0;
+const FLAG_ON_GROUND = 1;
+// The team flags by team number, the waypoint's colour.
+const TEAM_FLAGS = ['', 'R*', 'G*', 'B*', 'P*'];
+// How far over a waypoint its flag hovers, out of a grab's 0.1 reach.
+const WAYPOINT_FLAG_HOVER = 0.3;
+// How far over a waypoint its shots start, clear of a tank on it, and how often.
+const WAYPOINT_SHOT_CLEARANCE = 10;
+const WAYPOINT_SHOT_INTERVAL_MS = 500;
 // The last id a player may have (`LastRealPlayer`, global.h): ids above it
 // are team and broadcast addresses.
 const LAST_REAL_PLAYER = 243;
@@ -192,6 +202,7 @@ class NativeTranslator {
   constructor({
     selfSlot, send, teamIndex, config, flagName = () => '', guidedShots = () => [],
     addressOf = () => null, selfIsAdmin = () => false, scoreOf = () => null, driverAt = () => null,
+    waypointFlagIndex = () => -1,
   }) {
     this.selfSlot = selfSlot;
     this.write = send;
@@ -205,6 +216,11 @@ class NativeTranslator {
     this.selfIsAdmin = selfIsAdmin;
     this.scoreOf = scoreOf;
     this.driverAt = driverAt;
+    // The flag slot bzo keeps spare for this client's waypoint, past the
+    // world's own flags in the count the game settings gave it.
+    this.waypointFlagIndex = waypointFlagIndex;
+    this.waypointTimer = null;
+    this.waypointShots = 0;
     // The last flag MsgNearFlag named, so an unchanged answer is not repeated.
     this.lastNearFlag = null;
     this.selfBzoId = null;
@@ -425,6 +441,63 @@ class NativeTranslator {
       .vec3([record.x, record.y, record.z])
       .f32(record.azimuth)
       .done());
+  }
+
+  // A waypoint (docs/waypoints.md), shown as a BZFlag client understands:
+  //
+  // - A team flag in the spare slot, hovering just over the point: a dot on
+  //   the radar, and in a game with team flags a heading marker if it is the
+  //   player's own team's. A client grabs a flag only within 0.1 of its tank's
+  //   height (playing.cxx:4141), so one hovering higher is never grabbed.
+  // - A server Phantom Zone shot straight up every half second, which the
+  //   client hears where it starts. A zoned shot passes through buildings
+  //   rather than bouncing, so a sign over the point does not turn it back,
+  //   and hits only a zoned tank (`LocalPlayer.cxx:1634`); it starts clear of
+  //   a tank on the point too, since a client decides its own hits.
+  // - The label once, as a line from the server.
+  waypoint(message) {
+    clearInterval(this.waypointTimer);
+    this.waypointTimer = null;
+    const index = this.waypointFlagIndex();
+    if (index < 0) return;
+    const point = Number.isFinite(message.x) && Number.isFinite(message.y)
+      ? { x: message.x, y: message.y, z: Number(message.z) || 0 }
+      : null;
+    const hover = point ? { ...point, z: point.z + WAYPOINT_FLAG_HOVER } : null;
+    const team = this.teamIndex(this.players.get(this.selfBzoId)?.team);
+    this.flagUpdate([{
+      index,
+      type: point ? (TEAM_FLAGS[team] || 'P*') : 'PZ',
+      status: point ? FLAG_ON_GROUND : FLAG_NO_EXIST,
+      owner: null,
+      position: hover,
+      launchPosition: hover,
+      landingPosition: hover,
+      flightTime: 0,
+      flightEnd: 0,
+      initialVelocity: 0,
+    }]);
+    if (!point) return;
+    if (message.label) this.handle({ type: 'message', src: SERVER_PLAYER, dst: this.selfBzoId, text: message.label });
+    const fire = () => {
+      if (!this.accepted) return;
+      const speed = Number(this.config().SHOT_SPEED) || 100;
+      const id = `waypoint:${this.waypointShots += 1}`;
+      this.handle({
+        type: 'shotBegin', id, playerId: SERVER_PLAYER, shotSlot: 0,
+        x: point.x, y: point.y, z: point.z + WAYPOINT_SHOT_CLEARANCE, vx: 0, vy: 0, vz: speed, team: 'rogue', flag: 'PZ',
+      });
+      // It ends on its own; nothing will ask for it by this name again.
+      this.shots.delete(id);
+    };
+    fire();
+    this.waypointTimer = setInterval(fire, WAYPOINT_SHOT_INTERVAL_MS);
+  }
+
+  // The connection is gone: nothing more to send it.
+  close() {
+    clearInterval(this.waypointTimer);
+    this.waypointTimer = null;
   }
 
   // `FlagInfo::pack`: index, then `Flag::pack`.
@@ -669,6 +742,9 @@ class NativeTranslator {
         }
         break;
       }
+      case 'waypoint':
+        if (this.accepted) this.waypoint(message);
+        break;
       case 'shotEnd': {
         if (!this.accepted) break;
         const shot = this.shots.get(message.id);

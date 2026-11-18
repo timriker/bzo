@@ -70,6 +70,7 @@ let broadcastPlayerRecord;
 let broadcastTeamScores;
 let captureFlag;
 let checkAntidote;
+let checkWaypointArrival;
 let clampToArrivalGap;
 let clearPauseTimers;
 let countFlagShot;
@@ -176,6 +177,7 @@ function useServer(deps, live) {
     broadcastTeamScores,
     captureFlag,
     checkAntidote,
+    checkWaypointArrival,
     clampToArrivalGap,
     clearPauseTimers,
     countFlagShot,
@@ -360,9 +362,8 @@ function handleM(player, ws, message) {
   // The interval the drift check extrapolates over: the client's own
   // clock between this move and the last *accepted* one (see
   // `lastClientTimestamp`), clamped to no more than the server's own
-  // arrival gap plus SDT_JITTER_ALLOWANCE -- the claim may only widen
-  // the window the server itself measured, and only by that much, the
-  // same bound the acceleration check already trusts `sdt` with.
+  // arrival gap plus SDT_JITTER_ALLOWANCE, the same bound the
+  // acceleration check already trusts `sdt` with.
   // `ct` is already seconds relative to the client's own origin (see
   // `clientClockOrigin` in client.js) -- only ever differenced against
   // this client's own previous value, never read as an absolute time.
@@ -675,6 +676,7 @@ function handleM(player, ws, message) {
     queueChannelMove(pmPacket);
 
     checkAntidote(player, now);
+    checkWaypointArrival(player);
     // Every accepted move, which is why it is built only for a listener.
     pluginEvent('bz_ePlayerUpdateEvent', () => ({
       playerID: Number(player.id), state: pluginState(player), stateTime: now / 1000,

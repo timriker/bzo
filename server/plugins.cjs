@@ -61,6 +61,8 @@ const EVENT_TYPES = Object.freeze([
   'bz_eEndHandicapRefreshEvent', 'bz_eAutoPilotEvent', 'bz_eMuteEvent',
   'bz_eUnmuteEvent', 'bz_eServerShotFiredEvent', 'bz_ePermissionModificationEvent',
   'bz_eAllowServerShotFiredEvent', 'bz_ePlayerDeathFinalizedEvent',
+  // bzo's own, after upstream's so theirs keep their numbers.
+  'bz_eWaypointArrivalEvent',
 ]);
 const EVENT_SET = new Set(EVENT_TYPES);
 

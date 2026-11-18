@@ -228,6 +228,8 @@ export const BZDB_CONFIG_VARS = new Map([
   // Dead reckoning: how far a heading may drift from the last move's
   // prediction before the client sends another.
   ['_angleTolerance', { key: 'ANGLE_TOLERANCE' }],
+  // And how far its position may, on any axis.
+  ['_positionTolerance', { key: 'POSITION_TOLERANCE' }],
   // A grip on the ground: a cap on how fast a tank's velocity may change.
   ['_friction', { key: 'FRICTION', allowZero: true }],
   ['_momentumFriction', { key: 'MOMENTUM_FRICTION', allowZero: true }],

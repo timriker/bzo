@@ -578,6 +578,10 @@ const RADAR_HUNT_RING_COLOR = colorToCSS(HUNT_MARKER_COLOR);
 // panel goes through `getFlagRadarStyle`'s cache for the same reason: the radar
 // is redrawn every frame on a client with one core to spend.
 export const ANTIDOTE_FLAG_STYLE = colorToCSS(ANTIDOTE_FLAG_COLOR);
+// A waypoint's white (docs/waypoints.md): a colour no team, flag or hunted
+// tank wears, ringed and beaconed as they are.
+export const WAYPOINT_COLOR = 0xffffff;
+export const WAYPOINT_STYLE = colorToCSS(WAYPOINT_COLOR);
 // A `#rrggbb` style scaled toward black, cut once per colour for the same reason.
 const dimmedRadarStyles = new Map();
 function dimRadarColor(style, factor) {
@@ -1535,6 +1539,9 @@ export function updateRadar() {
     // every flag in the world, because it is the one you are looking for.
     if (client.antidotePosition) {
       drawSoughtFlag(client.antidotePosition, ANTIDOTE_FLAG_STYLE, false);
+    }
+    if (client.waypoint) {
+      drawSoughtFlag(client.waypoint, WAYPOINT_STYLE, false);
     }
     client.radarCtx.restore();
 

@@ -25,6 +25,10 @@
 // checkpoint has been crossed in order since it started, so no teleporter or
 // cut across the infield is a shortcut.
 //
+// Each racer's waypoint (docs/waypoints.md) is the next line to cross: the
+// finish line until a lap starts, then each checkpoint in turn, then the
+// finish line again.
+//
 // Each lap is a point on the scoreboard. The best lap of each player on each
 // map is kept in the data directory, and `/laps` lists the ten fastest. A
 // bot's laps score and are announced, but are not records.
@@ -120,6 +124,7 @@ module.exports = {
       case bz.bz_ePlayerSpawnEvent:
       case bz.bz_ePlayerDieEvent:
         this.drop(data.playerID);
+        this.aim(data.playerID);
         break;
       case bz.bz_ePlayerPartEvent:
         this.racers.delete(data.playerID);
@@ -145,6 +150,7 @@ module.exports = {
     racer.pos = null;
     racer.lapStart = null;
     racer.next = 0;
+    racer.aimed = null;
   },
 
   onUpdate(playerID, pos) {
@@ -175,6 +181,24 @@ module.exports = {
         racer.next += 1;
       }
     }
+    if (crossings.length > 0) this.aim(playerID);
+  },
+
+  // The racer's waypoint at the next line to cross, labelled with which. It
+  // has no arrival radius: the line's crossing moves it on.
+  aim(playerID) {
+    const { bz } = this;
+    const racer = this.racer(playerID);
+    const checkpoint = racer.lapStart !== null ? this.checkpoints[racer.next] : null;
+    const line = checkpoint || this.finishes[0];
+    if (!line) return;
+    const label = checkpoint
+      ? `Checkpoint ${racer.next + 1} of ${this.checkpoints.length}`
+      : 'Finish line';
+    const key = `${line.x},${line.y},${label}`;
+    if (racer.aimed === key) return;
+    racer.aimed = key;
+    bz.bz_setWaypoint?.(playerID, line.x, line.y, line.z, label, 0);
   },
 
   // Where the step from `from` to `to` passes the line, if it does: which way,

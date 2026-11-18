@@ -143,7 +143,7 @@ import { DestructCountdown, PauseState } from './pause.mjs';
 import { createUdpChannel, createWebTransportChannel } from './udp-channel.mjs';
 import { HUNT_MARKER_COLOR, HuntState } from './hunt.mjs';
 import {
-  adjustRadarZoom, ANTIDOTE_FLAG_STYLE, cycleRadarZoomLevel,
+  adjustRadarZoom, ANTIDOTE_FLAG_STYLE, WAYPOINT_COLOR, WAYPOINT_STYLE, cycleRadarZoomLevel,
   RADAR_ZOOM_DEFAULT, radarCacheFrames, radarZoomKnob, radarZoomLevel,
   isRadarShown, resizeRadar, setRadarZoomLevel, toggleRadarDisplay, updateRadar,
   updateRadarZoomButton, useRadarClient
@@ -412,8 +412,10 @@ import {
   packetVelocity,
   readDriveInput,
   shotFromTank,
-  stepDrive,
+  stepDriveFor,
   holdDrive,
+  POSITION_TOLERANCE,
+  sentMoveStrayed,
 } from './drive.mjs';
 import { deadReckon } from './dead-reckoning.mjs';
 import { bzdbFromObject, evalBzdb, worldConfig as evaluateWorldConfig } from './bzdb.mjs';
@@ -5920,6 +5922,9 @@ let lastSentTime = 0;
 let lastSentHeading = null;
 // The physics driver the last move named (`pd`), -1 for none.
 let lastSentDriver = -1;
+// The last move's motion, for `_positionTolerance`'s drift check; null when
+// the server has since placed the tank itself.
+let lastSentMove = null;
 let worldTime = 0;
 
 // The sky's clock, each frame. Upstream's (#166) is the real instant -- or the
@@ -8653,6 +8658,7 @@ function applyPlayerMoveMessage(message, isTeleportPacket) {
       lastSentForwardSpeed = Number.isFinite(message.fs) ? message.fs : lastSentForwardSpeed;
       lastSentRotationSpeed = Number.isFinite(message.rs) ? message.rs : lastSentRotationSpeed;
       lastSentHeading = null;
+      lastSentMove = null;
       lastSentVerticalVelocity = Number.isFinite(message.vv) ? message.vv : lastSentVerticalVelocity;
       lastSentAirVelocityX = Number.isFinite(message.vx) ? message.vx : lastSentAirVelocityX;
       lastSentAirVelocityY = Number.isFinite(message.vy) ? message.vy : lastSentAirVelocityY;
@@ -8719,6 +8725,7 @@ const SERVER_MESSAGE_HANDLERS = Object.freeze({
   captureFlag: receiveCaptureFlag,
   nearFlag: receiveNearFlag,
   antidoteFlag: receiveAntidoteFlag,
+  waypoint: receiveWaypoint,
   dropFlag: receiveDropFlag,
   shotBegin: receiveShotBegin,
   botIntents: receiveBotIntents,
@@ -8750,6 +8757,7 @@ const SERVER_MESSAGE_HANDLERS = Object.freeze({
 
 function receiveInit(message) {
   if (!checkClientBuild(message.clientBuild)) return;
+  myWaypoint = null;
   botsPaused = Boolean(message.botsPaused);
   saveOfflineWorld(message);
   // A batch number and a shot id are this server process's; a new init
@@ -8975,6 +8983,7 @@ function receiveInit(message) {
     lastSentForwardSpeed = 0;
     lastSentRotationSpeed = 0;
     lastSentHeading = null;
+    lastSentMove = null;
     lastSentVerticalVelocity = 0;
     lastSentTime = performance.now();
     void prepareInitialRender(message, sequenceId);
@@ -11961,7 +11970,8 @@ function getFiringStatusText() {
   if (isObserver() || !isMyTankAlive()) return '';
   if (pauseState.paused) return t('Paused');
   if (amInsideBuilding() && !amZoned()) return t('Sealed');
-  return '';
+  // Otherwise the waypoint's label, which lasts until it is reached.
+  return myWaypoint?.label || '';
 }
 
 
@@ -14262,6 +14272,8 @@ function buildAutopilotView() {
     // Where this client's bad flag can be shed, which the server tells only
     // its carrier.
     antidote: antidotePosition,
+    // Where a plugin sends this player (docs/waypoints.md).
+    waypoint: myWaypoint ? { x: myWaypoint.x, y: myWaypoint.y, z: myWaypoint.z } : null,
   };
 }
 
@@ -14751,6 +14763,7 @@ function sendFrozenHeartbeat() {
   lastSentForwardSpeed = motionFields.fs;
   lastSentRotationSpeed = motionFields.rs;
   lastSentHeading = motionFields.a;
+  lastSentMove = motionFields;
   lastSentVerticalVelocity = motionFields.vv;
   lastSentAirVelocityX = motionFields.vx;
   lastSentAirVelocityY = motionFields.vy;
@@ -14782,7 +14795,7 @@ function handleMotion(deltaTime) {
   const wasInAir = isInAir;
   // The rest of this pass still runs for a dead tank: the heartbeat below is
   // what keeps a proxied bzfs from marking it not responding.
-  const events = isMyTankFrozenByDeath() ? holdDrive(myDrive) : stepDrive(myDrive, {
+  const events = isMyTankFrozenByDeath() ? holdDrive(myDrive) : stepDriveFor(myDrive, {
     forward: intendedForward,
     rotation: intendedRotation,
     jumpTriggered,
@@ -14885,6 +14898,12 @@ function handleMotion(deltaTime) {
     : lastSentHeading + (((lastSentRotationSpeed * (gameConfig?.TANK_ROTATION_SPEED || 0)) + sentSpin)
       * (timeSinceLastSend / 1000));
   const headingDrift = Math.abs(normalizeAngle(myAzimuth - predictedHeading));
+  // And the position: a tank a wall holds back, or a slow frame's, is not
+  // where the last move says (`_positionTolerance`).
+  const positionTolerance = Number.isFinite(gameConfig?.POSITION_TOLERANCE)
+    ? gameConfig.POSITION_TOLERANCE : POSITION_TOLERANCE;
+  const positionStrayed = sentMoveStrayed(lastSentMove, myDrive, timeSinceLastSend / 1000, gameConfig,
+    physicsDriverByIndex(lastSentDriver), positionTolerance);
   // Don't check vertical velocity changes while in air - gravity is extrapolated
   // Only jump/land transitions matter (handled by forceMoveSend)
   const verticalVelocityDelta = airborneState ? 0 : Math.abs(verticalVelocity - lastSentVerticalVelocity);
@@ -14970,6 +14989,7 @@ function handleMotion(deltaTime) {
   if (verticalVelocityDelta > VERTICAL_VELOCITY_THRESHOLD) reasons.push(`vv:${verticalVelocityDelta.toFixed(3)}`);
   if (airVelocityDelta > AIR_VELOCITY_THRESHOLD) reasons.push(`av:${airVelocityDelta.toFixed(3)}`);
   if (headingDrift > angleTolerance) reasons.push(`r:${headingDrift.toFixed(3)}`);
+  if (positionStrayed) reasons.push('pos');
   if (timeSinceLastSend > getMaxUpdateInterval()) reasons.push(`time:${(timeSinceLastSend/1000).toFixed(1)}s`);
 
   // Minimum 100ms between non-forced updates to prevent rapid-fire from calculation noise
@@ -15002,7 +15022,8 @@ function handleMotion(deltaTime) {
       rotationSpeedDelta > VELOCITY_THRESHOLD ||
       verticalVelocityDelta > VERTICAL_VELOCITY_THRESHOLD ||
       airVelocityDelta > AIR_VELOCITY_THRESHOLD ||
-      headingDrift > angleTolerance
+      headingDrift > angleTolerance ||
+      positionStrayed
     ));
 
   // A driving observer (issue #68) resolves every bit of this exactly like a
@@ -15085,6 +15106,7 @@ function handleMotion(deltaTime) {
     lastSentForwardSpeed = sentFS;
     lastSentRotationSpeed = sentRS;
     lastSentHeading = movePacket.a;
+    lastSentMove = movePacket;
     lastSentVerticalVelocity = sentVV;
     lastSentAirVelocityX = movePacket.vx;
     lastSentAirVelocityY = movePacket.vy;
@@ -15300,6 +15322,15 @@ let shakeSecondsLeft = 0;
 // stands while it carries a bad flag, or null. The server picks the spot and
 // decides when driving onto it counts; the client draws it and points at it.
 let antidotePosition = null;
+// The point the server or a plugin set for this player to drive to, with its
+// label, or null (docs/waypoints.md).
+let myWaypoint = null;
+
+function receiveWaypoint(message) {
+  myWaypoint = Number.isFinite(message.x) && Number.isFinite(message.y)
+    ? { x: message.x, y: message.y, z: Number(message.z) || 0, label: String(message.label || '') }
+    : null;
+}
 // The flag node pool is keyed by flag index, and the antidote is not a flag in
 // the world, so it takes a key of its own and gets the cloth, the billboarding
 // and the ripple for free -- which is what upstream's FlagSceneNode gives it.
@@ -16060,6 +16091,10 @@ function getFlagHeadingMarkers() {
     });
   }
 
+  if (myWaypoint) {
+    markers.push({ azimuth: azimuthTo(myWaypoint), color: WAYPOINT_STYLE });
+  }
+
   // The locked tank gets a marker of its own, in the colour it is drawn in.
   // Upstream has no such marker -- it clamps the lock-on bracket to the edge of
   // the window instead -- but bzo's bracket stands in the world, so a target off
@@ -16136,6 +16171,10 @@ function updateSkyBeacons() {
 
   if (antidotePosition) {
     count = addSkyBeaconTarget(count, antidotePosition, ANTIDOTE_FLAG_COLOR);
+  }
+
+  if (myWaypoint) {
+    count = addSkyBeaconTarget(count, myWaypoint, WAYPOINT_COLOR);
   }
 
   // One beacon per hunted tank. In Rabbit Chase that is the one the rabbit used
@@ -17623,6 +17662,11 @@ function placeXRScoreboardPanel() {
 
 let lastTime = performance.now();
 const MAX_FRAME_DELTA_SECONDS = 0.1;
+// The most of a long frame the tank drives through (`stepDriveFor`): a slow
+// client's tank keeps real time, as upstream's does and as the server and
+// other players predict it, while a hidden tab's first frame back is not a
+// leap across the map.
+const MAX_DRIVE_CATCHUP_SECONDS = 1;
 
 function setXRButtonState(enabled) {
   const xrBtn = document.getElementById('xrBtn');
@@ -18438,6 +18482,7 @@ function animate(frameTime) {
   // A hidden tab stops delivering frames, so the first one back would otherwise
   // spend the whole gap at once and throw the tank across the map.
   const deltaTime = Math.max(0, Math.min((now - lastTime) / 1000, MAX_FRAME_DELTA_SECONDS));
+  const driveTime = Math.max(0, Math.min((now - lastTime) / 1000, MAX_DRIVE_CATCHUP_SECONDS));
   lastTime = now;
 
   updateSkyClock(deltaTime);
@@ -18486,7 +18531,7 @@ function animate(frameTime) {
   markFramePhase('hud');
 
   handleInputEvents();
-  handleMotion(deltaTime);
+  handleMotion(driveTime);
   handleRoamMotion(deltaTime);
   markFramePhase('input');
 
@@ -18729,6 +18774,7 @@ function sampleXRRenderStats() {
 useRadarClient({ DEFAULT_MAP_SIZE, flags, getEffectiveTankColor, getFlagRadarStyle, getMyFlag, getMyTeamColorIndex, isColorblind, isHiddenFromRadar, isHuntMarked, isPreviewingAltWorld, isRadarJammed, isSeer, isSoughtTeamFlag, isTheRabbit, radarSoughtFlags, showMessage, tankAzimuth }, {
   get OBSTACLES() { return OBSTACLES; },
   get antidotePosition() { return antidotePosition; },
+  get waypoint() { return myWaypoint; },
   get currentWorldMapSize() { return currentWorldMapSize; },
   get gameConfig() { return gameConfig; },
   get myPlayerId() { return myPlayerId; },

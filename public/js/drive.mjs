@@ -64,6 +64,7 @@ import {
   testOrigRectTank,
   TANK,
 } from './collision.mjs';
+import { deadReckon } from './dead-reckoning.mjs';
 import { normalizeAngle, resolveTankMotion } from './motion.mjs';
 import { getMuzzleVelocity } from './shots.mjs';
 
@@ -430,6 +431,39 @@ export function holdDrive(state) {
   return noDriveEvents();
 }
 
+// The longest step `stepDrive` takes at once, as upstream's frame never
+// passes collision a longer one than its own tick; a longer frame is driven
+// in steps of this.
+export const MAX_DRIVE_STEP_SECONDS = 0.1;
+
+// `seconds` of motion, however long, in steps of at most
+// `MAX_DRIVE_STEP_SECONDS`, so a client drawing one frame a second still
+// drives in real time, as upstream's does (`playing.cxx:7009` hands the whole
+// tick on). A jump is asked for in the first step only. A teleport or a zone
+// crossing ends it there, so the frame reports the one crossing it made; the
+// rest of the events are the steps' together.
+export function stepDriveFor(state, intended, tank, world, clock, seconds) {
+  const events = noDriveEvents();
+  let left = Math.max(0, seconds);
+  let input = intended;
+  do {
+    const dt = Math.min(left, MAX_DRIVE_STEP_SECONDS);
+    left -= dt;
+    const step = stepDrive(state, input, tank, world, clock, dt);
+    input = { ...intended, jumpTriggered: false };
+    events.landed = step.landed ?? events.landed;
+    events.jumpStarted = events.jumpStarted ?? step.jumpStarted;
+    events.teleport = step.teleport;
+    events.zoneToggle = step.zoneToggle;
+    for (const key of ['fallStarted', 'teleported', 'drivenUpward', 'burrowEntered', 'forceSend']) {
+      events[key] = events[key] || step[key];
+    }
+    events.moved += step.moved;
+    if (step.teleport || step.zoneToggle) break;
+  } while (left > 1e-9);
+  return events;
+}
+
 // handleMotion: one frame of the tank's motion. Returns what happened in it:
 //   landed      { impactSpeed, obstacle, x, y, z } the frame it came down
 //   jumpStarted { flap } the frame it left the ground under its own power
@@ -788,9 +822,35 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
 // move names (`PlayerState::OnDriver`), so the others predict it as it goes.
 // Only one that moves a tank, and only while it rests on it.
 export function standingDriverIndex(state) {
-  if (!(state.onGround || state.onObstacle) || !state.lastObstacle) return -1;
+  return standingDriver(state)?.index ?? -1;
+}
+
+// That driver itself, or null.
+export function standingDriver(state) {
+  if (!(state.onGround || state.onObstacle) || !state.lastObstacle) return null;
   const driver = resolvePhysicsDriverAt(state.lastObstacle, state.x, state.y, state.z);
-  return Number.isInteger(driver?.index) && (driver.linear || driver.angular) ? driver.index : -1;
+  return Number.isInteger(driver?.index) && (driver.linear || driver.angular) ? driver : null;
+}
+
+// `_positionTolerance`'s default: how far, on any axis, a tank may stray from
+// where its last move predicts it before it sends another.
+export const POSITION_TOLERANCE = 0.09;
+
+// Whether the tank has strayed from where the others predict it off the move
+// it last sent, `seconds` ago, on `driver`, the driver that move named
+// (Player::isDeadReckoningWrong, Player.cxx:1273): a tank a wall holds back,
+// or a turntable carries round a curve the straight-line steps miss. Only on
+// the ground, where a move's own speeds are the prediction; a jump's forced
+// moves cover the air.
+export function sentMoveStrayed(sent, state, seconds, config, driver = null, tolerance = POSITION_TOLERANCE) {
+  if (!sent || sent.air || state.jumpDirection !== null) return false;
+  const predicted = deadReckon({
+    x: sent.x, y: sent.y, z: sent.z, azimuth: sent.a, forwardSpeed: sent.fs, rotationSpeed: sent.rs,
+    verticalVelocity: 0, jumpAzimuth: null, slideAzimuth: sent.sd,
+  }, seconds, config, driver);
+  return Math.abs(state.x - predicted.x) > tolerance
+    || Math.abs(state.y - predicted.y) > tolerance
+    || Math.abs(state.z - predicted.z) > tolerance;
 }
 
 // A move packet's motion, as the tank's state spells it -- the speeds rounded to
