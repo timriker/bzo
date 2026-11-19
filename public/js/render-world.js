@@ -129,6 +129,10 @@ const BZFLAG_MIRROR_SHADER = {
 };
 
 const BOX_TEXTURE_SCALES = { sideScale: 8, capScale: 2 };
+// A game flag's own alpha test (`BZFLAG_FLAG_ALPHA_THRESHOLD`,
+// render-flags.js), for a banner whose map states none.
+const BANNER_ALPHA_THRESHOLD = 0.9;
+
 // A banner found in a template's own frame, carried to one placement of it.
 const BANNER_POINT = new THREE.Vector3();
 function placeBanner(banner, matrix) {
@@ -2161,7 +2165,15 @@ export class WorldRendering {
       const key = `${JSON.stringify(banner.material)}|${uvs.hinge}|${uvs.free}|${uvs.top}`;
       let group = groups.get(key);
       if (!group) {
-        const material = this._meshFaceMaterial(banner.material);
+        // Cut out and writing depth, as a game flag's cloth is: in the
+        // sorted pass three.js would sort the whole batch as one object at
+        // the map's origin, and whatever stands behind a banner could draw
+        // over it.
+        const material = this._meshFaceMaterial({
+          ...banner.material,
+          noSorting: true,
+          alphaThreshold: banner.material.alphaThreshold || BANNER_ALPHA_THRESHOLD,
+        });
         material.side = THREE.DoubleSide;
         group = { material, uvs, banners: [] };
         groups.set(key, group);

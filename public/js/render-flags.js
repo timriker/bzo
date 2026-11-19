@@ -131,11 +131,13 @@ export class FlagRendering {
 
     const vertexCount = (BZFLAG_FLAG_CHUNKS + 1) * 2;
     // Upstream draws a GL_TRIANGLE_STRIP; the same vertices indexed as
-    // triangles are the strip, and the cloth is double sided so the alternating
-    // winding a strip implies does not matter.
+    // triangles are the strip, every other one swapped as a strip's are so all
+    // of them face -y. A lit map banner shades each triangle by the side it
+    // shows, so a mixed winding would draw it as alternating triangles.
     const indices = [];
     for (let vertex = 0; vertex < vertexCount - 2; vertex += 1) {
-      indices.push(vertex, vertex + 1, vertex + 2);
+      if (vertex % 2 === 0) indices.push(vertex, vertex + 1, vertex + 2);
+      else indices.push(vertex + 1, vertex, vertex + 2);
     }
     const uvs = new Float32Array(vertexCount * 2);
     for (let chunk = 0; chunk <= BZFLAG_FLAG_CHUNKS; chunk += 1) {
