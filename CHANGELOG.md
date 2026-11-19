@@ -6,6 +6,12 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.12] - 2026-11-19
+
+### Fixed
+- Waving map banners no longer show their triangles, and the sign or
+  buildings behind a banner no longer draw over it.
+
 ## [1.4.11] - 2026-11-18
 
 ### Added
