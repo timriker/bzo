@@ -4,7 +4,9 @@ bzo is a browser BZFlag client and server. Its server list, `/list`, shows
 every server on the public BZFlag list with a picture of its world, lets a
 browser view that world, and lets a browser watch or play there through a
 proxy. To do that, a bzo server sometimes connects to yours. This page says
-what it does, when, and how to be left out of its checks.
+what it does, when, and how to be left out of its checks. A server that is
+left out, or that blocks bzo, is listed as excluded, with only its address,
+description and owner.
 
 ## What bzo reads
 
@@ -83,7 +85,8 @@ its operator set `viewOtherServers`; bz.rikers.org does.
 | world fetch and `bzo-list` join | only when the hash changed, or bzo has no picture of the world |
 | guest check | a month after the last answer, a week after one that got none |
 | any of the above, failing | retried after 6 hours, doubling each time, up to a week |
-| a server that bans bzo | one join a month, asking whether the ban still stands |
+| a server that excludes bzo | one join a month, asking whether it still does |
+| a server that does not answer | nothing until a list refresh finds it answering |
 
 Background work is spread out over all the public servers together, not per
 server: at most one server is checked every 30 seconds, one world fetched a
@@ -105,34 +108,35 @@ A bare host covers every port on it. The list server then makes no
 background checks of it: no daily hash checks, world fetches, `bzo-list`
 visits or guest checks. A player who opens, watches or plays on your server
 through any bzo server still can, as with any other BZFlag client: bzo is
-acting for that player. To stop those too, ban the bzo server's address.
+acting for that player. To stop those too, exclude bzo on your server.
 
-On `/list` such a server has no picture, says it was left out at its
-operator's request, and sorts last.
+## Excluding bzo on your server
 
-## Banning bzo
+Ban the bzo server's address in bzfs. bzfs checks a ban only when a player
+joins, so it stops the join but not the world download or the hash query;
+bzo stops those itself once a join of its own is refused that way, and
+excludes your server.
 
-A ban on the bzo server's address works too. bzfs checks a ban only when a
-player joins, so it stops the join but not the world download or the hash
-query; bzo stops those itself once a join of its own is refused as a ban.
+Blocking the bzo server's address outright works too. A server stays on the
+BZFlag list only while the list server can reach it, so one that is listed
+but does not answer bzo's ping on a list refresh is excluded from that
+refresh until a refresh finds it answering again -- unless most of the list
+went quiet at once, which is bzo's own network. A routing fault between the
+two can exclude a server for as long as it lasts.
 
-On `/list` a server that bans bzo says so, has no picture, and sorts last. It
-shows only what the public list server says: nothing bzo learned before the
-ban, which may no longer be true. Its row's buttons:
-
-| Button | Offered | Why |
-|---|---|---|
-| Launch | yes | a player's own BZFlag client, from their own address |
-| View map, Practice, Import | no | bzfs would still send the world, but you have said no to bzo |
-| Watch, Play | no | a join through the bzo server would come from the banned address |
+On `/list` an excluded server, whichever way it was excluded, reads "Server
+excluded.", with a link to its owner's forum profile where the list names
+one, has no picture, and sorts last. Its row shows only its name and
+description, and its pane only its address and owner: nothing bzo learned
+before, which may no longer be true. It offers no buttons, Launch included.
+The list heading counts these as excluded, and the filter `/+x` lists them.
 
 bzo refuses the same requests by URL, for anyone. It stops the daily hash
-check and world fetches, and once a month joins once to ask whether the ban
-still stands. A lifted ban puts your server back on the ordinary schedule at
-once.
-
-The list's filter finds servers that ban bzo or asked to be left out with
-`/+x`.
+check and world fetches, and once a month joins once to ask whether your
+server still excludes bzo. A lifted ban is found at that join, so your
+server stays excluded for up to a month after you lift it, and is back on the
+ordinary schedule from then. A server that stops blocking bzo's address is
+back at the next list refresh, within minutes.
 
 Technical detail: [network.md](network.md) "Talking to a real bzfs" for the
 join, [proxy.md](proxy.md) "Guest access" for the guest check.

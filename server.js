@@ -1869,7 +1869,7 @@ function joinSizes(...sizes) {
 // operator has said no. The monthly guest check asks again (`bzfs-worlds.cjs`),
 // so a lifted ban is noticed.
 function bansBzo(host, port) {
-  return bzfsWorlds.recordFor(host, port)?.guest?.banned === true;
+  return bzfsWorlds.blocksBzo(bzfsWorlds.recordFor(host, port));
 }
 
 function publishWorldFacts(host, port) {
@@ -1877,7 +1877,7 @@ function publishWorldFacts(host, port) {
   // A server that bans bzo shows only that: whatever bzo learned before the
   // ban -- its variables, version, guest answers -- may be wrong now, and
   // nothing new is learned until the ban is lifted (`bansBzo`).
-  if (record?.guest?.banned === true) {
+  if (bzfsWorlds.blocksBzo(record)) {
     return { banned: true, excluded: isExcludedServer(host, port) || undefined };
   }
   const measured = measureImportedWorld(host, port);
@@ -1904,7 +1904,7 @@ function publishWorldFacts(host, port) {
     guestSpawn: guestAnswer(record?.guest?.spawn),
     // Why this server has no picture on purpose: it bans bzo, or its operator
     // asked to be left out (`excludeServers`, docs/server-check.md).
-    banned: record?.guest?.banned === true || undefined,
+    banned: bzfsWorlds.blocksBzo(record) || undefined,
     excluded: isExcludedServer(host, port) || undefined,
   };
   return Object.values(facts).some((value) => value) ? facts : null;
@@ -2295,7 +2295,15 @@ function listHeadingCount(entries, t) {
     ? t('{servers} with {players} player', { servers, players })
     : t('{servers} with {players} players', { servers, players }))
     + (bots > 0 ? (bots === 1 ? t(', {bots} bot', { bots }) : t(', {bots} bots', { bots })) : '')
+    + excludedCount(entries, t)
     + missingOverviewCount(entries, t);
+}
+
+// How many servers in a table are excluded -- blocking bzo, or left out at
+// their operator's request -- said only when some are.
+function excludedCount(entries, t) {
+  const blocked = entries.filter((entry) => entry.blocked).length;
+  return blocked ? t(', {excluded} excluded', { excluded: blocked }) : '';
 }
 
 // How many rows in a table are still waiting for their overview picture, said
@@ -2362,9 +2370,11 @@ function renderListReadout(entry, hidden, t) {
   if (entry.guestChat === 'no') words.push(t('Guests Muted'));
 
   const limits = [
-    [t('Time limit'), formatMatchDuration(entry.maxTime)],
-    [t('Max team score'), entry.maxTeamScore > 0 ? String(entry.maxTeamScore) : ''],
-    [t('Max player score'), entry.maxPlayerScore > 0 ? String(entry.maxPlayerScore) : ''],
+    ...(entry.blocked ? [] : [
+      [t('Time limit'), formatMatchDuration(entry.maxTime)],
+      [t('Max team score'), entry.maxTeamScore > 0 ? String(entry.maxTeamScore) : ''],
+      [t('Max player score'), entry.maxPlayerScore > 0 ? String(entry.maxPlayerScore) : ''],
+    ]),
     ...(entry.extras || []),
   ].filter(([, value]) => value)
     .map(([label, value]) => `<div class="paneRow"><span>${escapeHtml(label)}</span><span>${value}</span></div>`)
@@ -2383,7 +2393,11 @@ function renderListReadout(entry, hidden, t) {
   return `<div class="pane" id="${escapeHtml(entry.id)}"${hidden ? ' hidden' : ''}>`
     + `<div class="paneMain"><div class="paneBody">`
     + `<p class="paneTitle">${escapeHtml(entry.desc || entry.addr)}</p>`
-    + `<div class="paneCols">`
+    + (entry.blocked
+      // A blocked server's own report is nothing bzo can vouch for: only where
+      // it is and whose it is.
+      ? `<div class="paneCols"><div class="paneCol">${limits}</div></div>`
+      : `<div class="paneCols">`
     + `<div class="paneCol">`
     // Players, not people: upstream's own panel sums the observers into this
     // (`ServerMenu.cxx:568-571`) and bzo does not, on the same line `-mp`
@@ -2405,9 +2419,10 @@ function renderListReadout(entry, hidden, t) {
     + (words.length ? `<p class="paneWords">${words.map(escapeHtml).join(' &middot; ')}</p>` : '')
     + limits
     + `</div>`
-    + `</div></div>`
+    + `</div>`)
+    + `</div>`
     + (entry.note
-      ? `<div class="overview overviewNote"><p>${escapeHtml(entry.note)}</p></div>`
+      ? `<div class="overview overviewNote"><p>${entry.noteHtml || escapeHtml(entry.note)}</p></div>`
       : entry.overviewUrl === undefined
         ? ''
         : renderOverview(entry.overviewUrl, entry.desc || entry.addr, t))
@@ -2420,7 +2435,7 @@ function renderListReadout(entry, hidden, t) {
 // shrinks. Shown and hidden with its own pane, keyed off the same id.
 function renderListActions(entry, hidden) {
   return `<div class="rowActions" id="${escapeHtml(entry.id)}-actions"${hidden ? ' hidden' : ''}>`
-    + `<a class="action" href="${escapeHtml(entry.href)}">${escapeHtml(entry.action)}</a>`
+    + (entry.href ? `<a class="action" href="${escapeHtml(entry.href)}">${escapeHtml(entry.action)}</a>` : '')
     + (entry.actions || '')
     + `</div>`;
 }
@@ -2830,7 +2845,7 @@ function renderFilterHelp(listId, t) {
       ['gw guestWatch', escapeHtml(t('Players with no bzflag.org login may join to observe'))],
       ['gu guests', escapeHtml(t('Players with no bzflag.org login may spawn'))],
       ['gc guestChat', escapeHtml(t('Players with no bzflag.org login may chat'))],
-      ['x excluded', escapeHtml(t('Left out of bzo\'s checks: it bans bzo, or its operator asked'))],
+      ['x excluded', escapeHtml(t('Excluded from bzo list by server owner'))],
     ])
     + `<p>${l10n.html(t('For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not found out about matches neither {plus} nor {minus}.'), {
       bots: code('bots'), guestWatch: code('guestWatch'), guests: code('guests'), guestChat: code('guestChat'),
@@ -2969,19 +2984,27 @@ function renderServerList(listId, filterId, unsorted, t) {
   const rows = entries.map((entry, index) => {
     const mark = listGameMark(entry);
     const players = typeof entry.players === 'number' ? entry.players : 0;
+    // A server that blocks bzo, or asked to be left out, shows its address and
+    // title and nothing else: whatever else bzo knows of it is old or never
+    // was. The cells stay, empty, so the address still lines up.
+    const cells = entry.note
+      ? '<span class="count col-p"></span><span class="count col-o"></span>'
+        + '<span class="count col-a"></span><span class="count col-b"></span><span class="mark"></span>'
+        + '<span class="opt"></span>'.repeat(typeof entry.imported === 'boolean' ? 5 : 4)
+      : `<span class="count col-p">${players}</span>`
+        // Blank rather than zero when nobody has said: a bzo instance too old
+        // to report per-team figures has no observer count to show, and a `0`
+        // there would be a claim rather than a gap.
+        + `<span class="count col-o">${typeof entry.observers === 'number' ? entry.observers : ''}</span>`
+        + `<span class="count col-a">${typeof entry.autopilot === 'number' ? entry.autopilot : ''}</span>`
+        + `<span class="count col-b">${typeof entry.bots === 'number' ? entry.bots : ''}</span>`
+        + `<span class="mark" style="color:${mark.color}" title="${escapeHtml(t(mark.title))}">*</span>`
+        + listOptionLetters(bits(entry), entry.imported)
+        + listHashLetter(entry.hash);
     return `<li>`
-      + `<a class="srow${index === 0 ? ' selected' : ''}" href="${escapeHtml(entry.href)}"`
+      + `<a class="srow${index === 0 ? ' selected' : ''}" ${entry.href ? `href="${escapeHtml(entry.href)}"` : 'tabindex="0"'}`
       + ` data-pane="${escapeHtml(entry.id)}" data-i="${index}">`
-      + `<span class="count col-p">${players}</span>`
-      // Blank rather than zero when nobody has said: a bzo instance too old to
-      // report per-team figures has no observer count to show, and a `0` there
-      // would be a claim rather than a gap.
-      + `<span class="count col-o">${typeof entry.observers === 'number' ? entry.observers : ''}</span>`
-      + `<span class="count col-a">${typeof entry.autopilot === 'number' ? entry.autopilot : ''}</span>`
-      + `<span class="count col-b">${typeof entry.bots === 'number' ? entry.bots : ''}</span>`
-      + `<span class="mark" style="color:${mark.color}" title="${escapeHtml(t(mark.title))}">*</span>`
-      + listOptionLetters(bits(entry), entry.imported)
-      + listHashLetter(entry.hash)
+      + cells
       + `<span class="addr">${escapeHtml(entry.addr)}</span>`
       + `<span class="desc" style="color:${listShotColor(entry.maxShots)}">${escapeHtml(entry.desc || '')}</span>`
       + `</a></li>`;
@@ -3090,22 +3113,35 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
     const importedPath = resolveMapFilePath(importFileName);
     const maxima = Array.isArray(info.teamMaximums) ? info.teamMaximums : [];
     const world = s.world || publishWorldFacts(s.host, s.port) || {};
-    // A server bzo is banned from, or one left out of its checks, shows no
-    // picture and says why, and sorts last (`sortListEntries`).
+    // An excluded server -- one that blocks bzo, or one left out of its
+    // checks -- shows no picture and says why, and sorts last
+    // (`sortListEntries`).
     const left = world.excluded === true || isExcludedServer(s.host, s.port);
     const bans = !left && world.banned === true;
-    const note = left ? t('Left out of bzo\'s checks at its operator\'s request')
-      : (bans ? t('This server bans bzo') : '');
-    // Only launched where this server fetches nothing of it: one that bans
-    // bzo, or any while `viewOtherServers` is off.
-    const opens = !bans && VIEW_OTHER_SERVERS;
+    // Excluded either way: blocking bzo, or left out at the operator's
+    // request. Such a row offers nothing to follow.
+    const blocked = bans || left;
+    const note = blocked ? t('Server excluded.') : '';
+    // Who could change that: the server's registered owner, a forum name,
+    // linked to their forum profile.
+    const noteHtml = blocked && s.owner
+      ? l10n.html(t('Server excluded. Contact {owner}.'), {
+        owner: `<a href="https://forums.bzflag.org/memberlist.php?mode=viewprofile&amp;un=${encodeURIComponent(s.owner)}"`
+          + ` target="_blank" rel="noopener">${escapeHtml(s.owner)}</a>`,
+      })
+      : '';
+    // Only launched where this server fetches nothing of it: any while
+    // `viewOtherServers` is off.
+    const opens = !blocked && VIEW_OTHER_SERVERS;
     return {
       id: `bzfs-pane-${index}`,
       note,
+      noteHtml,
+      blocked,
       addr: `${s.host}:${s.port}`,
       hash: world.hash || '',
       owner: s.owner || '',
-      ip: s.ip || '',
+      ip: blocked ? '' : (s.ip || ''),
       variables: variablePairs(world.variables),
       // `_disableBots` read as BZDB.isTrue does.
       disableBots: variablePairs(world.variables)
@@ -3120,7 +3156,7 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       // Always the row's own link, imported or not -- `?viewmap=` already
       // imports on demand (`importMapForView`) the moment nothing this fresh
       // is registered yet, so there is no state where following it is wrong.
-      href: opens ? `/?viewmap=${encodeURIComponent(importFileName)}` : `bzflag://${s.host}:${s.port}`,
+      href: blocked ? '' : (opens ? `/?viewmap=${encodeURIComponent(importFileName)}` : `bzflag://${s.host}:${s.port}`),
       action: opens ? t('View map') : t('Launch'),
       // The picture of this server's world, when this instance holds an import
       // of it: an import is parsed and registered like any other map, so it
@@ -3155,12 +3191,14 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       // same mtime `sweepStaleImports` ages it out by.
       extras: [
         [t('Address'), escapeHtml(`${s.host}:${s.port}`)],
-        ['IP', escapeHtml(s.ip || '')],
+        ['IP', blocked ? '' : escapeHtml(s.ip || '')],
         [t('Owner'), ownerLink(s.owner)],
-        [t('Imported'), escapeHtml(importedPath ? statMtimeOrBlank(importedPath) : '')],
-        // What this server holds of that world, and what it cost -- see
-        // `describeImportedWorld`.
-        ...describeRelayedWorld(world, t),
+        ...(blocked ? [] : [
+          [t('Imported'), escapeHtml(importedPath ? statMtimeOrBlank(importedPath) : '')],
+          // What this server holds of that world, and what it cost -- see
+          // `describeImportedWorld`.
+          ...describeRelayedWorld(world, t),
+        ]),
       ],
       imported: Boolean(importedPath),
       // Watching is the live game rather than the map: a real observer
@@ -3171,8 +3209,7 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       // search for the address instead of showing it.
       // Hands the address to an installed BZFlag client, so it is offered to
       // everyone: nothing on this server is involved.
-      // A banning server's row is its Launch already, and offers nothing else.
-      actions: bans ? '' : (opens ? action(`bzflag://${s.host}:${s.port}`, t('Launch')) : '')
+      actions: blocked ? '' : (opens ? action(`bzflag://${s.host}:${s.port}`, t('Launch')) : '')
         + ((canWatch
           ? action(`/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}`, t('Watch'))
             // Playing there as `bzo-<callsign>`, unregistered, which a server
@@ -4378,13 +4415,18 @@ async function getRemoteServerList() {
     return remoteServerListCache.servers;
   }
   const servers = await fetchServerList(DEFAULT_LIST_SERVER, BZFS_PROTOCOL_VERSION);
-  await countServerBots(servers);
+  const pinged = await countServerBots(servers);
   remoteServerListCache = { at: Date.now(), servers };
   // The one place the list is actually refreshed, so the one place worth
   // handing to the world tracker (`server/bzfs-worlds.cjs`): a row that is new
   // or whose listed configuration has changed becomes due for a world check
   // ahead of its daily schedule.
-  bzfsWorlds.observe(servers);
+  //
+  // A listed server is one the BZFlag list server reached just now, so one
+  // that does not answer this server's ping is turning it away: it is
+  // treated as banning bzo until it answers again. Unless most of the list
+  // went quiet at once, which is this server's own network, not theirs.
+  bzfsWorlds.observe(servers, { trustSilence: pinged.answered * 2 >= pinged.asked });
   return servers;
 }
 
@@ -15449,13 +15491,15 @@ function createFlags() {
 
   if (teamFlagTeams.length > 0) log(`Flags: team flags for ${teamFlagTeams.join(', ')}`);
   const zoneFlagCount = flags.filter((flag) => flag.zoneIndex !== null).length;
+  // The zones the flags came from, not every zone: a spawn zone holds none.
+  const flagZoneCount = new Set(flags.filter((flag) => flag.zoneIndex !== null).map((flag) => flag.zoneIndex)).size;
   // A forbidden type is named once, on the forbidden list below; this names
   // only what bzo does not have and team types, which live on bases.
   const skippedUnforbidden = Array.from(skippedZoneFlags)
     .filter((abbreviation) => !zoneForbiddenFlags.includes(abbreviation)).sort();
   if (zoneFlagCount > 0 || skippedUnforbidden.length > 0) {
     log(
-      `Flags: ${zoneFlagCount} zone flags from ${MAP_ZONES.length} zones`
+      `Flags: ${zoneFlagCount} zone flags from ${flagZoneCount} zone${flagZoneCount === 1 ? '' : 's'}`
       + (skippedUnforbidden.length > 0 ? `; skipped ${skippedUnforbidden.join(', ')}` : '')
     );
   }

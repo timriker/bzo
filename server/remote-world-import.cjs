@@ -218,9 +218,12 @@ const PING_REPLY = 0x0303;
 // and eight u16s, then `maxPlayers` and each team's count and maximum.
 const PING_ROGUE_COUNT = 4 + 8 + 8 + 5 + 16 + 1;
 
+// Also marks each server pinged with whether it answered (`pingAnswered`), and
+// returns how many were asked and how many answered.
 async function countServerBots(servers, { timeoutMs = 1000 } = {}) {
   const targets = servers.filter((s) => s.info && net.isIPv4(s.ip || '') && s.port > 0);
-  if (!targets.length) return;
+  if (!targets.length) return { asked: 0, answered: 0 };
+  targets.forEach((s) => { s.pingAnswered = false; });
   const byAddress = new Map(targets.map((s) => [`${s.ip}:${s.port}`, s]));
   const socket = dgram.createSocket('udp4');
   socket.on('error', () => {});
@@ -228,6 +231,7 @@ async function countServerBots(servers, { timeoutMs = 1000 } = {}) {
     if (message.length < PING_ROGUE_COUNT + 10 || message.readUInt16BE(2) !== PING_REPLY) return;
     const server = byAddress.get(`${from.address}:${from.port}`);
     if (!server) return;
+    server.pingAnswered = true;
     let tanks = 0;
     for (let team = 0; team < 5; team++) tanks += message[PING_ROGUE_COUNT + (team * 2)];
     server.bots = Math.max(0, tanks - server.info.players);
@@ -239,6 +243,7 @@ async function countServerBots(servers, { timeoutMs = 1000 } = {}) {
   send();
   await new Promise((resolve) => setTimeout(resolve, timeoutMs / 2));
   socket.close();
+  return { asked: targets.length, answered: targets.filter((s) => s.pingAnswered).length };
 }
 
 function splitNamePort(nameport) {

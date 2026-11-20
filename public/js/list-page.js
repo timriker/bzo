@@ -97,7 +97,7 @@ const BOOL_LABELS = {
   gw: 'guestWatch', guestWatch: 'guestWatch',
   gu: 'guests', guests: 'guests',
   gc: 'guestChat', guestChat: 'guestChat',
-  // Left out of bzo's checks: its host bans bzo, or its operator asked.
+  // Excluded from bzo list by server owner.
   x: 'excluded', excluded: 'excluded',
 };
 
@@ -468,7 +468,8 @@ window.attachList = function attachList(listId, filterId, hashKey, defaultSort =
       // The click handler would otherwise swallow the Enter an anchor already
       // means: follow it.
       e.preventDefault();
-      window.location.href = row.href;
+      // A blocked server's row has nothing to follow.
+      if (row.href) window.location.href = row.href;
     }
   });
 

@@ -250,13 +250,32 @@ function createBzfsWorldTracker(deps) {
   // Called with each refresh of the public list. Cheap: it only compares
   // strings and marks records, and it is what makes a changed entry jump the
   // queue.
-  function observe(servers) {
+  //
+  // Each listed server also says whether it answered this refresh's ping
+  // (`pingAnswered`). The list server reached it to keep it listed, so one
+  // that does not answer bzo is blocking bzo (`silent`), from this refresh to
+  // the first that it answers again. `trustSilence` is false when most of the
+  // list went quiet at once, which is this server's network, not theirs.
+  function observe(servers, { trustSilence = false } = {}) {
     const next = new Map();
     for (const server of Array.isArray(servers) ? servers : []) {
       if (!server?.host || !server?.port) continue;
       next.set(serverKey(server.host, server.port), server);
     }
     listed = next;
+    const now = Date.now();
+    for (const [key, server] of listed) {
+      const record = records.get(key);
+      if (server.pingAnswered === true && record?.silent) {
+        records.set(key, { ...record, silent: false, silentAt: undefined, dueNow: true });
+        log(`[WORLDS] ${key} answers again`);
+        save();
+      } else if (server.pingAnswered === false && trustSilence && !record?.silent) {
+        records.set(key, { ...record, silent: true, silentAt: now });
+        log(`[WORLDS] ${key} does not answer, so blocks bzo`);
+        save();
+      }
+    }
     for (const [key, server] of listed) {
       const record = records.get(key);
       if (!record) continue;
@@ -270,6 +289,12 @@ function createBzfsWorldTracker(deps) {
     }
   }
 
+  // Whether a record says its server turns bzo away: a ban it said so with,
+  // or no answer at all while the list server can still reach it.
+  function blocksBzo(record) {
+    return record?.guest?.banned === true || record?.silent === true;
+  }
+
   // The most overdue server that is worth asking about, or null. A record with
   // `dueNow` outranks the schedule, and a recent failure outranks both.
   function pickDue(now) {
@@ -278,6 +303,9 @@ function createBzfsWorldTracker(deps) {
     for (const [key, server] of listed) {
       if (isExcluded(server.host, server.port)) continue;
       const record = records.get(key);
+      // One that does not answer at all is not dialled either: the ping that
+      // finds it answering again (`observe`) is what makes it due.
+      if (record?.silent) continue;
       // A server that bans bzo is not dialled at all, hash checks included,
       // until its ban is a month old; then it is only asked whether the ban
       // still stands (`checkBan`).
@@ -505,6 +533,7 @@ function createBzfsWorldTracker(deps) {
 
   return {
     observe,
+    blocksBzo,
     // An import somebody else caused -- a `?viewmap=` link, the Operator
     // panel, the `/list` form. It cost the same download this tracker would
     // have made, so recording it here both keeps the picture current and
