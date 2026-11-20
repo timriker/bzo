@@ -48,6 +48,7 @@ const {
   SERVER_PLAYER_ID: BZFS_SERVER_PLAYER,
   BzfsSession,
   CHAT_TEXT_MAX,
+  OBSERVER_TEAM: BZFS_OBSERVER_TEAM,
   splitBzfsChat,
   toBzfsCallsign,
   toBzfsChatText,
@@ -683,6 +684,36 @@ const TEAM_FLAG_ABBREVIATIONS = new Set(['R*', 'G*', 'B*', 'P*']);
 // pilot, and every session on that target can name it.
 const proxyPilotNames = new Map();
 
+// The sessions joined to each target now, by target key. Each one's roster is
+// the whole of its bzfs -- bzfs tells a newcomer every player's autopilot
+// state (`sendPlayerUpdate`, bzfs.cxx:547) and everyone each change -- so any
+// one of them can say who on that server is on autopilot.
+const liveSessions = new Map();
+
+function trackLiveSession(key, session) {
+  if (!liveSessions.has(key)) liveSessions.set(key, new Set());
+  liveSessions.get(key).add(session);
+}
+
+function untrackLiveSession(key, session) {
+  const set = liveSessions.get(key);
+  if (!set) return;
+  set.delete(session);
+  if (set.size === 0) liveSessions.delete(key);
+}
+
+// How many people on `key` are on autopilot, the way a bzo game counts its
+// own (observers and robots aside), or null when no session is there to ask.
+function proxyAutopilotCount(key) {
+  const session = liveSessions.get(key)?.values().next().value;
+  if (!session) return null;
+  let count = 0;
+  for (const player of session.state.players.values()) {
+    if (player.autopilot && player.team !== BZFS_OBSERVER_TEAM && player.type !== COMPUTER_PLAYER) count += 1;
+  }
+  return count;
+}
+
 function proxyShot(shot, ricochetAll) {
   const velocity = vec3Point(shot.velocity);
   const position = vec3Point(shot.pos);
@@ -1060,7 +1091,10 @@ async function handleProxyConnection(ws, req, request) {
   ws.on('error', (err) => logError(`[PROXY] ${key}: socket error`, err));
   ws.on('close', () => {
     log(`[PROXY] ${key}: viewer "${viewer.callsign}" gone`);
-    if (session) session.close();
+    if (session) {
+      untrackLiveSession(key, session);
+      session.close();
+    }
   });
 
   try {
@@ -1158,6 +1192,7 @@ async function handleProxyConnection(ws, req, request) {
     // has to reach the browser rather than leave it on a socket nothing will
     // ever send to again.
     session.on('close', (err) => {
+      untrackLiveSession(key, session);
       log(`[PROXY] ${key}: target hung up${err ? `: ${err.message}` : ''}`);
       // A kick, a ban or the target shutting down, which the wire does not
       // tell apart (MsgSuperKill). Upstream's client stays off after any of
@@ -1172,6 +1207,8 @@ async function handleProxyConnection(ws, req, request) {
       session.close();
       return;
     }
+    // A replay's roster is the recording's, not anyone on a live server.
+    if (!room) trackLiveSession(key, session);
     log(`[PROXY] ${key}: joined as id ${session.playerId},`
       + ` ${state.players.size} players, ${state.flags.filter(Boolean).length} flags,`
       + ` world ${mapEntry.fileName}`);
@@ -1373,6 +1410,7 @@ async function handleProxyConnection(ws, req, request) {
     session.on('autopilot', ({ id, on }) => {
       const callsign = session.state.players.get(id)?.callsign ?? id;
       log(`[PROXY] ${key}: "${callsign}" autopilot ${on ? 'on' : 'off'}`);
+      server.reportToListServer?.('autopilot');
       send({ type: 'autopilot', playerId: String(id), on, pilot: proxyPilotNames.get(`${key}#${id}`) });
     });
 
@@ -2186,6 +2224,7 @@ async function handleProxyConnection(ws, req, request) {
 
 module.exports = {
   useServer,
+  proxyAutopilotCount,
   PROXY_MAX_UPDATE_INTERVAL,
   sanitizeMotto,
   proxyMotto,

@@ -381,6 +381,7 @@ const {
 const { compileBzwWorld } = require('./server/bzw-compile.cjs');
 const { findLocalImage, localImageRefusal, IMG_URL_PREFIX } = require('./server/local-images.cjs');
 const { MODEL_FILE_TYPES, localModelFile, textureRefusal, checkLocalModel } = require('./server/local-models.cjs');
+const { listCounts, bzflagTeamCounts } = require('./server/list-counts.cjs');
 const { packWorldDatabase, bzfsWorldHashOfBzw } = require('./server/bzflag-world.cjs');
 const {
   DEFAULT_VOICE_CHANNEL,
@@ -2395,6 +2396,7 @@ function renderListReadout(entry, hidden, t) {
     + `<span>${typeof entry.players === 'number' ? entry.players : '?'}/${entry.maxPlayers || 0}</span></div>`
     // A bzo instance reports these; a bzfs row's are its UDP ping less its
     // list row (`countServerBots`).
+    + (entry.autopilot > 0 ? `<div class="paneRow"><span>${escapeHtml(t('Autopilot'))}</span><span>${entry.autopilot}</span></div>` : '')
     + (entry.bots > 0 ? `<div class="paneRow"><span>${escapeHtml(t('Bots'))}</span><span>${entry.bots}</span></div>` : '')
     + teamRows
     + `</div>`
@@ -2838,8 +2840,9 @@ function renderFilterHelp(listId, t) {
       operators: ['&lt;', '&lt;=', '&gt;', '&gt;=', '='].map(code).join(' '),
     }), [
       ['s shots', escapeHtml(t('Active shots a tank may have'))],
-      ['p players', escapeHtml(t('Players now, observers excluded'))],
+      ['p players', escapeHtml(t('Players at the controls now, observers excluded'))],
       ['bc botCount', escapeHtml(t('Bots now'))],
+      ['ac autopilotCount', escapeHtml(t('People on autopilot now'))],
       ['f freeSlots', escapeHtml(t('Playing slots still free'))],
       ['vt validTeams', escapeHtml(t('Colour teams the server offers'))],
       ['mt maxTime', escapeHtml(t('Time limit, in seconds'))],
@@ -2901,6 +2904,7 @@ function renderServerList(listId, filterId, unsorted, t) {
   const entries = [...unsorted].sort((a, b) => (Boolean(a.note) - Boolean(b.note))
     || (count(b.players) - count(a.players))
     || (count(b.observers) - count(a.observers))
+    || (count(b.autopilot) - count(a.autopilot))
     || (count(b.bots) - count(a.bots))
     || label(a).localeCompare(label(b))
     || String(a.addr || '').localeCompare(String(b.addr || ''), undefined, { numeric: true }));
@@ -2950,6 +2954,7 @@ function renderServerList(listId, filterId, unsorted, t) {
     ve: entry.version || '',
     ob: typeof entry.observers === 'number' ? entry.observers : null,
     bt: typeof entry.bots === 'number' ? entry.bots : null,
+    au: typeof entry.autopilot === 'number' ? entry.autopilot : null,
     // What the Name header sorts by: a server with no title sorts under its
     // address, which is what the row shows in that case anyway.
     n: (entry.desc || entry.addr || '').toLowerCase(),
@@ -2959,6 +2964,7 @@ function renderServerList(listId, filterId, unsorted, t) {
   const hasImports = entries.some((entry) => typeof entry.imported === 'boolean');
   const widths = `--col-p:${listColumnWidth('P', data.map((entry) => entry.p))};`
     + `--col-o:${listColumnWidth('O', data.map((entry) => entry.ob))};`
+    + `--col-a:${listColumnWidth('A', data.map((entry) => entry.au))};`
     + `--col-b:${listColumnWidth('B', data.map((entry) => entry.bt))}`;
   const rows = entries.map((entry, index) => {
     const mark = listGameMark(entry);
@@ -2971,6 +2977,7 @@ function renderServerList(listId, filterId, unsorted, t) {
       // report per-team figures has no observer count to show, and a `0` there
       // would be a claim rather than a gap.
       + `<span class="count col-o">${typeof entry.observers === 'number' ? entry.observers : ''}</span>`
+      + `<span class="count col-a">${typeof entry.autopilot === 'number' ? entry.autopilot : ''}</span>`
       + `<span class="count col-b">${typeof entry.bots === 'number' ? entry.bots : ''}</span>`
       + `<span class="mark" style="color:${mark.color}" title="${escapeHtml(t(mark.title))}">*</span>`
       + listOptionLetters(bits(entry), entry.imported)
@@ -2987,6 +2994,7 @@ function renderServerList(listId, filterId, unsorted, t) {
   const head = `<div class="shead">`
     + `<button class="count col-p active" data-field="p" ${title(t('Players'))}>P</button>`
     + `<button class="count col-o" data-field="ob" ${title(t('Observers'))}>O</button>`
+    + `<button class="count col-a" data-field="au" ${title(t('On autopilot, blank where unknown'))}>A</button>`
     + `<button class="count col-b" data-field="bt" ${title(t('Bots, blank where unknown'))}>B</button>`
     + `<button class="mark" data-field="rank"`
     + ` ${title(t('Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, cyan replay'))}>*</button>`
@@ -3243,8 +3251,14 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       // every tank, robots too (bzfs.cxx:3123). The bzfs row for the same
       // address has the people from the BZFlag list and the robots apart, so
       // a carried row reads the two from there when it has one.
-      players: relayed?.info ? relayed.info.players : game.players,
+      // Less whoever is on autopilot there, when the carrier could see: the
+      // BZFlag list counts them as players, and this list counts people at
+      // the controls.
+      players: relayed?.info && proxy
+        ? Math.max(0, relayed.info.players - (game.autopilot ?? 0))
+        : (relayed?.info ? relayed.info.players : game.players),
       bots: proxy ? relayed?.bots : game.bots,
+      autopilot: game.autopilot,
       disableBots: proxy
         ? proxyVars.some(([name, value]) => name === '_disableBots' && bzdbIsTrue(value))
         : game.disableBots === true,
@@ -3512,6 +3526,7 @@ ${discoveryHead}
   .srow .count, .shead .count, .srow .num, .shead .num { flex: none; text-align: right; }
   .col-p { width: var(--col-p, 2ch); }
   .col-o { width: var(--col-o, 2ch); }
+  .col-a { width: var(--col-a, 2ch); }
   .col-b { width: var(--col-b, 2ch); }
   .col-obj { width: var(--col-obj, 4ch); }
   .col-fa { width: var(--col-fa, 5ch); }
@@ -6062,6 +6077,11 @@ function sanitizeReportedWorld(world) {
 function sanitizeListServerReadout(source) {
   return {
     bots: boundedReportCount(source?.bots, 255),
+    // People on autopilot, or null where the reporter could not say -- an
+    // instance too old to count them, or a proxy with nobody connected
+    // through it to see the target's roster.
+    autopilot: source?.autopilot === null || source?.autopilot === undefined
+      ? null : boundedReportCount(source.autopilot, 255),
     disableBots: source?.disableBots === true,
     teamCounts: boundedTeamArray(source?.teamCounts),
     teamMaximums: boundedTeamArray(source?.teamMaximums),
@@ -6424,7 +6444,7 @@ function listPublicListServerRows() {
 // The reasons a report may name. `join`/`part` only update the live counts
 // below; only `boot`/`periodic` also trigger the validation callback -- "an
 // active game should not cost an outbound HTTPS round trip per player."
-const LIST_SERVER_REPORT_REASONS = new Set(['boot', 'periodic', 'join', 'part', 'shutdown']);
+const LIST_SERVER_REPORT_REASONS = new Set(['boot', 'periodic', 'join', 'part', 'autopilot', 'shutdown']);
 
 // How many proxied targets one instance's row may contribute. An operator
 // with more servers than this is not a case bzo has met; the cap is here so a
@@ -13363,13 +13383,18 @@ function computeProxyRows() {
   return Object.values(PROXY_TARGETS).map((target) => {
     const status = proxyStatuses.get(target.key) || { reachable: false, error: 'not yet dialled' };
     const listed = findPublicServer(remoteServerListCache.servers, target.displayHost, target.displayPort);
+    // Who is on autopilot there, from a session joined through this proxy,
+    // or null with nobody connected to see.
+    const autopilot = bzfsProxy.proxyAutopilotCount(target.key);
     return {
       target: target.key,
       title: listed?.title || '',
       // Whether anyone may play there without a global login, which is what
       // puts a Play on its /list row.
       requireLogin: target.requireLogin,
-      players: status.players ?? 0,
+      // People at the controls, as a bzo game reports its own.
+      players: Math.max(0, (status.players ?? 0) - (autopilot ?? 0)),
+      autopilot,
       maxPlayers: status.maxPlayers ?? 0,
       maxShots: status.maxShots ?? 0,
       style: status.style || '',
@@ -13394,13 +13419,7 @@ function computeListServerStatus() {
   // Per-team, in `-mp` order, so a bzo row's readout pane reads the same as a
   // bzfs row's (`decodePingHex`'s `teamCounts`/`teamMaximums`). One pass:
   // this runs on every join and part, not just the periodic report.
-  const joinedByTeam = new Map();
-  let bots = 0;
-  for (const player of players.values()) {
-    if (!player.joined) continue;
-    joinedByTeam.set(player.team, (joinedByTeam.get(player.team) || 0) + 1);
-    if (player.bot && player.team !== PLAYER_TEAM.OBSERVER) bots++;
-  }
+  const counts = listCounts(players.values(), BZFLAG_MP_TEAM_ORDER);
   return {
     proxies: computeProxyRows(),
     // Which world this is, which a row had no way to say. `random` for a
@@ -13418,11 +13437,12 @@ function computeListServerStatus() {
     // pane beside it says about an imported one.
     world: measureLiveWorld(),
     title: listTitle(),
-    // People, which is what the list sorts on. Bots are in the team counts,
-    // as upstream's ping has them, and counted on their own beside this.
-    players: [...players.values()]
-      .filter((p) => p.joined && p.team !== PLAYER_TEAM.OBSERVER && !p.bot).length,
-    bots,
+    // People at the controls, which is what the list sorts on. Bots, and
+    // people whose autopilot is flying, are in the team counts, as upstream's
+    // ping has every tank, and counted on their own beside this.
+    players: counts.players,
+    bots: counts.bots,
+    autopilot: counts.autopilot,
     maxPlayers: MAX_REAL_PLAYERS,
     version: BZO_APP_VERSION,
     gameOptionsBits: computeLocalGameOptionsBits(),
@@ -13444,7 +13464,7 @@ function computeListServerStatus() {
     // The rest of what /list's readout pane shows. A bzfs row gets all of
     // this free from its ping packet, so without it a bzo row -- the one this
     // instance knows most about -- was the thinner of the two.
-    teamCounts: BZFLAG_MP_TEAM_ORDER.map((team) => joinedByTeam.get(team) || 0),
+    teamCounts: counts.teamCounts,
     teamMaximums: BZFLAG_MP_TEAM_ORDER.map((team) => TEAM_MODE.limits[team] || 0),
     // Tenths of a second, the ping packet's own unit and bzo's.
     shakeTimeout: FLAG_SHAKE_TIMEOUT,
@@ -13542,18 +13562,14 @@ const BZFLAG_PLAYER_TYPE = { TANK: 0, COMPUTER: 1 };
 
 // The list row in a bzfs ping's terms (`getTeamCounts`, bzfs.cxx:830): only
 // humans count, the rabbit and hunters count as rogues, and in Rabbit Chase
-// the rogue limit is the hunters' (CmdLineOptions.cxx:1597). `withBots` is
-// the UDP ping's and MsgQueryGame's count instead, whole team sizes.
+// the rogue limit is the hunters' (CmdLineOptions.cxx:1597). Unlike bzfs, a
+// person on autopilot is not counted either: nobody is at the controls, and
+// the list says how many people are playing. `withBots` is the UDP ping's
+// and MsgQueryGame's count instead, whole team sizes.
 function computeBzflagStatus({ withBots = false } = {}) {
   const status = computeListServerStatus();
   const rogueSlot = BZFLAG_MP_TEAM_ORDER.indexOf(PLAYER_TEAM.ROGUE);
-  const counts = BZFLAG_MP_TEAM_ORDER.map(() => 0);
-  for (const player of players.values()) {
-    if (!player.joined || (player.bot && !withBots)) continue;
-    const slot = player.team === PLAYER_TEAM.RABBIT || player.team === PLAYER_TEAM.HUNTER
-      ? rogueSlot : BZFLAG_MP_TEAM_ORDER.indexOf(player.team);
-    if (slot >= 0) counts[slot] += 1;
-  }
+  const counts = bzflagTeamCounts(players.values(), BZFLAG_MP_TEAM_ORDER, { withBots });
   const maximums = [...status.teamMaximums];
   maximums[rogueSlot] = Math.max(maximums[rogueSlot] || 0, TEAM_MODE.limits[PLAYER_TEAM.HUNTER] || 0);
   return { ...status, teamCounts: counts, teamMaximums: maximums };
@@ -15346,6 +15362,10 @@ function setAutopilot(player, on, pilot) {
     broadcastAll({ type: 'autopilot', playerId: player.id, on, pilot: on ? player.autopilotName : previousName });
   }
   if (player.joined) broadcastPlayerRecord('playerUpdated', player);
+  // A person handing the controls to a pilot, or taking them back, moves
+  // between the lists' player count and their autopilot count (`players`,
+  // `autopilot`), so both lists hear it now, as they would a join.
+  if (changed && player.joined && !player.bot) reportToListServer('autopilot');
 }
 
 function requestPause(player) {
@@ -17557,6 +17577,7 @@ bzfsProxy.useServer({
   vec3Point,
   VOICE_ON,
   matchServerLine: l10n.matchServerLine,
+  reportToListServer,
   voiceRtcConfigFor,
   worldBase,
   worldPhysicsDrivers,

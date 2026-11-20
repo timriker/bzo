@@ -84,15 +84,16 @@ doing.
 
 ## Reporting
 
-The reporting client (`reportToListServer`, `server.js:10715`) posts JSON, not
-bzfs's form-encoded body -- both ends are bzo, so there's no reason to mimic a
-wire format that predates JSON everywhere. It fires on boot, every ~15 minutes
-after (`ListServerReAddTime`'s own cadence), on every join and part (for live
-counts), and once more as a REMOVE-equivalent on `SIGTERM`/ `SIGINT`. Payload:
-`key`, `reason`, title/description, player and max counts, `version`, the shot
+The reporting client (`reportToListServer`) posts JSON, not bzfs's
+form-encoded body -- both ends are bzo, so there's no reason to mimic a wire
+format that predates JSON everywhere. It fires on boot, every ~15 minutes
+after (`ListServerReAddTime`'s own cadence), on every join and part and every
+time a person turns autopilot on or off (for live counts), and once more as a
+REMOVE-equivalent on `SIGTERM`/ `SIGINT`. Payload: `key`, `reason`,
+title/description, player and max counts, `version`, the shot
 limit and game style (`maxShots`, `style` -- `GAME_CONFIG.SHOT_MAX_ACTIVE`,
-`GAME_TYPE`), and the game-option bits (`computeLocalGameOptionsBits`,
-`server.js:10699`) -- the same fields `/list` already draws for a remote bzfs
+`GAME_TYPE`), and the game-option bits (`computeLocalGameOptionsBits`) -- the
+same fields `/list` already draws for a remote bzfs
 row's Shots/Style columns and option bits, read off this server's own resolved
 config instead of decoded off the wire. Also `map`, the world being played --
 `mapFile`, or `random` for a generated one -- which is the `?viewmap=` name on
@@ -243,15 +244,15 @@ this instance's key admin -- the key table first, the register-a-key form
 after it, since the table is what an operator came for and registering a
 new key is the occasional case.
 
-Each of the two server lists is one line per server with a readout pane
-above it -- upstream's own server menu rather than a wide table
-(`ServerMenu.cxx`). A row carries the player and observer counts, a game-type
-`*` whose colour says which of the four it is, `J F R` for jumping,
+Each of the two server lists is one line per server with a readout pane above
+it -- upstream's own server menu rather than a wide table (`ServerMenu.cxx`). A
+row carries the player, observer, autopilot and robot counts (`P O A B`), a
+game-type `*` whose colour says which of the four it is, `J F R` for jumping,
 superflags and ricochet, and then the address and title, the title's *colour*
 being the shot count: purple for zero through yellow for three, graded orange
 into red above that. The bzfs list has a fourth letter, `I`, which is bzo's
-own: whether this server already holds an import of that map, the one fact in
-a row that is about *this* server rather than that one.
+own: whether this server already holds an import of that map, the one fact in a
+row that is about *this* server rather than that one.
 
 The pane is two columns, as upstream's panel is: who is playing on the left
 -- the player count and each team's own count and maximum -- and what the
@@ -385,6 +386,21 @@ something unusable is left alone for six hours rather than retried on the next
 tick. State lives in `cache/bzfs-worlds.json`, a regeneratable cache: losing it
 costs one dial per server, not one download.
 
+Who counts (`server/list-counts.cjs`): `players` is people at the controls,
+observers aside. `autopilot` is people whose autopilot is flying their tank,
+and `bots` is robots; both are counted beside `players`, not in it, and every
+tank is in the per-team counts, the rabbit and hunters among the rogues. The
+BZFlag list a bzo game publishes to counts the same way: unlike bzfs, which
+counts a person on autopilot as a player, bzo leaves them out, and publishes
+again whenever one turns it on or off.
+
+The `A` column is people on autopilot. A bzo instance reports its own. A row
+it proxies is counted from the roster of a session joined through it -- bzfs
+tells every client who is on autopilot -- and that row's `P` is the target's
+listed players less them, so `P` means the same on every bzo row. With nobody
+connected through the proxy, and on a bzfs row or an instance too old to
+report it, `A` is blank.
+
 The `B` column is robots. A bzo instance reports its count. bzfs's list row
 counts only humans (`getTeamCounts`, `bzfs.cxx:860`) while its UDP ping
 counts whole teams (`respondToPing`, `bzfs.cxx:1466`), so each refresh pings
@@ -445,8 +461,8 @@ column, and the last column, a server's address followed by its
 description, sorts by either: **Name** or **Description**. The list arrives
 sorted by player count, the only order upstream ever shows
 (`ServerItem::getSortFactor`). Each heading says how many servers
-are under it and how many people are playing on them -- observers are
-counted as neither, here or anywhere else on the page.
+are under it and how many people are playing on them -- observers, and people
+on autopilot, are counted as neither, here or anywhere else on the page.
 
 A bzo row's link enters that game directly: each row is its own origin and its
 own websocket, not something to import a map from. An instance that proxies

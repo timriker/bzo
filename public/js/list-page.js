@@ -105,6 +105,7 @@ const RANGE_LABELS = {
   s: 'shots', shots: 'shots',
   p: 'players', players: 'players',
   bc: 'botCount', botCount: 'botCount',
+  ac: 'autopilotCount', autopilotCount: 'autopilotCount',
   f: 'freeSlots', freeSlots: 'freeSlots',
   vt: 'validTeams', validTeams: 'validTeams',
   mt: 'maxTime', maxTime: 'maxTime',
@@ -252,6 +253,7 @@ function rangeValue(entry, key) {
     case 'shots': return entry.s;
     case 'players': return entry.p;
     case 'botCount': return entry.bt ?? undefined;
+    case 'autopilotCount': return entry.au ?? undefined;
     case 'maxTime': return entry.mt;
     case 'maxPlayers': return entry.mp;
     case 'maxTeamScore': return entry.mts;
@@ -269,7 +271,8 @@ function rangeValue(entry, key) {
   // at all -- upstream's `countFreeSlots`.
   if (key === 'freeSlots' || key.endsWith('Free')) {
     if (!counts || !maxima) return undefined;
-    const totalFree = entry.mp - (entry.p + counts[5]);
+    // A person on autopilot is out of `p` but still holds a slot.
+    const totalFree = entry.mp - (entry.p + (entry.au || 0) + counts[5]);
     if (key === 'freeSlots') {
       const sum = maxima.slice(0, 5)
         .reduce((acc, max, i) => acc + (max - counts[i]), 0);
