@@ -631,6 +631,9 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
   state.lastVelocityY = velocityY;
 
   // One pass: position, height and heading come back resolved together.
+  // How fast it was coming down going into the step: a landing on a roof
+  // stops the fall inside the step, so the speed after it says nothing.
+  const fallSpeed = Math.max(0, -(state.verticalVelocity || 0));
   const step = resolveStep(state, velocityX, velocityY, state.verticalVelocity || 0,
     rotationInput * tankAngVelNow, dt, tank, world, intended, groundLimit);
   state.stuckFrameCount = step.stuckFrameCount;
@@ -686,7 +689,8 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
   if (wasInAir && !nextInAir) {
     events.forceSend = true;
     events.landed = {
-      impactSpeed: Math.abs(step.velocityZ || 0), obstacle: step.obstacle || null, x: step.x, y: step.y, z: step.z,
+      impactSpeed: Math.max(fallSpeed, Math.abs(step.velocityZ || 0)),
+      obstacle: step.obstacle || null, x: step.x, y: step.y, z: step.z,
     };
     state.jumpDirection = null;
     state.verticalVelocity = 0;

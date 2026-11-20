@@ -12623,6 +12623,17 @@ function updateAltitudeTape() {
 // `silent` is the bounce branch above winning the else-chain: upstream still
 // runs `EFFECTS.addLandEffect` for any landing (LocalPlayer.cxx:799-801) and
 // only the sound is skipped, so the ring and the squish stay.
+// The landing's bump on the pad: none for a drop too small to feel -- a step
+// down, a bump off a ledge -- and full for a fall twice as hard as a plain
+// jump comes down from.
+const LANDING_RUMBLE_MIN_SPEED = 3;
+function rumbleLanding(impactSpeed) {
+  const speed = Math.max(0, Number(impactSpeed) || 0);
+  if (speed < LANDING_RUMBLE_MIN_SPEED) return;
+  const jumpSpeed = Number(gameConfig?.JUMP_VELOCITY) || 19;
+  rumble('land', (speed - LANDING_RUMBLE_MIN_SPEED) / ((2 * jumpSpeed) - LANDING_RUMBLE_MIN_SPEED));
+}
+
 function triggerLandingFeedback(tank, impactSpeed = 0, { local = false, silent = false } = {}) {
   if (!tank?.position || isPreviewingAltWorld()) return;
   const clampedImpact = Math.max(0, impactSpeed || 0);
@@ -14872,13 +14883,13 @@ function handleMotion(deltaTime) {
 
   if (events.landed) {
     clearJumpPredictionDebug(myTank);
-    triggerLandingFeedback(myTank, events.landed.impactSpeed, {
-      local: true,
-      silent: isDrivenUpward(events.landed.obstacle, events.landed.x, events.landed.y, events.landed.z),
-    });
+    const silent = isDrivenUpward(events.landed.obstacle, events.landed.x, events.landed.y, events.landed.z);
+    triggerLandingFeedback(myTank, events.landed.impactSpeed, { local: true, silent });
+    if (!silent) rumbleLanding(events.landed.impactSpeed);
   }
   if (events.jumpStarted) {
     renderManager.playSound(events.jumpStarted.flap ? 'flap' : 'jump', myTank.position);
+    rumble('jump');
     renderManager.fireTankJumpJets(myTank);
   }
   if (events.zoneToggle) {

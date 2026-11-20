@@ -478,7 +478,17 @@ const RUMBLE_EFFECTS = {
   fire: { ms: 100, strong: 0, weak: 1 },
   laser: { ms: 80, strong: 1, weak: 1 },
   shock: { ms: 500, strong: 0, weak: 1 },
+  // bzo's own, beside upstream's four: a tick as the tank leaves the ground
+  // (or flaps), and a bump as it lands, scaled by how hard it came down.
+  jump: { ms: 40, strong: 0, weak: 0.3 },
+  land: { ms: 60, strong: 0.2, weak: 0 },
 };
+
+// A landing's bump, from `landingRumbleScale`'s 0 (a hop) to 1 (a long fall).
+function landEffect(scale) {
+  const s = Math.min(1, Math.max(0, scale));
+  return { ms: 60 + (90 * s), strong: 0.2 + (0.5 * s), weak: 0 };
+}
 
 export function setRumbleEnabled(enabled) {
   rumbleEnabled = Boolean(enabled);
@@ -491,8 +501,8 @@ export function isRumbleEnabled() {
 // Shake the pad the player is driving with. Like SDL_JoystickRumble, a new
 // effect replaces one still playing. In a headset the controllers are the only
 // input; each has one motor, so it takes the stronger of the two.
-export function rumble(kind) {
-  const effect = RUMBLE_EFFECTS[kind] || RUMBLE_EFFECTS.fire;
+export function rumble(kind, scale = 1) {
+  const effect = kind === 'land' ? landEffect(scale) : (RUMBLE_EFFECTS[kind] || RUMBLE_EFFECTS.fire);
   if (!rumbleEnabled) return;
   if (xrState.enabled) {
     pulseXRControllers(Math.max(effect.strong, effect.weak), effect.ms);

@@ -303,10 +303,11 @@ desk does not creep. The right stick is free.
 
 The pad rumbles when you fire and when your tank dies, as BZFlag's does: a
 short buzz for a shot, longer for a shock wave, both motors for a laser, and
-one long, strong shake for a death. It rumbles only while it is what you are
-playing with -- a key or a click hands control back and keeps it quiet -- and
-never for an observer. **Rumble** in Settings turns it off. The browser has to
-support it; Chrome and Edge do.
+one long, strong shake for a death. bzo adds a light tick as you jump and a
+bump as you land, harder the further you fell. It rumbles only while it is what
+you are playing with -- a key or a click hands control back and keeps it quiet
+-- and never for an observer. **Rumble** in Settings turns it off. The browser
+has to support it; Chrome and Edge do.
 
 ## XR controllers
 
