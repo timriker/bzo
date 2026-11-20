@@ -150,7 +150,10 @@ function sendResponse(res, response, vdirName) {
       httpOnly: true,
     });
   }
-  res.end(body);
+  // `send` states the length, as every other page bzo serves does. With no
+  // body it would call the response a download, so an empty one just ends.
+  if (body.length > 0) res.send(body);
+  else res.end();
 }
 
 // Upstream's HTTPIndexHandler: each page with a link and its description.

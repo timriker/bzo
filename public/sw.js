@@ -189,8 +189,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Live server state: never cached, never intercepted.
-  if (url.pathname.startsWith('/api/') || url.pathname === '/manifest.webmanifest') return;
+  // Live server state: never cached, never intercepted. Plugin pages are
+  // the server's own pages, built per visitor and of no use offline.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/plugins/')
+    || url.pathname === '/manifest.webmanifest') return;
 
   if (ASSET_PATHS.test(url.pathname)) {
     event.respondWith(cacheFirst(request));
