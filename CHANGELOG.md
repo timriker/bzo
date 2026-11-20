@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.16] - 2026-11-20
+
 ### Changed
 - An excluded BZFlag server carries only its address, description and owner,
   in `/list`'s data and in the list other bzo servers read: no player counts,
