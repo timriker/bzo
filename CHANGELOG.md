@@ -6,6 +6,20 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.15] - 2026-11-20
+
+### Added
+- TimeTrial offers Rapid Fire, Super Bullet, Ricochet, Shield, Steamroller,
+  Stealth and Identify, three shots each.
+- The BZFlag list heading counts excluded servers.
+
+### Changed
+- A server on the BZFlag list that does not answer bzo is excluded until it
+  answers again, as one that bans bzo is.
+- An excluded server's row shows only its address and description, its pane
+  only its address and owner, with "Server excluded. Contact <owner>." linking
+  the owner's forum profile, and it offers no buttons.
+
 ## [1.4.14] - 2026-11-20
 
 ### Added
