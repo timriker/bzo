@@ -6,6 +6,31 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.13] - 2026-11-20
+
+### Added
+- The Angry tank: a cartoon tank with a face and a bandana, on the stock
+  tank's treads and wheels, wearing its own texture in each team's colour.
+- A server can offer its own tank models: an OBJ in `data/obj/` with the MTL
+  and texture it names, held to size limits (#208).
+- `tankModel` in server.json sets the model players start in until they pick
+  one, and `bots.model` the one bots wear; both are live in the operator
+  panel. `/setmodel <player> <model>` changes any player's.
+- An Idle bot pilot: a bot that never drives or fires, a target or a model on
+  show.
+
+### Changed
+- A model with its own texture is tinted only where it carries its main
+  colour; outlines, eyes and other colours keep their paint, and a `team`
+  material marks exactly what takes the team colour.
+- Paused and idle bots ride conveyors and fall as the world moves them.
+- The operator panel's Bot Pilot row is now Pilot, beside a new Model row.
+
+### Fixed
+- A phone restoring the app no longer comes back paused, and one tap brings
+  fullscreen back after Android drops it.
+- Plugin pages are never cached by the service worker.
+
 ## [1.4.12] - 2026-11-19
 
 ### Fixed
