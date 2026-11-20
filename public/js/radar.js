@@ -297,6 +297,24 @@ function getRadarBases() {
   return radarBaseList.list;
 }
 
+// The teleporters, drawn after the bases as yellow lines along each portal,
+// as `RadarRenderer::renderBasesAndTeles` draws them (`glColor4f(1, 1, 0.25)`
+// scaled by `colorScale` and `transScale`): a teleporter is thinner than a
+// pixel at most ranges, and a line always draws something.
+let radarTeleporterList = { source: null, list: [] };
+
+function getRadarTeleporters() {
+  if (radarTeleporterList.source !== client.OBSTACLES) {
+    radarTeleporterList = {
+      source: client.OBSTACLES,
+      list: client.OBSTACLES
+        .filter((obs) => obs.kind === 'teleporter' && !obs.noRadar)
+        .map((obs) => ({ obs, cullRadius: getRadarObstacleCullRadius(obs) })),
+    };
+  }
+  return radarTeleporterList.list;
+}
+
 function getRadarObstacleTop(obs) {
   return getObstacleBase(obs) + getObstacleHeight(obs);
 }
@@ -311,7 +329,7 @@ function getRadarObstacles() {
       // out instead. A mesh draws through `getRadarMeshObstacles` below instead of
       // here -- it has no single footprint the way a box's `w`/`d` gives one.
       list: [...client.OBSTACLES]
-        .filter((obs) => !obs.noRadar && obs.type !== 'mesh' && obs.kind !== 'base')
+        .filter((obs) => !obs.noRadar && obs.type !== 'mesh' && obs.kind !== 'base' && obs.kind !== 'teleporter')
         .sort((left, right) => getRadarObstacleTop(left) - getRadarObstacleTop(right))
         .map((obs) => ({ obs, cullRadius: getRadarObstacleCullRadius(obs) })),
     };
@@ -496,6 +514,8 @@ const RADAR_TINT_STRENGTH = 0.65;
 // A base's outline, in panel pixels. Upstream's is a one-pixel line on a panel
 // a fraction the size of this one.
 const RADAR_BASE_OUTLINE_WIDTH = 1.5;
+const RADAR_TELEPORTER_RGB = [255, 255, 64];
+const RADAR_TELEPORTER_LINE_WIDTH = 1.5;
 const RADAR_NEUTRAL_FILL = `rgb(${RADAR_NEUTRAL_FILL_RGB.join(',')})`;
 
 // How finely an obstacle's depth opacity is rounded before it decides whether
@@ -1194,6 +1214,42 @@ export function updateRadar() {
       }
       client.radarCtx.closePath();
       client.radarCtx.strokeStyle = stroke;
+      client.radarCtx.stroke();
+    }
+    client.radarCtx.restore();
+  }
+
+  // The teleporters over the bases -- see `getRadarTeleporters`.
+  const radarTeleporters = Array.isArray(client.OBSTACLES) ? getRadarTeleporters() : [];
+  if (radarTeleporters.length) {
+    client.radarCtx.save();
+    client.radarCtx.beginPath();
+    client.radarCtx.rect(center - radarWorldHalfExtent, center - radarWorldHalfExtent,
+      radarWorldHalfExtent * 2, radarWorldHalfExtent * 2);
+    client.radarCtx.clip();
+    client.radarCtx.lineWidth = RADAR_TELEPORTER_LINE_WIDTH;
+    const toPanel = (worldX, worldY) => {
+      const rel = toRadarRelative(worldX, worldY);
+      return [center + ((rel.x / radarDistance) * radarWorldHalfExtent),
+        center + ((rel.y / radarDistance) * radarWorldHalfExtent)];
+    };
+    for (const { obs, cullRadius } of radarTeleporters) {
+      const centerRel = toRadarRelative(obs.pos[0], obs.pos[1]);
+      if (isOutsideRadarSquare(centerRel.x, centerRel.y, cullRadius)) continue;
+      const base = getObstacleBase(obs);
+      const height = getObstacleHeight(obs);
+      const shade = getRadarDepthScale(pz, base, height, RADAR_OBJECT_DEPTH_FLOOR);
+      const [red, green, blue] = RADAR_TELEPORTER_RGB.map((value) => Math.round(value * shade));
+      // Along the portal: the breadth, across the teleporter's own heading.
+      const breadth = obs.size ? obs.size[1] : 4;
+      const alongX = -Math.sin(obs.angle || 0) * breadth;
+      const alongY = Math.cos(obs.angle || 0) * breadth;
+      const [fromX, fromY] = toPanel(obs.pos[0] - alongX, obs.pos[1] - alongY);
+      const [toX, toY] = toPanel(obs.pos[0] + alongX, obs.pos[1] + alongY);
+      client.radarCtx.beginPath();
+      client.radarCtx.moveTo(fromX, fromY);
+      client.radarCtx.lineTo(toX, toY);
+      client.radarCtx.strokeStyle = `rgba(${red},${green},${blue},${getRadarOpacity(pz, base, height)})`;
       client.radarCtx.stroke();
     }
     client.radarCtx.restore();

@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- Teleporters show on the radar and the list's map pictures as yellow lines,
+  as upstream's radar draws them.
+
 ### Fixed
 - A tank jumping off a conveyor keeps its push through the air, as upstream's
   does.

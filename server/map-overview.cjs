@@ -122,9 +122,11 @@ function baseStroke(team) {
 // picture is drawn once and kept under its world's hash, so without this an
 // old drawing would be served for as long as its world stayed listed; the
 // server clears the directory once when this differs from what drew it.
-const OVERVIEW_STYLE = 2;
+const OVERVIEW_STYLE = 3;
 
 const BASE_OUTLINE_WIDTH = 1.5;
+const TELEPORTER_STROKE = 'rgb(255,255,64)';
+const TELEPORTER_LINE_WIDTH = 1.5;
 
 // A `color` on a mesh or a painted box, as the panel reads it. An array of
 // floats is what the parser leaves behind; anything else is left to neutral
@@ -153,7 +155,8 @@ function walkSurfaces(obstacles, mapSize, size, visit) {
     // out of the picture too -- the same whole-obstacle reading
     // `getRadarObstacles` makes, bzo having no per-face radar pass to skip.
     // A base is drawn last, as an outline (`baseOutlines`).
-    if (!obs || obs.noRadar || obs.kind === 'base') continue;
+    // So is a teleporter, as a line (`teleporterLines`).
+    if (!obs || obs.noRadar || obs.kind === 'base' || obs.kind === 'teleporter') continue;
     const fill = obstacleFill(obs);
     if (obs.type === 'mesh') {
       // Read out of the mesh's flat arrays, which by this point are the only
@@ -228,6 +231,27 @@ function baseOutlines(obstacles, mapSize, size) {
       .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
     out += `<polygon points="${points}" fill="none" stroke="${baseStroke(obs.team)}"`
       + ` stroke-width="${BASE_OUTLINE_WIDTH}"/>`;
+  }
+  return out;
+}
+
+// Every teleporter, over the bases: a yellow line along its portal, as
+// upstream draws it (`RadarRenderer::renderBasesAndTeles`, `glColor4f(1, 1,
+// 0.25)`) and as the panel does (`getRadarTeleporters`). Most are thinner than
+// a pixel here, and a line always draws something.
+function teleporterLines(obstacles, mapSize, size) {
+  const half = mapSize / 2;
+  const toPixel = (value) => ((value + half) / mapSize) * size;
+  let out = '';
+  for (const obs of obstacles) {
+    if (!obs || obs.noRadar || obs.kind !== 'teleporter') continue;
+    const [x, y] = obs.pos || [0, 0];
+    const breadth = obs.size ? obs.size[1] : 0;
+    const alongX = -Math.sin(obs.angle || 0) * breadth;
+    const alongY = Math.cos(obs.angle || 0) * breadth;
+    out += `<line x1="${toPixel(x - alongX).toFixed(1)}" y1="${toPixel(0 - (y - alongY)).toFixed(1)}"`
+      + ` x2="${toPixel(x + alongX).toFixed(1)}" y2="${toPixel(0 - (y + alongY)).toFixed(1)}"`
+      + ` stroke="${TELEPORTER_STROKE}" stroke-width="${TELEPORTER_LINE_WIDTH}"/>`;
   }
   return out;
 }
@@ -464,6 +488,7 @@ function buildMapOverviewSvg(entry, options = {}) {
     + `<rect width="${size}" height="${size}" fill="${BACKGROUND}"/>`
     + body
     + baseOutlines(obstacles, mapSize, size)
+    + teleporterLines(obstacles, mapSize, size)
     + `<rect x="0.5" y="0.5" width="${size - 1}" height="${size - 1}"`
     + ` fill="none" stroke="${BORDER}"/>`
     + `</svg>`;
