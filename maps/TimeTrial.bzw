@@ -38,6 +38,13 @@ options
 	-sl GM 3
 	-sl L 3
 	-sl SW 3
+	-sl F 3
+	-sl SB 3
+	-sl R 3
+	-sl SH 3
+	-sl SR 3
+	-sl ST 3
+	-sl ID 3
 end
 
 # Spawn on the track just before the finish line, which racers cross heading
@@ -56,7 +63,7 @@ finishline
 	height 10
 end
 
-# Weapons on the course, three shots each, across the lanes past checkpoint 1.
+# Flags on the course, three shots each, across the lanes past checkpoint 1.
 # Shots need a flag here (_shotsNeedFlag, above).
 
 zone
@@ -66,6 +73,13 @@ zone
 	zoneflag GM 1
 	zoneflag L 1
 	zoneflag SW 1
+	zoneflag F 1
+	zoneflag SB 1
+	zoneflag R 1
+	zoneflag SH 1
+	zoneflag SR 1
+	zoneflag ST 1
+	zoneflag ID 1
 end
 
 # A lap counts only through every checkpoint, in order.
