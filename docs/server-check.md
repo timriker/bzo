@@ -128,7 +128,10 @@ On `/list` an excluded server, whichever way it was excluded, reads "Server
 excluded.", with a link to its owner's forum profile where the list names
 one, has no picture, and sorts last. Its row shows only its name and
 description, and its pane only its address and owner: nothing bzo learned
-before, which may no longer be true. It offers no buttons, Launch included.
+before, which may no longer be true, and none of the counts or settings the
+BZFlag list publishes. It offers no buttons, Launch included. Every other bzo
+server's `/list` reads the list from one bzo server, which hands on only the
+address, description and owner, so they show the same.
 The list heading counts these as excluded, and the filter `/+x` lists them.
 
 bzo refuses the same requests by URL, for anyone. It stops the daily hash

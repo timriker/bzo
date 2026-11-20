@@ -1868,6 +1868,13 @@ function joinSizes(...sizes) {
 // would still come down, since a ban is only checked at the join, but the
 // operator has said no. The monthly guest check asks again (`bzfs-worlds.cjs`),
 // so a lifted ban is noticed.
+// A bzfs row the list server relayed as excluded: it hands one on as its
+// address, title and owner alone (`listServerBzfsRow`), and every row the
+// BZFlag list itself gives has an `info`, null where its hex would not read.
+function isRelayedExcludedRow(server) {
+  return !Object.hasOwn(server, 'info');
+}
+
 function bansBzo(host, port) {
   return bzfsWorlds.blocksBzo(bzfsWorlds.recordFor(host, port));
 }
@@ -3106,21 +3113,25 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
   const t = l10n.translator(locale);
   const action = (href, msgid) => `<a class="action" href="${escapeHtml(href)}">${escapeHtml(msgid)}</a>`;
   const bzfsEntries = servers.map((s, index) => {
-    const info = s.info || {};
     const importFileName = remoteMapFileName(s.host, s.port);
-    // The import file itself, registered or not: it is only parsed once
-    // somebody views it (`listLocalMapFiles`).
-    const importedPath = resolveMapFilePath(importFileName);
-    const maxima = Array.isArray(info.teamMaximums) ? info.teamMaximums : [];
-    const world = s.world || publishWorldFacts(s.host, s.port) || {};
+    const listedWorld = s.world || publishWorldFacts(s.host, s.port) || {};
     // An excluded server -- one that blocks bzo, or one left out of its
     // checks -- shows no picture and says why, and sorts last
     // (`sortListEntries`).
-    const left = world.excluded === true || isExcludedServer(s.host, s.port);
-    const bans = !left && world.banned === true;
+    const left = listedWorld.excluded === true || isExcludedServer(s.host, s.port)
+      || isRelayedExcludedRow(s);
+    const bans = !left && listedWorld.banned === true;
     // Excluded either way: blocking bzo, or left out at the operator's
-    // request. Such a row offers nothing to follow.
+    // request. Such a row offers nothing to follow, and carries nothing of
+    // the server but its address, title and owner: no counts, settings,
+    // world or import, here or in the data beside the table.
     const blocked = bans || left;
+    const info = blocked ? {} : (s.info || {});
+    const world = blocked ? {} : listedWorld;
+    // The import file itself, registered or not: it is only parsed once
+    // somebody views it (`listLocalMapFiles`).
+    const importedPath = blocked ? null : resolveMapFilePath(importFileName);
+    const maxima = Array.isArray(info.teamMaximums) ? info.teamMaximums : [];
     const note = blocked ? t('Server excluded.') : '';
     // Who could change that: the server's registered owner, a forum name,
     // linked to their forum profile.
@@ -3173,7 +3184,7 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       maxShots: info.maxShots,
       gameOptionsBits: info.gameOptionsBits,
       players: info.players,
-      bots: s.bots,
+      bots: blocked ? undefined : s.bots,
       maxPlayers: info.maxPlayers,
       observers: Array.isArray(info.teamCounts) ? info.teamCounts[5] : undefined,
       observerMax: maxima[5],
@@ -6548,27 +6559,39 @@ app.get('/api/list-server/list', async (req, res) => {
   }
   res.json({
     servers: listPublicListServerRows(),
-    bzfs: bzfs.map((server) => ({
-      host: server.host,
-      port: server.port,
-      title: server.title,
-      info: server.info,
-      owner: server.owner,
-      ip: server.ip,
-      bots: server.bots,
-      // The picture of that server's world, when this instance holds an
-      // import of it (`server/bzfs-worlds.cjs` keeps them fresh). Absolute,
-      // because the reader is another origin -- and stated here rather than
-      // derived, since this is the only server that knows.
-      overviewUrl: bzfsInstanceOverviewUrl(server.host, server.port),
-      // What this server knows of that world, measured once here rather than
-      // by every reader -- a reader holds no import of it and could not
-      // measure any of this for itself.
-      world: publishWorldFacts(server.host, server.port),
-    })),
+    bzfs: bzfs.map((server) => listServerBzfsRow(server)),
     bzfsCacheAgeSeconds: Math.max(0, Math.round((Date.now() - remoteServerListCache.at) / 1000)),
   });
 });
+
+// One bzfs row as the list server hands it on. An excluded server -- one
+// that blocks bzo, or one left out at its operator's request -- goes as its
+// address, title and owner alone, which is all `/list` shows of it, and not
+// why: a row with no `info` is excluded (`isRelayedExcludedRow`).
+function listServerBzfsRow(server) {
+  const world = publishWorldFacts(server.host, server.port);
+  if (isExcludedServer(server.host, server.port) || world?.banned) {
+    return { host: server.host, port: server.port, title: server.title, owner: server.owner };
+  }
+  return {
+    host: server.host,
+    port: server.port,
+    title: server.title,
+    info: server.info,
+    owner: server.owner,
+    ip: server.ip,
+    bots: server.bots,
+    // The picture of that server's world, when this instance holds an
+    // import of it (`server/bzfs-worlds.cjs` keeps them fresh). Absolute,
+    // because the reader is another origin -- and stated here rather than
+    // derived, since this is the only server that knows.
+    overviewUrl: bzfsInstanceOverviewUrl(server.host, server.port),
+    // What this server knows of that world, measured once here rather than
+    // by every reader -- a reader holds no import of it and could not
+    // measure any of this for itself.
+    world,
+  };
+}
 
 // The signed-challenge target every instance (designated or not) answers on,
 // for whichever instance holds a key to validate against it -- "a signed
