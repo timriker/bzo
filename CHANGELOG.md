@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.14] - 2026-11-20
+
+### Added
+- The bzo server list has an `A` column for people on autopilot, proxied
+  servers included, and an `ac`/`autopilotCount` filter.
+- A gamepad or XR controller ticks as you jump and bumps as you land, harder
+  the further you fell.
+
+### Changed
+- Server lists count people at the controls: a bzo game no longer counts
+  players on autopilot on the BZFlag list or in the bzo list's `P`, and
+  publishes again as soon as one turns autopilot on or off.
+
+### Fixed
+- A tank pressed against a mesh wall slides along it, as BZFlag's does,
+  instead of sticking: idle bots on TimeTrial's curves now ride on.
+- A landing on a roof squishes the tank by how hard it came down.
+- Rabbit and hunters count as rogues in the bzo list's team counts.
+
 ## [1.4.13] - 2026-11-20
 
 ### Added
