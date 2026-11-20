@@ -97,6 +97,31 @@ for (const support of [box, { ...pyramid, inverted: true }]) {
   assert.equal(state.inAir, false, `out of the wall and down, at ${state.x},${state.y},${state.z}`);
 }
 
+// A tank with no input on the outer lane of a TimeTrial curve, where the
+// `angular` driver carries it into the guardrail: it slides along the rail and
+// rides on, as upstream's does, because the normal is the rail face the step
+// struck (`hitFace`) -- a second search for that face found none there, and the
+// made-up roof it fell back to held the tank in place for good.
+{
+  const { parseBZWMap } = createRequire(import.meta.url)('../server/bzw-parse.cjs');
+  const map = parseBZWMap(new URL('../maps/TimeTrial.bzw', import.meta.url).pathname, { quiet: true });
+  const colliders = buildCollisionColliders(map.obstacles, map.mapSize ?? 800, false, undefined);
+  const world = {
+    config: CONFIG,
+    colliders,
+    topOf: (obs) => ((obs.type === 'mesh' && obs.bounds) ? obs.bounds.maxZ : getObstacleBase(obs) + (obs.size?.[2] || 0)),
+  };
+  const state = createDriveState({ x: 374.1, y: -445.85, z: 2, azimuth: -2.95 });
+  let halfway = null;
+  for (let i = 0; i < 300; i++) {
+    if (i === 150) halfway = { x: state.x, y: state.y };
+    stepDrive(state, { forward: 0, rotation: 0, jumpTriggered: false }, { flag: null, motionFlag: null },
+      world, { now: i / 30, random: () => 0.5 }, 1 / 30);
+  }
+  const moved = Math.hypot(state.x - halfway.x, state.y - halfway.y);
+  assert.ok(moved > 100, `still riding after 5s, not held against the rail (moved ${moved.toFixed(1)} in the last 5s)`);
+}
+
 // "can't jump while burrowed" (LocalPlayer.cxx:1406): below z 0, whatever the
 // flag, a Wings flap included.
 for (const flag of ['BU', 'WG']) {

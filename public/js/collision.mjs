@@ -1084,7 +1084,13 @@ export function findTankObstacle(obstacles, x, y, z, options = {}) {
 
     if (hitsRect(halfWidthOf(obs), halfBreadthOf(obs), slack)) return obs;
   }
-  return pickPriorityMeshFace(meshCandidates, direction);
+  // `World::hitBuilding` hands back the winning `MeshFace` itself, so the
+  // normal the step slides along is that face's plane and nothing else. The
+  // mesh is what every caller here wants, so the face goes back beside it,
+  // in `options.hitFace` when the caller asks.
+  const best = pickPriorityMeshCandidate(meshCandidates, direction);
+  if (best && options.hitFace) options.hitFace.face = best.face;
+  return best ? best.obs : null;
 }
 
 // The obstacle a physics driver applies from at this position -- a support
@@ -2327,6 +2333,16 @@ export function getTankHitNormal(obs, x, y, z, azimuth, toZ, height, sweep = nul
     // stopped dead on the seam. Two boxes never showed it (a box answers from
     // `findTankObstacle`'s own early return, before any face is weighed) and
     // neither did a box meeting a mesh; it took two meshes.
+    // The face the step's own collision test named (`findTankObstacle`'s
+    // `hitFace`), when the caller kept it: its plane is the answer, as
+    // `MeshFace::getHitNormal` returns its own plane. Searching again for it
+    // with a still box at a slightly different pose can find nothing where
+    // the moving box grazed a wall, and nothing reads as the roof below.
+    if (sweep && Number.isInteger(sweep.hitFace) && sweep.hitFace >= 0) {
+      const arrays = meshArrays(obs);
+      const f = sweep.hitFace;
+      return { x: arrays.facePlanes[f * 4], y: arrays.facePlanes[(f * 4) + 1], z: arrays.facePlanes[(f * 4) + 2] };
+    }
     const queryX = (sweep && Number.isFinite(sweep.hitX)) ? sweep.hitX : x;
     const queryY = (sweep && Number.isFinite(sweep.hitY)) ? sweep.hitY : y;
     const direction = sweep ? { x: sweep.toX - sweep.fromX, y: sweep.toY - sweep.fromY, z: toZ - z } : null;

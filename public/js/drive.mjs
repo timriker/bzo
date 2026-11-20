@@ -352,6 +352,8 @@ function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt
   angularVelocity += driverSpin;
   const tankScale = getTankDimensionScale(tank.flag ?? null);
   const phased = drivesThroughBuildings(tank.flag ?? null, tank.zoned === true);
+  // Which mesh face each obstacle this step struck was (`hitTest` below).
+  const hitFaces = new Map();
   const step = resolveTankMotion({
     x: state.x,
     y: state.y,
@@ -369,19 +371,27 @@ function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt
     // World::hitBuilding, with the step's own start height as `fromZ`, so the
     // occupant's vertical extent covers the span it crossed -- what stops a
     // fast fall passing through a roof.
-    hitTest: (fromX, fromY, fromZ, fromAz, toX, toY, toZ, toAz) => findTankObstacle(world.colliders, toX, toY, toZ, {
-      azimuth: toAz,
-      fromX,
-      fromY,
-      fromZ,
-      radius: TANK.collisionHeight,
-      tankScale,
-      phased,
-      reversingOnGround: phased && intended.phasedReverse && toZ <= 0,
-    }),
+    hitTest: (fromX, fromY, fromZ, fromAz, toX, toY, toZ, toAz) => {
+      const hitFace = { face: -1 };
+      const obs = findTankObstacle(world.colliders, toX, toY, toZ, {
+        azimuth: toAz,
+        fromX,
+        fromY,
+        fromZ,
+        radius: TANK.collisionHeight,
+        tankScale,
+        phased,
+        reversingOnGround: phased && intended.phasedReverse && toZ <= 0,
+        hitFace,
+      });
+      // The mesh face this hit was, for the normal: the last hit is the one
+      // the step resolves against.
+      if (obs) hitFaces.set(obs, hitFace.face);
+      return obs;
+    },
     getNormal: (obs, px, py, pz, paz, hitX, hitY, hitZ, hitAz, fromX, fromY, fromAz, toX, toY, toAz) => (
       getTankHitNormal(obs, px, py, pz, paz, hitZ, TANK.collisionHeight, {
-        fromX, fromY, fromAz, toX, toY, toAz, hitX, hitY,
+        fromX, fromY, fromAz, toX, toY, toAz, hitX, hitY, hitFace: hitFaces.get(obs) ?? -1,
         halfWidth: TANK.halfWidth * (tankScale ? tankScale.width : 1),
         halfLength: TANK.halfLength * (tankScale ? tankScale.length : 1),
       })),
