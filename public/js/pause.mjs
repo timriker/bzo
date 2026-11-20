@@ -43,6 +43,29 @@ export class PauseState {
     // page is back, and that answer is then the menu's to undo.
     this.menuAsked = false;
     this.undoWhenAnswered = false;
+    // Whether the pause on its way or held is one the player asked for with
+    // the key. Any other that lands with nothing covering the game -- a page
+    // reloaded behind the phone's home screen and joined from there, say --
+    // is nobody's, and `orphaned` says to undo it.
+    this.byKey = false;
+    // An undo sent and not yet answered, so a countdown and a pause that were
+    // already on their way do not each send another toggle behind it.
+    this.undoPending = false;
+  }
+
+  // A countdown or pause the server has just reported that neither the
+  // player nor anything covering the game is holding. `covered` is whether a
+  // menu or a hidden window is in front of the game now.
+  orphaned(covered) {
+    return !this.undoPending && !this.byKey && !this.byMenu && !covered;
+  }
+
+  // Whether the countdown or pause just reported is to be undone: the menu
+  // that asked has gone since, or nobody asked at all.
+  undoAnswer(covered) {
+    const undo = this.answered() || this.orphaned(covered);
+    if (undo) this.undoPending = true;
+    return undo;
   }
 
   // The answer to a menu's pause, a countdown or the pause itself, arriving
@@ -77,22 +100,25 @@ export class PauseState {
   // --- what the server said ------------------------------------------------
 
   // Each of these two returns whether the caller should send a toggle: the
-  // menu that asked for the pause has gone since (`answered`).
-  countdownStarted(now) {
+  // menu that asked for the pause has gone since, or nobody asked for it and
+  // nothing covers the game (`undoAnswer`).
+  countdownStarted(now, { covered = false } = {}) {
     this.countdownStart = now;
-    return this.answered();
+    return this.undoAnswer(covered);
   }
 
-  pausedByServer() {
+  pausedByServer({ covered = false } = {}) {
     this.paused = true;
     this.countdownStart = 0;
-    return this.answered();
+    return this.undoAnswer(covered);
   }
 
   unpausedByServer() {
     this.paused = false;
     this.countdownStart = 0;
     this.byMenu = false;
+    this.byKey = false;
+    this.undoPending = false;
     this.wantedNextLife = false;
     this.forgetMenuAsk();
   }
@@ -102,6 +128,8 @@ export class PauseState {
   // waiting for a pause any more.
   cancelledByServer() {
     this.countdownStart = 0;
+    this.byKey = false;
+    this.undoPending = false;
     this.wantedNextLife = false;
     this.forgetMenuAsk();
   }
@@ -118,7 +146,12 @@ export class PauseState {
     if (observer || this.byMenu) return false;
     // Asking again is the player's answer either way, so a countdown they call
     // off is not one to take up again in the next life.
-    if (this.isFrozen()) this.wantedNextLife = false;
+    if (this.isFrozen()) {
+      this.wantedNextLife = false;
+      this.byKey = false;
+    } else {
+      this.byKey = true;
+    }
     return true;
   }
 
@@ -151,6 +184,20 @@ export class PauseState {
     return false;
   }
 
+  // The connection closed. The server drops the player and every pause with
+  // it, so nothing here carries over to the next join -- least of all as the
+  // player's own asking, which is what a countdown left standing would read
+  // as once the tank is gone.
+  disconnected() {
+    this.paused = false;
+    this.countdownStart = 0;
+    this.byMenu = false;
+    this.byKey = false;
+    this.wantedNextLife = false;
+    this.undoPending = false;
+    this.forgetMenuAsk();
+  }
+
   // --- a life ending, and the next one beginning --------------------------
 
   // playing.cxx:6866, and the server's own `respawn`: a pause belongs to the
@@ -170,6 +217,7 @@ export class PauseState {
     this.paused = false;
     this.countdownStart = 0;
     this.byMenu = false;
+    this.byKey = false;
     this.forgetMenuAsk();
     return true;
   }
@@ -184,11 +232,13 @@ export class PauseState {
     this.paused = false;
     this.countdownStart = 0;
     this.byMenu = false;
+    this.byKey = false;
     this.forgetMenuAsk();
     const wanted = this.wantedNextLife;
     this.wantedNextLife = false;
     if (this.syncMenu({ covered, alive, observer })) return true;
-    return wanted && alive && !observer;
+    this.byKey = wanted && alive && !observer;
+    return this.byKey;
   }
 }
 

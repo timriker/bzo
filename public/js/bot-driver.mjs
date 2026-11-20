@@ -139,6 +139,11 @@ export class BotDriver {
   // One frame, as a browser's: the pilot decides, the shared step drives, and
   // the move goes out before anything that rides on it.
   tick(dt) {
+    // No pilot (Idle): the tank is left to the world, as under `/bot pause`.
+    if (!this.pilot) {
+      this.idle(dt);
+      return;
+    }
     this.clock += dt;
     const state = this.env.state();
     if (!state.alive) {
@@ -168,6 +173,31 @@ export class BotDriver {
     }
     this.shakeBadFlag(dt, config);
 
+    this.move(dt, config, out);
+    if (out.fire) this.fire();
+  }
+
+  // `/bot pause`: the pilot asks for nothing, but the world still moves the
+  // tank -- a physics driver carries it, gravity drops it -- as it would a
+  // player's tank with no key down.
+  idle(dt) {
+    this.clock += dt;
+    const state = this.env.state();
+    if (!state.alive) {
+      this.alive = false;
+      return;
+    }
+    if (!this.alive) {
+      this.alive = true;
+      this.respawn(state);
+    }
+    this.lastOut = null;
+    this.move(dt, this.env.config(), { speed: 0, rotation: 0, jump: false, fire: false });
+  }
+
+  // One step of the tank under what the pilot asked for, and the move packet
+  // a client would send for it.
+  move(dt, config, out) {
     const tank = this.tankFor();
     const world = this.worldFor(config);
     const clock = { now: this.clock, random: Math.random };
@@ -200,7 +230,6 @@ export class BotDriver {
     if (this.lastSentAt === this.clock) this.sentBase = base;
 
     this.env.act(this.self());
-    if (out.fire) this.fire();
   }
 
   // A move packet, sent as a client sends one: when a speed changed, on a jump

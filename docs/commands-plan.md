@@ -11,7 +11,7 @@ dispatcher are in `server.js`. The commands are `/?`, `/help` and
 `/<prefix>?`; the open tier `/uptime`, `/serverquery`, `/msg`, `/date`,
 `/time`, `/lagstats`, `/pos`; and the operator tier `/kill`, `/say`, `/mute`,
 `/unmute`, `/mutelist`, `/playerlist`, `/flag` (`reset`, `up`, `show`, `take`,
-`give`, `drop [player]`), `/set`, `/reset`, `/mv`, `/setteam`, `/bot`,
+`give`, `drop [player]`), `/set`, `/reset`, `/mv`, `/setteam`, `/setmodel`, `/bot`,
 `/countdown` and `/gameover`, plus `/me`. The client-local table -- `/silence`, `/unsilence`,
 `/highlight`, `/savemsgs`, `/cmds` -- lives in `public/js/client.js` and never
 reaches the server. See "Server commands" in `AGENTS.md`.
@@ -29,6 +29,10 @@ Share View Link's pitch -- tilts it. Whoever was moved is told who did it.
 the flag drops, the tank takes the new colour and keeps driving.
 Observer, rabbit and hunter are out of its reach.
 A BZFlag client is covered in [bzflag-clients.md](bzflag-clients.md).
+
+**`/setmodel` is bzo's own.** `/setmodel <player> <model>` changes the tank
+model a player is drawn in, as their own picker does. It is how a bot, which
+has no picker, wears anything but the stock tank.
 
 A tank holding Oscillation Overthruster is placed exactly where it was asked
 to go, with no altitude resolved for it. Every other tank has its height

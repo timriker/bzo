@@ -813,6 +813,7 @@ const defaultHudContext = {
   getChatInput: () => null,
   handleGameplayKeydown: () => false,
   syncAutoPause: () => {},
+  debugLog: () => {},
   // The Hunt row. The hunt itself lives in client.js -- it needs the roster, the
   // sounds and the scoreboard -- so this layer only asks it what to draw and
   // tells it which way the row was pressed.
@@ -1361,7 +1362,7 @@ function enterFullscreen({ explain = true } = {}) {
   const request = getFullscreenRequest();
   if (!request) return;
 
-  const refused = (e) => console.warn('Fullscreen request failed:', e);
+  const refused = (e) => hudContext.debugLog(`fullscreen request refused: ${e?.message || e}`);
   try {
     // `requestFullscreen` returns a promise, so a refusal arrives as a
     // rejection rather than a throw -- a `try` alone let it escape as an
@@ -1409,12 +1410,47 @@ function toggleFullscreen() {
 // fullscreen state rather than the toggle, so leaving with Escape is remembered
 // too. F11 is browser chrome rather than the Fullscreen API and does not reach
 // this event, which is correct: it is not a preference the game set.
-function rememberFullscreenPreference() {
+function saveFullscreenPreference(enabled) {
   try {
-    localStorage.setItem('fullscreenEnabled', isFullscreenActive() ? 'true' : 'false');
+    localStorage.setItem('fullscreenEnabled', enabled ? 'true' : 'false');
   } catch {
     /* ignore storage errors */
   }
+}
+
+// An exit is only the player's choice if it is nowhere near the page being
+// hidden or shown: a phone leaves fullscreen as the app goes to the
+// background, or -- Android, from the app icon -- just after it comes back,
+// and that is no reason to stay windowed. Such an exit arms the next tap to
+// restore it instead.
+const FULLSCREEN_EXIT_SETTLE_MS = 1000;
+const FULLSCREEN_SYSTEM_EXIT_MS = 2000;
+let fullscreenExitTimer = null;
+let lastVisibilityChangeAt = 0;
+document.addEventListener('visibilitychange', () => {
+  lastVisibilityChangeAt = performance.now();
+});
+
+function rememberFullscreenPreference() {
+  clearTimeout(fullscreenExitTimer);
+  const nearVisibilityChange = performance.now() - lastVisibilityChangeAt < FULLSCREEN_SYSTEM_EXIT_MS;
+  hudContext.debugLog(`fullscreen ${isFullscreenActive() ? 'entered' : 'left'} hidden=${document.hidden}`
+    + `${nearVisibilityChange ? ' (with the page hiding or showing)' : ''}`);
+  if (isFullscreenActive()) {
+    saveFullscreenPreference(true);
+    return;
+  }
+  if (document.hidden) return;
+  if (nearVisibilityChange) {
+    restoreFullscreenOnFirstGesture();
+    return;
+  }
+  fullscreenExitTimer = setTimeout(() => {
+    if (!document.hidden && !isFullscreenActive()) {
+      saveFullscreenPreference(false);
+      hudContext.debugLog('fullscreen preference saved off');
+    }
+  }, FULLSCREEN_EXIT_SETTLE_MS);
 }
 
 // Fullscreen cannot be entered on load: browsers require transient user
@@ -1422,10 +1458,17 @@ function rememberFullscreenPreference() {
 // gesture -- typing a name, clicking Join -- is the closest thing to starting
 // fullscreen that a web app is allowed.
 //
-// `click` rather than `pointerdown`: a touch's pointerdown grants no
-// activation, only a mouse's does, so a phone's first tap would be refused.
-// Escape grants none either. The listeners stay until fullscreen is actually
-// entered, so a press the browser refuses leaves the next one to try again.
+// The events that grant activation: `click`, a key, and for a touch its
+// `touchend` or a pen's or finger's `pointerup` -- a touch's pointerdown
+// grants none, only a mouse's does, and the game area's touch controls cancel
+// the `click` a tap would otherwise make. Escape grants none either. The
+// listeners stay until fullscreen is actually entered, so a press the browser
+// refuses leaves the next one to try again. Armed again whenever the page is
+// shown, since a phone drops fullscreen when the app goes to the background.
+const FULLSCREEN_RESTORE_EVENTS = ['click', 'keydown', 'touchend', 'pointerup'];
+let fullscreenRestoreArmed = false;
+let lastRestoreAttemptAt = -Infinity;
+
 function restoreFullscreenOnFirstGesture() {
   let saved = null;
   try {
@@ -1433,23 +1476,38 @@ function restoreFullscreenOnFirstGesture() {
   } catch {
     /* ignore storage errors */
   }
-  if (saved !== 'true' || !getFullscreenRequest()) return;
+  if (fullscreenRestoreArmed || isFullscreenActive()) return;
+  if (saved !== 'true' || !getFullscreenRequest()) {
+    hudContext.debugLog(`fullscreen restore not armed: saved=${saved}`);
+    return;
+  }
+  fullscreenRestoreArmed = true;
+  hudContext.debugLog('fullscreen restore armed for the next tap');
 
+  // Only fullscreen arriving ends it: the exit that armed it can land after
+  // it is armed, and must not take it away again.
   const stop = () => {
-    window.removeEventListener('click', restore, true);
-    window.removeEventListener('keydown', restore, true);
+    if (!isFullscreenActive()) return;
+    fullscreenRestoreArmed = false;
+    FULLSCREEN_RESTORE_EVENTS.forEach((type) => window.removeEventListener(type, restore, true));
     document.removeEventListener('fullscreenchange', stop);
   };
   const restore = (event) => {
     if (event.type === 'keydown' && event.key === 'Escape') return;
+    if (event.type === 'pointerup' && event.pointerType === 'mouse') return;
     if (isFullscreenActive()) {
       stop();
       return;
     }
+    // One tap fires several of these; the first asks, and the rest of the
+    // same tap would only be refused for asking again.
+    const now = performance.now();
+    if (now - lastRestoreAttemptAt < 500) return;
+    lastRestoreAttemptAt = now;
+    hudContext.debugLog(`fullscreen restore on ${event.type}`);
     enterFullscreen({ explain: false });
   };
-  window.addEventListener('click', restore, true);
-  window.addEventListener('keydown', restore, true);
+  FULLSCREEN_RESTORE_EVENTS.forEach((type) => window.addEventListener(type, restore, true));
   document.addEventListener('fullscreenchange', stop);
 }
 
@@ -2109,6 +2167,9 @@ function bindHudElements() {
   finePointerQuery?.addEventListener?.('change', () => refreshHudButtons());
   watchForMousePointer();
   restoreFullscreenOnFirstGesture();
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) restoreFullscreenOnFirstGesture();
+  });
 
   updateSettingsBtn();
   updateHelpBtn();

@@ -111,9 +111,43 @@ const runCountdown = (state, now = 1000) => {
   state.syncMenu({ covered: true });
   state.syncMenu({ covered: false });
   state.cancelledByServer();
-  assert.equal(state.countdownStarted(1000), false, 'a refused pause leaves nothing to undo later');
   assert.equal(state.pressPauseKey(), true);
+  assert.equal(state.countdownStarted(1000), false, 'a refused pause leaves nothing to undo later');
   assert.equal(state.pausedByServer(), false, "and the player's own pause is never undone for them");
+}
+
+// A page reloaded behind a phone's home screen joins from there and asks for
+// the window's pause; when it is back, a countdown or pause nobody is holding
+// any more, with nothing in front of the game, is undone -- once.
+{
+  const state = new PauseState();
+  assert.equal(state.countdownStarted(1000), true, 'a countdown nobody asked for is called off');
+  assert.equal(state.pausedByServer(), false, 'and the pause queued behind it sends nothing more');
+  state.unpausedByServer();
+  assert.equal(state.isFrozen(), false);
+  assert.equal(state.countdownStarted(2000), true, 'and the next one nobody asked for is undone too');
+}
+{
+  const state = new PauseState();
+  assert.equal(state.countdownStarted(1000, { covered: true }), false, 'but not while something covers the game');
+}
+{
+  const state = new PauseState();
+  assert.equal(state.respawned({ covered: true }), true);
+  assert.equal(state.countdownStarted(1000, { covered: true }), false, "the window's own pause stands while hidden");
+  assert.equal(state.syncMenu({ covered: false }), true, 'and the window coming back undoes it');
+}
+
+// A phone hidden mid-countdown loses its connection, comes back and rejoins:
+// the window's pause went with the connection, and the join asks for nothing.
+{
+  const state = new PauseState();
+  assert.equal(state.syncMenu({ covered: true }), true);
+  state.countdownStarted(1000, { covered: true });
+  assert.equal(state.syncMenu({ covered: false }), true, 'the undo goes out, into a dead socket');
+  state.disconnected();
+  state.tankDied();
+  assert.equal(state.respawned({ covered: false }), false, 'and the rejoin does not ask again');
 }
 
 // --- a life ending, which is issue #48 -------------------------------------

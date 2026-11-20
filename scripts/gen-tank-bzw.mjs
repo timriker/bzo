@@ -6,7 +6,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// Turns `public/obj/tank.obj` -- BZFlag's own stock tank, which this repo
+// Turns `src/tank.obj` -- BZFlag's own stock tank, which this repo
 // already ships -- into the BZW `define` that `maps/bzo.bzw` places over the
 // map centre. The point is the *form*: a mesh whose surface lives in a
 // `drawInfo` block, which is how upstream writes a render-optimized model and
@@ -27,7 +27,7 @@ import fs from 'node:fs';
 const ANGVEL = 45;          // degrees/sec -- one turn every eight seconds
 const INDICES_PER_LINE = 51; // what upstream's own exporter wraps `tris` at
 
-const source = fs.readFileSync('public/obj/tank.obj', 'utf8');
+const source = fs.readFileSync('src/tank.obj', 'utf8');
 
 const rawVerts = [];
 const rawNorms = [];

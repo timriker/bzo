@@ -492,6 +492,12 @@ class RenderManager {
     this._tankModelReadyPromisesByPath = new Map();
     this._tankModelReadyResolversByPath = new Map();
     this._reportedUnbuildableTankModels = new Set();
+    // A model's own texture (its MTL's map_Kd) by model path, and the shared
+    // grey texture each one is drawn in.
+    this._tankModelTextureByPath = new Map();
+    this._tankModelSkins = new Map();
+    // Whether a model names a `team` material, by model path.
+    this._tankModelTeamMaterials = new Map();
     this._audioBufferPromisesByPath = new Map();
     this._tankModelPath = '/obj/bzflag.obj';
     this.deathFollowTarget = null;

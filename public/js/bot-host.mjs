@@ -22,6 +22,8 @@
 //   addBot({ id, pilotId })   -> an error message, or null
 //   removeBot(id)
 //   tick({ dt, shared, bots: [own], followId }) -> [{ id, pre, self, post, mode, targetId, foeId, intent?, report? }]
+//   idle({ dt, shared, bots: [own] }) -> the same, each tank left to the
+//                               world's physics with no control applied
 //   halt({ bots: [own] })     -> the same, each tank stopped where it is
 //   onError(fn)               fn(id, message) for a bot whose tick threw
 
@@ -199,12 +201,12 @@ export function setClock(fn) {
 
 // `options` go to the pilot: Ace's `tuning`, for a script comparing two.
 export function addBot({ id, pilotId, options }) {
-  const entry = autopilot.AUTOPILOTS.find((candidate) => candidate.id === pilotId);
+  const entry = autopilot.BOT_PILOTS.find((candidate) => candidate.id === pilotId);
   if (!entry) return `no pilot "${pilotId}"`;
   const bot = { id, own: null, shared: null, sends: null, reportAt: 0 };
   const teleporter = createTankTeleporter(getTeleporterIndex);
   bot.driver = new BotDriver({
-    pilot: new entry.Pilot(options),
+    pilot: entry.Pilot ? new entry.Pilot(options) : null,
     env: {
       config: () => config,
       colliders: () => colliders,
@@ -260,7 +262,7 @@ export function tick({ dt, shared, bots: owns, followId }) {
       lockTargetId: bot.driver.lastOut?.lockTargetId ?? null,
     };
     if (bot.id === followId && bot.driver.lastOut) result.intent = bot.driver.lastOut.intent;
-    if (now >= bot.reportAt) {
+    if (bot.driver.pilot && now >= bot.reportAt) {
       // The first report covers only the moments since the bot joined, and
       // is not worth a line.
       const report = bot.driver.pilot.takeReport();
@@ -273,6 +275,28 @@ export function tick({ dt, shared, bots: owns, followId }) {
       bot.reportAt = now + REPORT_MS;
     }
     out.push(result);
+  }
+  return out;
+}
+
+export function idle({ dt, shared, bots: owns }) {
+  const out = [];
+  for (const own of owns) {
+    const bot = bots.get(own.id);
+    if (!bot) continue;
+    bot.own = own;
+    bot.shared = shared;
+    bot.sends = [];
+    bot.pre = null;
+    bot.self = null;
+    try {
+      bot.driver.idle(dt);
+    } catch (error) {
+      reportError(bot.id, error.stack || error.message);
+    }
+    out.push({
+      id: bot.id, pre: bot.pre ?? bot.sends, self: bot.self, post: bot.pre ? bot.sends : [], mode: null, targetId: null,
+    });
   }
   return out;
 }

@@ -25,10 +25,9 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const objDir = path.join(__dirname, '..', 'public', 'obj');
 
-// tank.obj is upstream's own single-object mesh, the source split-bzflag-tank
-// reads, and missile.obj is the guided missile. The server hides both from the
-// picker, so neither is held to the contract.
-const HIDDEN = new Set(['tank.obj', 'missile.obj']);
+// missile.obj is the guided missile. The server hides it from the picker, so
+// it is not held to the contract.
+const HIDDEN = new Set(['missile.obj']);
 
 const offered = readdirSync(objDir)
   .filter((name) => name.toLowerCase().endsWith('.obj'))

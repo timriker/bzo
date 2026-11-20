@@ -21,6 +21,7 @@
 //      config  GAME_CONFIG, whenever it changes
 //      add     { id, pilotId }       remove  { id }
 //      tick    { dt, shared, bots: [own], followId, report }
+//      idle    { dt, shared, bots: [own] } physics only, no control: `/bot pause`
 //      halt    { bots: [own] } stop every tank where it is, and say so: sent
 //              once a second while nobody is connected, as each bot's
 //              heartbeat
@@ -46,6 +47,7 @@ function handle(message) {
     }
     case 'remove': host.removeBot(message.id); break;
     case 'tick': parentPort.postMessage({ type: 'results', bots: host.tick(message) }); break;
+    case 'idle': parentPort.postMessage({ type: 'results', bots: host.idle(message) }); break;
     case 'halt': parentPort.postMessage({ type: 'results', bots: host.halt(message) }); break;
     case 'prepare': parentPort.postMessage({ type: 'ready', ms: host.prepareRoutes() }); break;
     default: break;

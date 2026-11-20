@@ -380,6 +380,7 @@ const {
 } = require('./server/bzflag-native.cjs');
 const { compileBzwWorld } = require('./server/bzw-compile.cjs');
 const { findLocalImage, localImageRefusal, IMG_URL_PREFIX } = require('./server/local-images.cjs');
+const { MODEL_FILE_TYPES, localModelFile, textureRefusal, checkLocalModel } = require('./server/local-models.cjs');
 const { packWorldDatabase, bzfsWorldHashOfBzw } = require('./server/bzflag-world.cjs');
 const {
   DEFAULT_VOICE_CHANNEL,
@@ -734,6 +735,22 @@ app.use('/img', (req, res) => {
   }
   res.set('Cache-Control', 'public, max-age=3600');
   res.sendFile(file);
+});
+
+// The server's own tank models (issue #208, server/local-models.cjs): an OBJ,
+// the MTL it names and the texture that names, in `obj/` beside the config as
+// `img/` is. Served apart from `/obj/`, which the service worker keeps until a
+// release. A texture over the limits is not served, so the model that names it
+// is drawn in the team skin.
+const MODELS_DIR = path.join(path.dirname(CONFIG_PATH), 'obj');
+app.get('/data/obj/:file', (req, res) => {
+  const file = localModelFile(MODELS_DIR, req.params.file);
+  const type = file && MODEL_FILE_TYPES[path.extname(file).toLowerCase()];
+  if (!file || (type.startsWith('image/') && textureRefusal(file))) {
+    res.status(404).set('Cache-Control', 'public, max-age=60').type('text/plain').send('No such model file here.\n');
+    return;
+  }
+  res.set('Cache-Control', 'no-cache').type(type).sendFile(file);
 });
 
 // The overview pictures this instance has drawn for *other* bzo instances'
@@ -1379,13 +1396,21 @@ app.get('/api/asset-digests', (req, res) => {
 // mtime: the list is rebuilt on every request and on every setTankModel, and
 // re-reading five files each time would be a parse per message. A model that
 // fails is named once per version of the file, not once per lookup.
+//
+// A server's own model is also held to the limits (`checkLocalModel`), and
+// its stamp takes in every file beside it, so a replaced MTL or texture is
+// checked again too.
 const tankModelPartsByFile = new Map();
 const reportedBadTankModels = new Set();
 
-function tankModelIsBuildable(filePath) {
+function tankModelIsBuildable(filePath, { local = false } = {}) {
   let stamp = '';
   try {
     stamp = String(fs.statSync(filePath).mtimeMs);
+    if (local) {
+      const dir = path.dirname(filePath);
+      for (const name of fs.readdirSync(dir)) stamp += `:${fs.statSync(path.join(dir, name)).mtimeMs}`;
+    }
   } catch (error) {
     logError(`Failed to stat tank model ${path.basename(filePath)}:`, error.message || error);
     return false;
@@ -1394,26 +1419,34 @@ function tankModelIsBuildable(filePath) {
   if (cached && cached.stamp === stamp) return cached.buildable;
 
   let missing = ['a readable OBJ file'];
+  let checked = { refusal: null, warning: null };
   try {
-    missing = missingTankParts(readObjObjectNames(fs.readFileSync(filePath, 'utf8')));
+    const text = fs.readFileSync(filePath, 'utf8');
+    missing = missingTankParts(readObjObjectNames(text));
+    if (local) checked = checkLocalModel(path.dirname(filePath), filePath, text);
   } catch (error) {
     logError(`Failed to read tank model ${path.basename(filePath)}:`, error.message || error);
   }
-  const buildable = missing.length === 0;
+  const buildable = missing.length === 0 && !checked.refusal;
   tankModelPartsByFile.set(filePath, { stamp, buildable });
 
   const reportKey = `${filePath}@${stamp}`;
-  if (!buildable && !reportedBadTankModels.has(reportKey)) {
-    reportedBadTankModels.add(reportKey);
-    logError(`Tank model ${path.basename(filePath)} is not offered: no ${missing.join(', no ')}.`
+  if (reportedBadTankModels.has(reportKey)) return buildable;
+  reportedBadTankModels.add(reportKey);
+  const name = path.basename(filePath);
+  if (missing.length) {
+    logError(`Tank model ${name} is not offered: no ${missing.join(', no ')}.`
       + ' See docs/tank-model-format.md for the object names a model must carry.');
+  } else if (checked.refusal) {
+    logError(`Tank model ${name} is not offered: ${checked.refusal}.`);
+  } else if (checked.warning) {
+    log(`Tank model ${name} is in the team skin: ${checked.warning}.`);
   }
   return buildable;
 }
 
-// Every OBJ in public/obj is a tank the player may choose, except two that are
-// not -- `tank.obj`, upstream's own mesh that `split-bzflag-tank` reads, and
-// `missile.obj`, the guided missile -- and the ones that cannot be drawn. A
+// Every OBJ in public/obj is a tank the player may choose, except
+// `missile.obj`, the guided missile, and the ones that cannot be drawn. A
 // model missing its parts is left out rather than listed: the client builds
 // tanks from the file alone, so offering one it cannot build would put a
 // player in a tank nobody can see.
@@ -1424,16 +1457,32 @@ const TANK_MODEL_LABELS = {
   wheeled6: 'Wheeled 6',
 };
 
-function getAvailableTankModels() {
-  const objDir = path.join(__dirname, 'public', 'obj');
-  const hiddenModelFiles = new Set(['tank.obj', 'missile.obj']);
+// The server's own models in `data/obj/` join the bundled ones, and one
+// with a bundled model's name takes its place.
+function listTankModelFiles(dir, urlPrefix, hidden = new Set(), { local = false } = {}) {
+  let names = [];
   try {
-    return fs.readdirSync(objDir)
-      .filter((fileName) => fileName.toLowerCase().endsWith('.obj'))
-      .filter((fileName) => !hiddenModelFiles.has(fileName.toLowerCase()))
-      .filter((fileName) => tankModelIsBuildable(path.join(objDir, fileName)))
-      .map((fileName) => {
-        const id = fileName.slice(0, -4).toLowerCase();
+    names = fs.readdirSync(dir);
+  } catch (error) {
+    if (error.code !== 'ENOENT') logError(`Failed to list tank models in ${dir}:`, error.message || error);
+  }
+  return names
+    .filter((fileName) => fileName.toLowerCase().endsWith('.obj'))
+    .filter((fileName) => /^[a-z0-9_-]+$/.test(fileName.slice(0, -4).toLowerCase()))
+    .filter((fileName) => !hidden.has(fileName.toLowerCase()))
+    .filter((fileName) => tankModelIsBuildable(path.join(dir, fileName), { local }))
+    .map((fileName) => ({ fileName, path: `${urlPrefix}${fileName}` }));
+}
+
+function getAvailableTankModels() {
+  const byId = new Map();
+  for (const entry of [
+    ...listTankModelFiles(path.join(__dirname, 'public', 'obj'), '/obj/', new Set(['missile.obj'])),
+    ...listTankModelFiles(MODELS_DIR, '/data/obj/', new Set(), { local: true }),
+  ]) byId.set(entry.fileName.slice(0, -4).toLowerCase(), entry);
+  try {
+    return [...byId]
+      .map(([id, { path: modelPath }]) => {
         const label = TANK_MODEL_LABELS[id] ?? id
           .split(/[-_\s]+/)
           .filter(Boolean)
@@ -1441,7 +1490,7 @@ function getAvailableTankModels() {
           .join(' ');
         return {
           id,
-          path: `/obj/${fileName}`,
+          path: modelPath,
           label: label || id,
         };
       })
@@ -1463,9 +1512,25 @@ function isAllowedTankModel(modelId) {
   return getAvailableTankModels().some((model) => model.id === normalized);
 }
 
+// `tankModel` in server.json: the model a player is in until they pick one,
+// and the bots' unless `bots.model` names another. Anything not offered is the
+// stock tank, said once.
+let reportedServerTankModel = null;
+function serverTankModel() {
+  const configured = typeof serverConfig.tankModel === 'string' ? serverConfig.tankModel.trim().toLowerCase() : '';
+  if (!configured || configured === 'default') return 'bzflag';
+  const model = normalizeTankModelId(configured);
+  if (isAllowedTankModel(model)) return model;
+  if (reportedServerTankModel !== model) {
+    reportedServerTankModel = model;
+    logError(`tankModel "${serverConfig.tankModel}" is not an offered tank model; the default is bzflag`);
+  }
+  return 'bzflag';
+}
+
 function normalizeTankModelId(modelId) {
   const normalized = typeof modelId === 'string' ? modelId.trim().toLowerCase() : '';
-  if (normalized === 'default') return 'bzflag';
+  if (normalized === 'default') return serverTankModel();
   if (normalized === 'bzflag-tank') return 'bzflag';
   // The treads tank's own name before it became the stock one.
   if (normalized === 'bzflag-treads') return 'bzflag';
@@ -1474,7 +1539,7 @@ function normalizeTankModelId(modelId) {
 }
 
 app.get('/api/tank-models', (req, res) => {
-  res.json({ models: getAvailableTankModels() });
+  res.json({ models: getAvailableTankModels(), default: serverTankModel() });
 });
 
 // Called only by this server, on itself, via `PUBLIC_URL` -- see
@@ -9220,6 +9285,31 @@ defineCommand('/setteam', COMMAND_TIER.OPERATOR,
     if (subject !== player) replyToPlayer(subject, '@{player} moved you to {team}', { player: player.name, team: { msgid: team } });
   });
 
+// The tank model a player is drawn in, as its own picker sets it
+// (`handleSetTankModel`). A bot has no picker, so this is how one wears
+// anything but the stock tank.
+defineCommand('/setmodel', COMMAND_TIER.OPERATOR,
+  '<#slot|PlayerName|"Player Name"> <model> - change the tank model a player is drawn in',
+  (player, args) => {
+    const target = resolveCommandTarget(args.trim());
+    const model = normalizeTankModelId(String(target.rest || '').trim());
+    if (!target.id || !isAllowedTankModel(model)) {
+      if (target.error) replyToPlayer(player, target.error);
+      // TRANSLATORS: /setmodel is a command name and {models} lists model names as typed
+      else replyToPlayer(player, 'Usage: /setmodel <#slot|PlayerName> <model> -- one of {models}', {
+        models: getAvailableTankModels().map((entry) => entry.id).join(', '),
+      });
+      return;
+    }
+    const subject = players.get(target.id);
+    if (!subject) return;
+    const from = subject.tankModel;
+    subject.tankModel = model;
+    if (subject.joined) broadcastPlayerRecord('playerUpdated', subject);
+    log(`[CMD] "${player.name}" set "${subject.name}" tank model ${from} -> ${model}`);
+    replyToPlayer(player, '"{player}" is now drawn as {model}', { player: subject.name, model });
+  });
+
 // `/mv` on an observer moves its roaming camera there, in free roam, with the
 // pitch when one was given (public/js/roam.mjs). A camera flies through buildings,
 // so the spot is taken as it is; no height means the ground. Nobody else draws
@@ -10730,7 +10820,7 @@ defineCommand('/pos', COMMAND_TIER.OPEN,
 // decide what the next kill or capture checks against.
 const LIVE_CONFIG_KEYS = Object.freeze([
   'title', 'motd', 'shotMaxActive', 'ricochet', 'timeLimit', 'timeManualStart', 'maxPlayerScore', 'maxTeamScore',
-  'botFill', 'botPilot',
+  'botFill', 'botPilot', 'botModel', 'tankModel',
 ]);
 // bzfs truncates `-publictitle` at 127 (CmdLineOptions.cxx:1044), and the
 // BZFlag list's title has the map's name added to it; this leaves room for
@@ -10797,6 +10887,8 @@ function getOperatorConfigState() {
     maxPlayers: MAX_REAL_PLAYERS,
     botFill,
     botPilot: botFillPilot,
+    botModel: botTankModel(),
+    tankModel: serverTankModel(),
     ...Object.fromEntries(Object.entries(OPERATOR_TEAM_LIMIT_KEYS)
       .map(([key, team]) => [key, limits[team]])),
     ...pluginOperatorState(),
@@ -10963,8 +11055,8 @@ function writeOperatorConfigFields(config, next) {
         ? setting
         : { enabled: typeof setting === 'boolean' ? setting : plugins.list().find((entry) => entry.id === id)?.state === 'loaded' };
       config.plugins = { ...config.plugins, [id]: { ...base, [name]: value } };
-    } else if (key === 'botFill' || key === 'botPilot') {
-      config.bots = { ...config.bots, [key === 'botFill' ? 'fill' : 'pilot']: value };
+    } else if (key === 'botFill' || key === 'botPilot' || key === 'botModel') {
+      config.bots = { ...config.bots, [{ botFill: 'fill', botPilot: 'pilot', botModel: 'model' }[key]]: value };
     } else if (key === 'rabbit') {
       // `false` is the config's own off position, and what resolveRabbitSelection
       // reads; `"off"` is the row's.
@@ -11118,6 +11210,16 @@ function applyServerConfigChanges(requested, byWhom) {
     }
     next.botPilot = requested.botPilot;
   }
+  if (has('botModel')) {
+    const model = normalizeTankModelId(requested.botModel);
+    if (!isAllowedTankModel(model)) return { error: 'Invalid bot model' };
+    next.botModel = model;
+  }
+  if (has('tankModel')) {
+    const model = normalizeTankModelId(requested.tankModel);
+    if (!isAllowedTankModel(model)) return { error: 'Invalid tank model' };
+    next.tankModel = model;
+  }
 
   // A plugin on or off, by the id the Plugins rows name it by.
   const knownPlugins = new Set((plugins?.list() ?? []).map((entry) => entry.id));
@@ -11216,6 +11318,12 @@ function applyServerConfigChanges(requested, byWhom) {
     GAME_CONFIG.MAX_TEAM_SCORE = next.maxTeamScore;
     changed.push('maxTeamScore');
   }
+  // Players who have not picked a model see the new default when they next
+  // load the page; nobody already in the game is redrawn.
+  if (next.tankModel !== undefined && next.tankModel !== serverTankModel()) {
+    serverConfig.tankModel = next.tankModel;
+    changed.push('tankModel');
+  }
 
   if (next.botPilot !== undefined && next.botPilot !== botFillPilot) {
     botFillPilot = next.botPilot;
@@ -11224,6 +11332,15 @@ function applyServerConfigChanges(requested, byWhom) {
   if (next.botFill !== undefined && next.botFill !== botFill) {
     botFill = next.botFill;
     changed.push('botFill');
+  }
+  if (next.botModel !== undefined && next.botModel !== botTankModel()) {
+    serverConfig.bots = { ...serverConfig.bots, model: next.botModel };
+    // The bots already in the game change too, as `/setmodel` changes one.
+    for (const bot of bots.values()) {
+      bot.player.tankModel = next.botModel;
+      if (bot.player.joined) broadcastPlayerRecord('playerUpdated', bot.player);
+    }
+    changed.push('botModel');
   }
   if (changed.includes('botFill') || changed.includes('botPilot')) scheduleBotReconcile();
 
@@ -11289,6 +11406,8 @@ function applyServerConfigChanges(requested, byWhom) {
     maxTeamScore: GAME_CONFIG.MAX_TEAM_SCORE,
     botFill,
     botPilot: botFillPilot,
+    botModel: botTankModel(),
+    tankModel: serverTankModel(),
   });
   log(`Config changed by ${byWhom}: ${changed.length ? changed.join(', ') : 'nothing'}`);
   return { changed, restarted: false };
@@ -18035,6 +18154,23 @@ messagesOperator.useServer({
 let botFill = Math.max(0, Math.floor(Number(serverConfig.bots?.fill) || 0));
 // `bots.pilot`, or the pilots' own default once they load.
 let botFillPilot = typeof serverConfig.bots?.pilot === 'string' ? serverConfig.bots.pilot : null;
+
+// `bots.model`: the tank model every bot joins in, or the server's own
+// default (`tankModel`) when it names none. Read at each join, so a model
+// added to `data/obj/` later is found; one that is not offered leaves the
+// default, said once.
+let reportedBotModel = null;
+function botTankModel() {
+  const configured = serverConfig.bots?.model;
+  if (typeof configured !== 'string' || !configured.trim()) return serverTankModel();
+  const model = normalizeTankModelId(configured);
+  if (isAllowedTankModel(model)) return model;
+  if (reportedBotModel !== model) {
+    reportedBotModel = model;
+    logError(`bots.model "${configured}" is not an offered tank model; bots join in the default`);
+  }
+  return serverTankModel();
+}
 let botsIdle = false;
 // `/bot pause`: every bot idles as if nobody were connected, and a player's
 // own autopilot holds, until `/bot resume`. Not saved, so a restart ends it.
@@ -18061,7 +18197,7 @@ function createBotSocket() {
 }
 
 function findAutopilot(id) {
-  return AUTOPILOT_MODULE?.AUTOPILOTS.find((entry) => entry.id === id) ?? null;
+  return AUTOPILOT_MODULE?.BOT_PILOTS.find((entry) => entry.id === id) ?? null;
 }
 
 // A person: neither a bot this server runs nor a client that joined as one.
@@ -18452,7 +18588,7 @@ function addBot(pilotId = botFillPilot, team = PLAYER_TEAM.AUTOMATIC, { auto = f
   const join = () => {
     if (bots.get(player.id) !== bot) return;
     socket.say({
-      type: 'joinGame', name, team, tankModel: 'bzflag', motto: entry.name, bot: true,
+      type: 'joinGame', name, team, tankModel: botTankModel(), motto: entry.name, bot: true,
     });
     // A restored score is not this report period's kills and deaths.
     bot.reportedWins = player.wins;
@@ -18585,9 +18721,27 @@ setInterval(() => {
     log(`[BOT] ${idle ? (botsPaused ? 'idle: paused' : 'idle: nobody connected') : 'awake'}`);
     lastBotHeartbeatAt = 0;
   }
-  // Idle, a bot only stands still and says so once a second, as a client's
-  // heartbeat, so the server does not take it for one that stopped
-  // responding.
+  // Paused with somebody watching, a bot is still moved by the world --
+  // carried by a physics driver, dropped by gravity -- with no control of its
+  // own, at the full tick so the ride is smooth.
+  if (botsPaused && !botWorkerBusy) {
+    const now = Date.now();
+    const dt = lastBotTickAt ? Math.min((now - lastBotTickAt) / 1000, BOT_MAX_TICK_SECONDS) : BOT_TICK_SECONDS;
+    lastBotTickAt = now;
+    syncBotWorkerConfig();
+    botWorkerBusy = true;
+    botWorker.postMessage({
+      type: 'idle',
+      dt,
+      shared: botSharedView(now),
+      bots: [...bots.values()].map((bot) => botOwnView(bot, now)),
+    });
+    return;
+  }
+  if (botsPaused) return;
+  // Idle with nobody connected, a bot only stands still and says so once a
+  // second, as a client's heartbeat, so the server does not take it for one
+  // that stopped responding.
   if (idle) {
     const now = Date.now();
     if (botWorkerBusy || now - lastBotHeartbeatAt < BOT_HEARTBEAT_MS) return;
@@ -18671,7 +18825,7 @@ defineCommand('/bot', COMMAND_TIER.OPERATOR,
       replyToPlayer(player, 'The pilots have not loaded');
       return;
     }
-    const pilots = AUTOPILOT_MODULE.AUTOPILOTS.map((entry) => entry.id).join('|');
+    const pilots = AUTOPILOT_MODULE.BOT_PILOTS.map((entry) => entry.id).join('|');
     if (!verb) {
       replyToPlayer(player, describeBots());
       return;

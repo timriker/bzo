@@ -54,6 +54,68 @@ const TANK_NAV_LIGHTS = [
 // facing -Z, with its starboard on +X. Each one is turned once as it loads to
 // stand as upstream's tank does, on +Z facing +X with its port on +Y:
 // (x, y, z) becomes (-z, -x, y).
+const smoothstep = (edge0, edge1, x) => {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - (2 * t));
+};
+
+// A model texture's RGBA, rewritten in place for TankModelMaterial: alpha is
+// how far a texel takes the player's colour, and a texel that takes it is
+// grey. The main colour is the hue with the most saturation behind it;
+// dark texels (outlines, a black bandana), pale ones (the whites of an eye,
+// teeth) and texels well off that hue keep their own.
+// Edges are blended rather than cut, so an outline does not alias.
+function tintTankModelTexels(data) {
+  const BINS = 36;
+  const weights = new Float64Array(BINS);
+  const hsv = new Float32Array((data.length / 4) * 3);
+  for (let i = 0, j = 0; i < data.length; i += 4, j += 3) {
+    const { h, s, v } = rgbToHsv(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255);
+    hsv[j] = h;
+    hsv[j + 1] = s;
+    hsv[j + 2] = v;
+    if (v > 0.3) weights[Math.floor(h * BINS) % BINS] += s * v;
+  }
+  let main = 0;
+  for (let bin = 1; bin < BINS; bin += 1) if (weights[bin] > weights[main]) main = bin;
+  const mainHue = (main + 0.5) / BINS;
+
+  for (let i = 0, j = 0; i < data.length; i += 4, j += 3) {
+    const [h, s, v] = [hsv[j], hsv[j + 1], hsv[j + 2]];
+    const turns = Math.abs(h - mainHue);
+    const offHue = Math.min(turns, 1 - turns) * 360;
+    const black = 1 - smoothstep(0.2, 0.35, v);
+    const white = (1 - smoothstep(0.3, 0.45, s)) * smoothstep(0.55, 0.7, v);
+    const other = smoothstep(30, 50, offHue) * smoothstep(0.2, 0.35, s);
+    const tint = (1 - black) * (1 - white) * (1 - other);
+    const luminance = ((0.2126 * data[i]) + (0.7152 * data[i + 1]) + (0.0722 * data[i + 2])) / 255;
+    const grey = Math.min(255, (0.35 + (luminance * 0.95)) * 255);
+    for (let channel = 0; channel < 3; channel += 1) {
+      data[i + channel] += (grey - data[i + channel]) * tint;
+    }
+    data[i + 3] = tint * 255;
+  }
+}
+
+// The material a model names for the faces that take the team colour: `team`,
+// or a name that starts `team_`, `team-` or `team.`.
+const isTeamMaterialName = (name) => /^team(?![a-z0-9])/i.test(name || '');
+
+// A tank in its model's own texture: the texture's colour multiplied by the
+// material's only as far as the texture's alpha says, so what the designer
+// painted outside the main colour keeps its own. A class rather than a hook
+// on one material, so the clones debris and ghosts make keep it.
+class TankModelMaterial extends THREE.MeshLambertMaterial {
+  onBeforeCompile(shader) {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+#ifdef USE_MAP
+  vec4 sampledDiffuseColor = texture2D( map, vMapUv );
+  diffuseColor.rgb = sampledDiffuseColor.rgb * mix( vec3( 1.0 ), diffuseColor.rgb, sampledDiffuseColor.a );
+#endif
+`);
+  }
+}
+
 const TANK_MODEL_TO_GAME = new THREE.Matrix4().set(
   0, 0, -1, 0,
   -1, 0, 0, 0,
@@ -688,6 +750,20 @@ export class TankRendering {
       obj.traverse((child) => {
         if (child.isMesh) cache[child.name] = child.geometry;
       });
+      // Ready only once its texture is known, so no tank is built in the team
+      // skin and then has to be built again.
+      let teamMaterial = false;
+      obj.traverse((child) => {
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        if (child.isMesh && materials.some((material) => isTeamMaterialName(material?.name))) teamMaterial = true;
+      });
+      this._tankModelTeamMaterials.set(loadPath, teamMaterial);
+      this._readTankModelTexture(loadPath, obj).then((url) => {
+        if (url) this._tankModelTextureByPath.set(loadPath, url);
+        publish(obj, cache);
+      });
+    };
+    const publish = (obj, cache) => {
       this._tankTemplateByPath.set(loadPath, obj);
       this._tankGeoCacheByPath.set(loadPath, cache);
       if (loadPath === this._tankModelPath) {
@@ -714,6 +790,83 @@ export class TankRendering {
         this._preloadTankModel('/obj/simple.obj');
       }
     });
+  }
+
+  // The texture a model names for itself: the `map_Kd` of the first material
+  // library its OBJ names, beside the OBJ. A model that names none, as the
+  // bundled ones do, wears the team skin.
+  async _readTankModelTexture(modelPath, obj) {
+    const library = obj.materialLibraries?.[0];
+    if (!library) return null;
+    const base = new URL(modelPath, window.location.href);
+    try {
+      const response = await fetch(new URL(library, base));
+      if (!response.ok) return null;
+      const map = (await response.text()).match(/^\s*map_Kd\s+(?:-\S+\s+\S+\s+)*(\S.*?)\s*$/m);
+      return map ? new URL(map[1], base).pathname : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // A model's own texture as every tank wearing it shares it. Only its main
+  // colour takes the player's: the hue most of its coloured texels share,
+  // drawn in grey lifted the way a tinted bolt is. Black, white and any
+  // other colour -- a barrel, the whites of an eye, a red tongue -- keep
+  // what the designer painted. The alpha channel says which is which, for
+  // TankModelMaterial to read, so one texture serves every colour. `keep`
+  // draws the picture as painted, for the faces a model keeps out of the
+  // team colour altogether, and is shared by every tank wearing it.
+  _tankModelSkin(url) {
+    let skin = this._tankModelSkins.get(url);
+    if (skin) return skin;
+    const blank = () => {
+      const texture = new THREE.DataTexture(new Uint8Array([180, 180, 180, 255]), 1, 1);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.generateMipmaps = true;
+      texture.userData.shared = true;
+      texture.needsUpdate = true;
+      return texture;
+    };
+    const texture = blank();
+    const plain = blank();
+    const keep = new THREE.MeshLambertMaterial({ map: plain });
+    keep.userData.shared = true;
+    skin = { texture, keep };
+    this._tankModelSkins.set(url, skin);
+
+    const source = this._getSharedImage(url);
+    const paint = () => {
+      const { image } = source;
+      const width = image.naturalWidth || image.width;
+      const height = image.naturalHeight || image.height;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(image, 0, 0);
+      const pixels = ctx.getImageData(0, 0, width, height).data;
+      const data = new Uint8Array(pixels.length);
+      // Rows bottom first, as a texture's v runs, where a canvas texture
+      // would be flipped on upload.
+      const rowBytes = width * 4;
+      for (let row = 0; row < height; row += 1) {
+        data.set(pixels.subarray(row * rowBytes, (row + 1) * rowBytes), (height - 1 - row) * rowBytes);
+      }
+      plain.dispose();
+      plain.image = { data: data.slice(), width, height };
+      plain.needsUpdate = true;
+      tintTankModelTexels(data);
+      texture.dispose();
+      texture.image = { data, width, height };
+      texture.needsUpdate = true;
+    };
+    if (source.loaded) paint();
+    else source.listeners.push(paint);
+    return skin;
   }
 
   setTankModel(modelPath = '/obj/bzflag.obj') {
@@ -1182,7 +1335,20 @@ export class TankRendering {
       this.updateSpriteLabel(sprite, name, color);
     }
 
-    const bodyTexture = this._createTankTexture(color, options);
+    // A model with its own texture wears it, painted in the player's colour,
+    // on its hull, turret and barrel; the team skins are for the models that
+    // have none. Treads and wheels are the stock ones either way.
+    const modelTextureUrl = this._tankModelTextureByPath.get(modelPath);
+    const modelSkin = modelTextureUrl ? this._tankModelSkin(modelTextureUrl) : null;
+    const modelMaterial = modelSkin ? new TankModelMaterial({ map: modelSkin.texture, color }) : null;
+    // A model that names a `team` material takes the colour on those faces
+    // alone; one that does not takes it everywhere.
+    const tintsAll = !this._tankModelTeamMaterials.get(modelPath);
+    const modelMaterialsFor = (part) => {
+      const pick = (material) => (tintsAll || isTeamMaterialName(material?.name) ? modelMaterial : modelSkin.keep);
+      return Array.isArray(part.material) ? part.material.map(pick) : pick(part.material);
+    };
+    const bodyTexture = modelMaterial ? null : this._createTankTexture(color, options);
     const treadTexture = this._createTreadTexture();
     const treadTextureRotated = treadTexture.clone();
     treadTextureRotated.rotation = Math.PI / 2;
@@ -1196,15 +1362,16 @@ export class TankRendering {
     treadCapTextureSide.wrapT = THREE.RepeatWrapping;
     treadCapTextureSide.needsUpdate = true;
 
-    const bodyMaterial = new THREE.MeshLambertMaterial({ map: bodyTexture });
-    const body = this._cloneTemplateMesh(templateParts.body, bodyMaterial);
+    const bodyMaterial = modelMaterial || new THREE.MeshLambertMaterial({ map: bodyTexture });
+    const body = this._cloneTemplateMesh(templateParts.body,
+      modelMaterial ? modelMaterialsFor(templateParts.body) : bodyMaterial);
     tankGroup.add(body);
     tankGroup.userData.body = body;
     // The body's own material, which is what they were drawn in when they were
     // part of it.
     const casings = [templateParts.leftCasing, templateParts.rightCasing]
       .filter(Boolean)
-      .map((part) => this._cloneTemplateMesh(part, bodyMaterial));
+      .map((part) => this._cloneTemplateMesh(part, modelMaterial ? modelMaterialsFor(part) : bodyMaterial));
     casings.forEach((casing) => tankGroup.add(casing));
 
     const treadMaterials = {
@@ -1226,7 +1393,8 @@ export class TankRendering {
 
     // What `recolorTank` repaints: the materials a colour reaches.
     tankGroup.userData.colorMaterials = {
-      body: [bodyMaterial],
+      model: modelMaterial,
+      body: modelMaterial ? [] : [bodyMaterial],
       treadCap: treadMaterials.treadCapMat,
       treadCapSide: treadMaterials.treadCapMatSide,
     };
@@ -1261,9 +1429,10 @@ export class TankRendering {
     // The body's texture on the turret's own coordinates, unscaled, as
     // upstream draws it: `setupTextureMatrix` (TankSceneNode.cxx) moves only
     // the treads and wheels.
-    const turretMaterial = new THREE.MeshLambertMaterial({ map: bodyTexture });
-    tankGroup.userData.colorMaterials.body.push(turretMaterial);
-    const turret = this._cloneTemplateMesh(templateParts.turret, turretMaterial);
+    const turretMaterial = modelMaterial || new THREE.MeshLambertMaterial({ map: bodyTexture });
+    if (!modelMaterial) tankGroup.userData.colorMaterials.body.push(turretMaterial);
+    const turret = this._cloneTemplateMesh(templateParts.turret,
+      modelMaterial ? modelMaterialsFor(templateParts.turret) : turretMaterial);
     tankGroup.add(turret);
     tankGroup.userData.turret = turret;
 
@@ -1271,8 +1440,9 @@ export class TankRendering {
     turret.add(navLights);
     tankGroup.userData.navLights = navLights;
 
-    const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
-    const barrel = this._cloneTemplateMesh(templateParts.barrel, barrelMaterial);
+    const barrelMaterial = modelMaterial || new THREE.MeshLambertMaterial({ color: 0x333333 });
+    const barrel = this._cloneTemplateMesh(templateParts.barrel,
+      modelMaterial ? modelMaterialsFor(templateParts.barrel) : barrelMaterial);
     tankGroup.add(barrel);
     tankGroup.userData.barrel = barrel;
     this._setTankMuzzleData(tankGroup, barrel, body);
@@ -1320,7 +1490,9 @@ export class TankRendering {
       for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
         if (!material || material.userData?.shared) continue;
         owned.materials.add(material);
-        for (const value of Object.values(material)) if (value?.isTexture) owned.textures.add(value);
+        for (const value of Object.values(material)) {
+          if (value?.isTexture && !value.userData?.shared) owned.textures.add(value);
+        }
       }
     });
     // Kept on the tank but not on any mesh: the wheels' textures for each
@@ -1341,6 +1513,10 @@ export class TankRendering {
     const materials = tank?.userData?.colorMaterials;
     if (!materials) return false;
     const owned = tank.userData.ownedResources;
+    if (materials.model) {
+      materials.model.color.setHex(color);
+      return true;
+    }
     const swap = (material, texture) => {
       const old = material.map;
       material.map = texture;

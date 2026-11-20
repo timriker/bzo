@@ -150,6 +150,9 @@ Object names are the hard contract. Material names are advisory: the renderer
 picks materials by object name, and a `usemtl` in the file is documentation for
 the next person rather than something the renderer reads.
 
+The one thing read from a material library is a texture: see
+[Own Texture](#own-texture).
+
 Recommended material role names:
 
 - `body_skin`
@@ -194,6 +197,57 @@ bore in `barrel` and its casing in `body` draws a camouflaged tube around a
 black hole: both are doing exactly what their object asked for. Split by what a
 piece should look like, and the renderer does the rest.
 
+## Own Texture
+
+A model may carry its own texture, so it looks as its designer drew it. Its
+OBJ names a material library with `mtllib`, beside it, and the first `map_Kd`
+in that library is the texture, beside it too. Such a model wears that
+texture on its body, turret, barrel and casings, with its main colour (the
+hue most of its coloured texels share) painted in the player's. Dark texels,
+pale ones and colours well off that hue keep their own, so outlines, a black
+bandana, the whites of an eye, teeth or a red tongue stay as drawn.
+
+Where that guess is wrong, the model says so with materials: assign the faces
+that take the player's colour to a material named `team` (or `team_...`), in
+Blender or any editor, and every face in any other material keeps exactly
+what is painted on it. Within `team`, dark, pale and off-hue texels still
+keep theirs. Every material names the same texture.
+
+Its treads and wheels are drawn and animated as any model's are, and the skin
+a player picks does not apply to it. A model with no `mtllib` wears the team
+skin as above.
+
+## Server Models
+
+A server offers its own models beside the bundled ones: an OBJ in
+`obj/` beside its config (`data/obj`, or `/data/obj` in Docker),
+with the MTL and texture it names. They are served at `/data/obj/`, may be OBJ,
+MTL, PNG or JPG, and must not be in subdirectories. A model's id is its file
+name, lower case letters, digits, `-` and `_`; one with a bundled model's name
+replaces it. The same part contract applies, and a server's own model needs
+no licence entry in the README, since it does not ship with bzo.
+
+Every client that meets a model parses it on its main thread, so a server's
+own model is held to limits (`server/local-models.cjs`):
+
+- at most 20,000 triangles and 8 MB of OBJ, or it is not offered
+- an MTL of at most 64 KB
+- a texture held to the map textures' limits -- 4 MB, 2048 pixels a side --
+  as PNG or JPEG; one over them is not served, and the model is drawn in the
+  team skin
+
+`server.log` names a model that is not offered, and one left in the team skin
+because its MTL or texture is missing or refused, once each time its files
+change.
+
+`scripts/import-angry-tank.mjs` builds the bundled `angry` tank from its
+single-object Tripo AI export, `src/angry-src.zip`: it sorts the pieces
+into parts, turns it to face -Z, stretches its hull to the stock tank's width,
+height and length while its turret keeps its own round shape, runs its barrel
+out to the stock gun's reach, and places its nav lights. Its painted-on tracks
+and road wheels are replaced by the stock tank's treads and wheels, fitted to
+the space they filled, so they animate.
+
 ## Texture Coordinates
 
 **Author them.** A model is expected to arrive unwrapped, and an unwrapped model
@@ -235,6 +289,17 @@ A model is a separate work from the code that draws it, and the two do not
 share a licence by sitting in the same repository. See **Bundled assets and
 licensing** in [the README](../README.md) for what is expected of a model
 before it ships.
+
+A model says whose it is and on what terms in its own header comment, the
+only place an OBJ has for it:
+
+```text
+# Author: Tim Riker
+# License: GNU Affero General Public License v3.0 (AGPLv3)
+```
+
+followed by where it came from. The file a model is built from, when it is
+not the OBJ itself, goes in `src/`, which the Docker image leaves out.
 
 ## Unbuildable Models
 

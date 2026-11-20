@@ -1610,3 +1610,11 @@ export const AUTOPILOTS = Object.freeze([
   Object.freeze({ id: 'roger', name: 'Roger', Pilot: Roger }),
   Object.freeze({ id: 'ace', name: 'Ace', Pilot: Ace }),
 ]);
+
+// The pilots a server bot may fly with: the autopilots, and Idle, which asks
+// for nothing -- its tank goes only where the world carries it, a target or a
+// model on show. Idle has no `Pilot`, and is never a player's own autopilot.
+export const BOT_PILOTS = Object.freeze([
+  ...AUTOPILOTS,
+  Object.freeze({ id: 'idle', name: 'Idle', Pilot: null }),
+]);

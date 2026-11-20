@@ -163,6 +163,12 @@
             <output id="maxTeamScoreValue" class="volumeValue" for="maxTeamScoreSlider">No limit</output>
           </div>
         </div>
+        <!-- The model a player is in until they pick one. Live, like the
+             rows above it. -->
+        <div class="operatorRow" data-menu-row="tankModel" data-menu-kind="choice">
+          <label for="tankModelSelect" data-i18n>Tank Model:</label>
+          <select id="tankModelSelect"></select>
+        </div>
         <!-- The server's own bots: how many places they keep filled, and who
              flies them. Live, like the rows above it. -->
         <div class="operatorRow operatorConfigRow" data-menu-row="botFill" data-menu-kind="range">
@@ -173,8 +179,12 @@
           </div>
         </div>
         <div class="operatorRow" data-menu-row="botPilot" data-menu-kind="choice">
-          <label for="botPilotSelect" data-i18n>Bot Pilot:</label>
+          <label for="botPilotSelect" data-i18n>Pilot:</label>
           <select id="botPilotSelect"></select>
+        </div>
+        <div class="operatorRow" data-menu-row="botModel" data-menu-kind="choice">
+          <label for="botModelSelect" data-i18n>Model:</label>
+          <select id="botModelSelect"></select>
         </div>
         <!-- Immediate actions, like Upload above -- nothing here is staged, so
              these fire on click rather than waiting for Apply. Only meaningful

@@ -84,7 +84,9 @@ Use `--platform linux/arm64` on ARM hosts if you want to pin that explicitly.
 - `/data` holds what wants to survive an image upgrade: `server.json` and
   the state files beside it, the maps, replays and plugins added to the
   bundled ones (`/data/maps`, `/data/replays`, `/data/plugins`), map
-  textures (`/data/img`, see [bzw.md](bzw.md)), and
+  textures (`/data/img`, see [bzw.md](bzw.md)), tank models
+  (`/data/obj`, see
+  [tank-model-format.md](tank-model-format.md#server-models)), and
   `/data/cache`. The cache is
   where parsed worlds, their overview pictures and the world hashes bzo has
   collected from other servers live -- rebuilding it means downloading every
@@ -174,7 +176,7 @@ npm install
 
 A checkout keeps the operator's own files in `data/`, laid out as the image's
 `/data` is: `data/server.json` and its state, `data/maps`, `data/replays`,
-`data/plugins`, `data/img` and `data/cache`. `maps/`, `replays/` and
+`data/plugins`, `data/img`, `data/obj` and `data/cache`. `maps/`, `replays/` and
 `plugins/` hold only what ships with bzo. If `data/server.json` does not
 exist, the server creates it from [example-server.json](../example-server.json)
 on first start.
@@ -485,21 +487,39 @@ https://your-bzo.example.com/?proxy=example.org_5154
 
 `docs/proxy.md` has what a proxied player gets, what they do not, and why.
 
+## Tank model
+
+The model a player is in until they pick one in the entry dialog:
+
+```json
+"tankModel": "angry"
+```
+
+Any id the tank picker offers, a server's own model in `data/obj/` included
+([tank-model-format.md](tank-model-format.md#server-models)); left out, or
+naming a model that is not offered, it is the stock tank. A player's own pick
+is kept per server and always wins. An operator changes it live from the
+panel's Tank Model row; it reaches players as they next load the page.
+
 ## Bots
 
 The server can keep its game at a size with bots of its own:
 
 ```json
-"bots": { "fill": 4, "pilot": "ace" }
+"bots": { "fill": 4, "pilot": "ace", "model": "bzflag" }
 ```
 
 That is four players: a bot for each place people leave empty, and none once
 four people are playing. Observers watch rather than take a place. With nobody
 connected the bots idle until somebody arrives. `pilot` is `roger` (upstream's
-autopilot) or `ace`. A bot takes the highest free player slot and is named
-for it (`Ace41`); the fill drops one from the biggest team, its lowest slot
-first, and one that comes back -- or returns after a restart -- has its own
-slot and score again.
+autopilot), `ace`, or `idle`: a bot that never drives, turns or fires, and
+goes only where the world carries it -- a target, or a model on show.
+`model` is the tank model every bot joins in, any id the tank picker offers
+-- a server's own model in `data/obj/` included -- and the server's
+`tankModel` when it is left out or names a model that is not offered. A bot
+takes the highest free player slot and is named for it (`Ace41`); the fill
+drops one from the biggest team, its lowest slot first, and one that comes
+back -- or returns after a restart -- has its own slot and score again.
 
 An operator changes it live with `/bot fill <n> [pilot]`, adds bots outside
 the fill with `/bot add [pilot] [team] [count]`, removes them with

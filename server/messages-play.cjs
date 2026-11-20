@@ -1085,7 +1085,7 @@ function handleJoinGame(player, ws, message) {
   }
   player.tankModel = isAllowedTankModel(requestedTankModel)
     ? requestedTankModel
-    : 'bzflag';
+    : normalizeTankModelId('default');
   player.skin = normalizeTankSkinId(message.skin);
   player.team = assignedTeam;
   // `player` is already in the roster here, so it is excluded from the

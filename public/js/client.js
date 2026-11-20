@@ -429,7 +429,7 @@ import {
   transformShotThroughTeleporter,
 } from './teleport.mjs';
 import { findMapEdgeImpactPoint, traceBeam, traceShotThroughTeleporters } from './trace.mjs';
-import { AUTOPILOTS, DEFAULT_PILOT } from './autopilot.mjs';
+import { AUTOPILOTS, BOT_PILOTS, DEFAULT_PILOT } from './autopilot.mjs';
 import { pilotFoeId } from './roger.mjs';
 import { createPortTransport } from './port-transport.mjs';
 import {
@@ -2785,7 +2785,7 @@ function syncTankSelectorForDestination() {
   // saved. Nothing here is committed until OK either way.
   const wanted = proxied
     ? DEFAULT_TANK_MODEL_ID
-    : canonicalTankModelId(localStorage.getItem('tankModelId') || DEFAULT_TANK_MODEL_ID);
+    : canonicalTankModelId(localStorage.getItem('tankModelId') || serverDefaultTankModelId);
   if (wanted !== selectedTankModelId) setSelectedTankModel(wanted);
 }
 
@@ -2840,11 +2840,17 @@ function getJoinTeamFields() {
   };
 }
 
+// The model a join asks for: the player's own pick, or `default` -- the
+// server's own default -- for a player who has not made one on this server.
+function joinTankModelId() {
+  return localStorage.getItem('tankModelId') ? selectedTankModelId : 'default';
+}
+
 function setPendingJoinRequest(name) {
   pendingJoinRequest = {
     name,
     isMobile,
-    tankModel: selectedTankModelId,
+    tankModel: joinTankModelId(),
     skin: selectedTankSkinId,
     motto: myPlayerMotto,
   };
@@ -2852,6 +2858,11 @@ function setPendingJoinRequest(name) {
 
 function maybeSendPendingJoinRequest() {
   if (!renderReadyForJoin || gameplayJoinConfirmed || !pendingJoinRequest) return;
+  // A phone reloads a backgrounded app behind its home screen and the rejoin
+  // runs there; joined while nobody can see it, the tank would only have to
+  // be paused, and that pause would greet the player when they came back. It
+  // joins when the page is shown instead (the visibilitychange below).
+  if (document.hidden && !isXREnabled()) return;
   if (mapViewerNavigated() || proxyTeamChangeNavigated(getJoinTeamFields().team)) return;
   sendToServer({
     type: 'joinGame',
@@ -5012,13 +5023,23 @@ function syncAutoPause() {
     alive: isMyTankAlive(),
     observer: isObserver(),
   });
-  if (send) sendToServer({ type: 'pause' });
+  if (send) sendPauseToggle('window or menu');
+}
+
+// The pause toggle, with why it went out and what the page looked like, so a
+// pause nobody meant can be traced in server.log.
+function sendPauseToggle(reason) {
+  debugLog(`pause toggle: ${reason} hidden=${document.hidden} menu=${isMenuContextActive()}`);
+  sendToServer({ type: 'pause' });
 }
 
 // Unmap and Map themselves. A hidden tab is the browser's word for iconified,
 // and it is the only one it gives: a window that is merely unfocused is still
 // on screen, which upstream does not pause for either.
 document.addEventListener('visibilitychange', syncAutoPause);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) maybeSendPendingJoinRequest();
+});
 
 // What is left of updatePauseCountdown (playing.cxx:6863) once the server owns
 // the countdown itself: upstream's own guard on a tank that is no longer alive,
@@ -5328,6 +5349,9 @@ let TANK_MODELS = [
   { id: 'bzflag-medium', path: '/obj/bzflag-medium.obj', label: 'BZFlag Medium' },
   { id: 'bzflag-low', path: '/obj/bzflag-low.obj', label: 'BZFlag Low' },
 ];
+// The server's own default (`tankModel` in server.json), learned with the
+// model list; the stock tank until then.
+let serverDefaultTankModelId = DEFAULT_TANK_MODEL_ID;
 let selectedTankModelId = localStorage.getItem('tankModelId') || DEFAULT_TANK_MODEL_ID;
 let tankPreviewCard = null;
 let tankPreviewAnimating = false;
@@ -5360,7 +5384,8 @@ function getDefaultTankModel() {
   if (!Array.isArray(TANK_MODELS) || TANK_MODELS.length === 0) {
     return { id: DEFAULT_TANK_MODEL_ID, path: '/obj/bzflag.obj', label: 'BZFlag' };
   }
-  return TANK_MODELS.find((model) => model.id === DEFAULT_TANK_MODEL_ID) || TANK_MODELS[0];
+  return TANK_MODELS.find((model) => model.id === serverDefaultTankModelId)
+    || TANK_MODELS.find((model) => model.id === DEFAULT_TANK_MODEL_ID) || TANK_MODELS[0];
 }
 
 function getTankModelById(modelId) {
@@ -5750,6 +5775,8 @@ async function fetchTankModels() {
         label: model.label || model.id,
       }))
       .sort((left, right) => {
+        if (left.id === payload.default) return -1;
+        if (right.id === payload.default) return 1;
         if (left.id === DEFAULT_TANK_MODEL_ID) return -1;
         if (right.id === DEFAULT_TANK_MODEL_ID) return 1;
         return left.id.localeCompare(right.id);
@@ -5757,6 +5784,13 @@ async function fetchTankModels() {
 
     if (models.length > 0) {
       TANK_MODELS = models;
+      if (models.some((model) => model.id === payload.default)) serverDefaultTankModelId = payload.default;
+      // Not picked yet on this server: the server's default, shown and drawn
+      // but not saved, so a later default reaches this player too.
+      if (!localStorage.getItem('tankModelId') && selectedTankModelId !== serverDefaultTankModelId) {
+        setSelectedTankModel(serverDefaultTankModelId);
+        renderManager.setTankModel(getTankModelPathById(serverDefaultTankModelId));
+      }
       const normalizedSelectedTankModelId = normalizeTankModelId(selectedTankModelId);
       if (normalizedSelectedTankModelId !== selectedTankModelId) {
         localStorage.setItem('tankModelId', normalizedSelectedTankModelId);
@@ -6798,7 +6832,7 @@ function handleGameplayKeydown(event) {
   // A pause a menu asked for is the menu's to undo, which is why cmdPause does
   // nothing at all while pausedByUnmap is set.
   if (event.code === 'KeyP') {
-    if (pauseState.pressPauseKey({ observer: isObserver() })) sendToServer({ type: 'pause' });
+    if (pauseState.pressPauseKey({ observer: isObserver() })) sendPauseToggle('key');
     return true;
   }
 
@@ -7047,6 +7081,7 @@ initHudControls({
   toggleEntryDialog,
   handleGameplayKeydown,
   syncAutoPause,
+  debugLog: (message) => debugLog(message),
 });
 
 // --- Debug Labels Button Wiring ---
@@ -8462,6 +8497,7 @@ function connectToServer() {
 
   ws.onclose = (event) => {
     udpChannel.close();
+    pauseState.disconnected();
     // The id was this connection's; the server hands it to the next joiner,
     // and the next `init` gives this page its own.
     myPlayerId = null;
@@ -9183,7 +9219,7 @@ function receivePlayerJoined(message) {
       alive: isMyTankAlive(),
       observer: isObserver(),
     })) {
-      sendToServer({ type: 'pause' });
+      sendPauseToggle('join');
     }
     refreshScoreboards();
   } else {
@@ -9523,8 +9559,11 @@ function receiveAutopilot(message) {
 
 function receivePauseCountdown(message) {
   if (message.playerId === myPlayerId) {
-    // A menu's pause answered after the menu went away is undone at once.
-    if (pauseState.countdownStarted(sampleEpochClock())) sendToServer({ type: 'pause' });
+    // A menu's pause answered after the menu went away is undone at once, and
+    // so is one nobody asked for with nothing in front of the game.
+    if (pauseState.countdownStarted(sampleEpochClock(), { covered: shouldAutoPause() })) {
+      sendPauseToggle('undo countdown');
+    }
     pauseAlertSecondsShown = 0;
     updatePauseCountdown();
   }
@@ -9543,7 +9582,7 @@ function receivePauseCancelled(message) {
 
 function receivePlayerPaused(message) {
   if (message.playerId === myPlayerId) {
-    if (pauseState.pausedByServer()) sendToServer({ type: 'pause' });
+    if (pauseState.pausedByServer({ covered: shouldAutoPause() })) sendPauseToggle('undo pause');
     pauseAlertSecondsShown = 0;
     // setAlert(1, NULL) clears the countdown the moment it runs out.
     setHudAlert(PAUSE_ALERT_SLOT, null, 0);
@@ -10554,7 +10593,7 @@ function handlePlayerRespawn(message) {
       alive: true,
       observer: isObserver(),
     })) {
-      sendToServer({ type: 'pause' });
+      sendPauseToggle('respawn');
     }
     showMessage(t('You respawned!'));
     // Nothing to restore: `cameraMode` was never taken away. Clearing the body
@@ -10992,7 +11031,7 @@ function viewMapFile(file) {
       type: 'joinGame',
       name: myPlayerName,
       isMobile,
-      tankModel: selectedTankModelId,
+      tankModel: joinTankModelId(),
       skin: selectedTankSkinId,
       motto: myPlayerMotto,
       bot: IS_BOT_CLIENT,
@@ -11193,6 +11232,8 @@ function handleServerConfigUpdate(message) {
   }
   if (Number.isFinite(message.botFill)) serverOperatorConfig.botFill = message.botFill;
   if (typeof message.botPilot === 'string') serverOperatorConfig.botPilot = message.botPilot;
+  if (typeof message.botModel === 'string') serverOperatorConfig.botModel = message.botModel;
+  if (typeof message.tankModel === 'string') serverOperatorConfig.tankModel = message.tankModel;
   // Whatever world is on screen keeps its own physics over the top of the
   // values that just moved.
   recomputeLiveConfig();
@@ -11300,6 +11341,8 @@ function getOperatorServerState() {
     mapFile: currentMapFile || serverOperatorConfig.mapFile || '',
     botFill: Number(serverOperatorConfig.botFill) || 0,
     botPilot: serverOperatorConfig.botPilot || DEFAULT_PILOT,
+    botModel: serverOperatorConfig.botModel || DEFAULT_TANK_MODEL_ID,
+    tankModel: serverOperatorConfig.tankModel || DEFAULT_TANK_MODEL_ID,
   };
 }
 
@@ -11583,6 +11626,20 @@ function paintOperatorRows(state) {
   if (botFillValue && !(state.botFill > 0)) botFillValue.textContent = t('Off');
   const botPilotSelect = document.getElementById('botPilotSelect');
   if (botPilotSelect) botPilotSelect.value = state.botPilot;
+  // The models the tank picker offers, which can change while the server runs
+  // (`data/obj/`), so filled each time rather than once.
+  const modelOptions = () => TANK_MODELS.map((model) => {
+    const option = document.createElement('option');
+    option.value = model.id;
+    option.textContent = model.label;
+    return option;
+  });
+  for (const [id, value] of [['botModelSelect', state.botModel], ['tankModelSelect', state.tankModel]]) {
+    const select = document.getElementById(id);
+    if (!select) continue;
+    select.replaceChildren(...modelOptions());
+    select.value = value;
+  }
   const rabbitSelect = document.getElementById('rabbitSelect');
   if (rabbitSelect) {
     rabbitSelect.value = RABBIT_SELECTIONS.includes(state.rabbit) ? state.rabbit : 'off';
@@ -11803,7 +11860,7 @@ function wireOperatorPanel() {
   // one the server does not have.
   const botPilotSelect = document.getElementById('botPilotSelect');
   if (botPilotSelect) {
-    for (const entry of AUTOPILOTS) {
+    for (const entry of BOT_PILOTS) {
       const option = document.createElement('option');
       option.value = entry.id;
       option.textContent = entry.name;
@@ -11811,6 +11868,10 @@ function wireOperatorPanel() {
     }
     botPilotSelect.addEventListener('change', () => stageOperatorChange('botPilot', botPilotSelect.value));
   }
+  const botModelSelect = document.getElementById('botModelSelect');
+  botModelSelect?.addEventListener('change', () => stageOperatorChange('botModel', botModelSelect.value));
+  const tankModelSelect = document.getElementById('tankModelSelect');
+  tankModelSelect?.addEventListener('change', () => stageOperatorChange('tankModel', tankModelSelect.value));
   const mapList = document.getElementById('mapList');
   if (mapList) {
     mapList.addEventListener('change', () => stageOperatorChange('mapFile', mapList.value));
@@ -17955,6 +18016,12 @@ function getXROperatorMenuItems() {
       adjustable: true,
     },
     {
+      id: 'operatorTankModelXR',
+      label: 'Tank Model',
+      value: TANK_MODELS.find((model) => model.id === staged.tankModel)?.label || staged.tankModel,
+      adjustable: true,
+    },
+    {
       id: 'operatorBotFillXR',
       label: 'Bot Fill',
       value: staged.botFill > 0 ? String(staged.botFill) : 'Off',
@@ -17962,8 +18029,14 @@ function getXROperatorMenuItems() {
     },
     {
       id: 'operatorBotPilotXR',
-      label: 'Bot Pilot',
-      value: getAutopilotName(staged.botPilot),
+      label: 'Pilot',
+      value: BOT_PILOTS.find((entry) => entry.id === staged.botPilot)?.name ?? staged.botPilot,
+      adjustable: true,
+    },
+    {
+      id: 'operatorBotModelXR',
+      label: 'Model',
+      value: TANK_MODELS.find((model) => model.id === staged.botModel)?.label || staged.botModel,
       adjustable: true,
     },
     {
@@ -18086,9 +18159,17 @@ function adjustXRSettingsMenuItem(item, direction) {
   }
   if (item.id === 'operatorBotPilotXR') {
     if (!operatorStaged) operatorStaged = getOperatorServerState();
-    const at = AUTOPILOTS.findIndex((entry) => entry.id === operatorStaged.botPilot);
-    const next = (Math.max(0, at) + (direction > 0 ? 1 : -1) + AUTOPILOTS.length) % AUTOPILOTS.length;
-    stageOperatorChange('botPilot', AUTOPILOTS[next].id);
+    const at = BOT_PILOTS.findIndex((entry) => entry.id === operatorStaged.botPilot);
+    const next = (Math.max(0, at) + (direction > 0 ? 1 : -1) + BOT_PILOTS.length) % BOT_PILOTS.length;
+    stageOperatorChange('botPilot', BOT_PILOTS[next].id);
+    return true;
+  }
+  for (const [xrId, key] of [['operatorBotModelXR', 'botModel'], ['operatorTankModelXR', 'tankModel']]) {
+    if (item.id !== xrId) continue;
+    if (!operatorStaged) operatorStaged = getOperatorServerState();
+    const at = TANK_MODELS.findIndex((model) => model.id === operatorStaged[key]);
+    const next = (Math.max(0, at) + (direction > 0 ? 1 : -1) + TANK_MODELS.length) % TANK_MODELS.length;
+    stageOperatorChange(key, TANK_MODELS[next].id);
     return true;
   }
   const limitTeam = OPERATOR_LIMIT_TEAMS.find((team) => getXROperatorLimitId(team) === item.id);
@@ -18132,7 +18213,7 @@ function applyXRJoinSelection() {
     type: 'joinGame',
     name: myPlayerName,
     isMobile,
-    tankModel: selectedTankModelId,
+    tankModel: joinTankModelId(),
     skin: selectedTankSkinId,
     motto: myPlayerMotto,
     bot: IS_BOT_CLIENT,
