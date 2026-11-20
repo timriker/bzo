@@ -42,7 +42,6 @@ options
 	-sl SB 3
 	-sl R 3
 	-sl SH 3
-	-sl SR 3
 	-sl ST 3
 	-sl ID 3
 end
@@ -77,7 +76,6 @@ zone
 	zoneflag SB 1
 	zoneflag R 1
 	zoneflag SH 1
-	zoneflag SR 1
 	zoneflag ST 1
 	zoneflag ID 1
 end
@@ -8406,11 +8404,13 @@ group guardrail
 	scale 520 4 3
 	shift -90 388 0
 end
+# Set 0.5 out from the rail, and 0.5 in at its far end, so a tank riding the
+# rail is not pinned where the curve starts to turn it.
 arc
 	ratio 0.032258
 	divisions 24
 	angle 90
-	shift 170 330 0
+	shift 169.5 330.5 0
 	size 124 124 3
 end
 arc
@@ -8458,12 +8458,14 @@ group guardrail
 	scale 4 480 3
 	shift 408 -90 0
 end
+# Set 0.5 out from the rail, so a tank riding it is not pinned where the curve
+# starts to turn it.
 arc
 	ratio 0.032258
 	divisions 24
 	angle 180
 	rotation 180
-	shift 350 -330 0
+	shift 350.5 -330 0
 	size 124 124 3
 end
 arc

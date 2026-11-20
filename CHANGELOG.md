@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Fixed
+- TimeTrial no longer pins a tank riding the outer rail into the top and east
+  curves.
+
+### Removed
+- TimeTrial no longer offers Steamroller: its kills cost no shots.
+
 ## [1.4.15] - 2026-11-20
 
 ### Added
