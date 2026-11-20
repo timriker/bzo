@@ -736,8 +736,12 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
     state.jumpDirection = state.azimuth;
     // The stick is a fraction of this tank's own maximum; the air velocity is a
     // fraction of the world's, so the boost comes with it.
+    // A driver's carry goes up with the tank (LocalPlayer.cxx:409-425, added
+    // before the jump at 383); `_noClimb` stops both.
     const v = airVelocityFor(state.jumpDirection, (climbBlocked ? 0 : forwardInput) * speedFactor, config);
-    setAirVelocity(state, v.x, v.y, config);
+    const carryX = climbBlocked ? 0 : step.driverVelocityX;
+    const carryY = climbBlocked ? 0 : step.driverVelocityY;
+    setAirVelocity(state, v.x + carryX, v.y + carryY, config);
   }
 
   const tankScale = getTankDimensionScale(tank.flag ?? null);
@@ -790,7 +794,7 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
       }
     } else if (jumpStarted) {
       const v = airVelocityFor(state.jumpDirection, (climbBlocked ? 0 : intended.forward) * speedFactor, config);
-      setAirVelocity(state, v.x, v.y, config);
+      setAirVelocity(state, v.x + (climbBlocked ? 0 : drivenX / dt), v.y + (climbBlocked ? 0 : drivenY / dt), config);
     }
   }
 

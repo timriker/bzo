@@ -7,6 +7,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 ## [Unreleased]
 
 ### Fixed
+- A tank jumping off a conveyor keeps its push through the air, as upstream's
+  does.
 - TimeTrial no longer pins a tank riding the outer rail into the top and east
   curves.
 

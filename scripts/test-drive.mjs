@@ -176,4 +176,32 @@ for (const flag of ['BU', 'WG']) {
     `carried round its centre, to ${state.x},${state.y}`);
 }
 
+// A `linear` driver's carry goes up with a jump (LocalPlayer.cxx:409-425, added
+// before the jump), and the tank keeps it through the air.
+{
+  const { parseBZWMap } = createRequire(import.meta.url)('../server/bzw-parse.cjs');
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-linear-'));
+  const file = path.join(dir, 'belt.bzw');
+  fs.writeFileSync(file, 'physics\n  name belt\n  linear 30 0 0\nend\n'
+    + 'box\n  position 0 0 0\n  size 200 20 4\n  phydrv belt\nend\n');
+  const world = parseBZWMap(file, { quiet: true });
+  fs.rmSync(dir, { recursive: true, force: true });
+  const belt = world.obstacles.find((obs) => obs.type === 'box');
+
+  const state = createDriveState({ x: 0, y: 0, z: 4, azimuth: Math.PI / 2 });
+  Object.assign(state, { onObstacle: true, onGround: false, inAir: false, lastObstacle: belt });
+  const driveWorld = { config: CONFIG, colliders: [], topOf: () => 4 };
+  const tank = { flag: null, motionFlag: null };
+  const dt = 0.01;
+  stepDrive(state, { forward: 0, rotation: 0, jumpTriggered: true }, tank, driveWorld, { now: 0, random: () => 0.5 }, dt);
+  assert.ok(state.inAir, 'jumped');
+  assert.ok(Math.abs(state.airVelocityX - 30) < 1e-9, `carried the belt up, at ${state.airVelocityX}`);
+  const x = state.x;
+  stepDrive(state, { forward: 0, rotation: 0, jumpTriggered: false }, tank, driveWorld, { now: dt, random: () => 0.5 }, dt);
+  assert.ok(Math.abs(state.x - x - 30 * dt) < 1e-9, `and kept it in the air, by ${state.x - x}`);
+}
+
 console.log('drive tests passed');
