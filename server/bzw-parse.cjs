@@ -1896,6 +1896,27 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // still fall through to the generic dropped-token tally below like any
   // other unhandled keyword.
   const meshes = [];
+  // A top-level mesh the map left unnamed is named for what it was written as
+  // and its place among those, `arc#3`, as a group's placement already is
+  // (`guardrail#8:Mesh`): the inspector and the logs need something to call
+  // every mesh by.
+  // A `define` numbers its own the same way, so each placement of it reads
+  // `Base1#0:arc#2` rather than every mesh in it sharing one name.
+  const meshKindCounts = new Map();
+  function nameMesh(mesh, kind, counts) {
+    const count = (counts.get(kind) || 0) + 1;
+    counts.set(kind, count);
+    if (!mesh.name) mesh.name = `${kind}#${count}`;
+  }
+  function pushTopLevelMesh(mesh, kind) {
+    nameMesh(mesh, kind, meshKindCounts);
+    meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(mesh)));
+  }
+  function pushDefineMesh(define, mesh, kind) {
+    if (!define.meshKindCounts) define.meshKindCounts = new Map();
+    nameMesh(mesh, kind, define.meshKindCounts);
+    define.meshes.push(mesh);
+  }
   // The map's `world size` directive, applied to `GAME_CONFIG.MAP_SIZE` only
   // at the call site that loads the live map -- never inside this function,
   // which the background map-hashing trickle (see `MAP_REGISTRY`) also calls
@@ -3378,9 +3399,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           tetraMesh.transformOps = current.transformOps;
           applyMeshTransform(tetraMesh);
           if (currentDefine) {
-            currentDefine.meshes.push(tetraMesh);
+            pushDefineMesh(currentDefine, tetraMesh, 'tetra');
           } else {
-            meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(tetraMesh)));
+            pushTopLevelMesh(tetraMesh, 'tetra');
           }
         }
         current = null;
@@ -3455,9 +3476,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           coneMesh.transformOps = current.transformOps;
           applyMeshTransform(coneMesh);
           if (currentDefine) {
-            currentDefine.meshes.push(coneMesh);
+            pushDefineMesh(currentDefine, coneMesh, current.isPyramid ? 'meshpyr' : 'cone');
           } else {
-            meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(coneMesh)));
+            pushTopLevelMesh(coneMesh, current.isPyramid ? 'meshpyr' : 'cone');
           }
         }
         current = null;
@@ -3556,9 +3577,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           arcMesh.transformOps = current.transformOps;
           applyMeshTransform(arcMesh);
           if (currentDefine) {
-            currentDefine.meshes.push(arcMesh);
+            pushDefineMesh(currentDefine, arcMesh, current.isBox ? 'meshbox' : 'arc');
           } else {
-            meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(arcMesh)));
+            pushTopLevelMesh(arcMesh, current.isBox ? 'meshbox' : 'arc');
           }
         }
         current = null;
@@ -3646,9 +3667,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           sphereMesh.transformOps = current.transformOps;
           applyMeshTransform(sphereMesh);
           if (currentDefine) {
-            currentDefine.meshes.push(sphereMesh);
+            pushDefineMesh(currentDefine, sphereMesh, 'sphere');
           } else {
-            meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(sphereMesh)));
+            pushTopLevelMesh(sphereMesh, 'sphere');
           }
         }
         current = null;
@@ -3826,9 +3847,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           // Still a template in its own local frame -- `finalizeMeshGeometry`
           // runs later, once a `group` instance places it (or not at all, if
           // nothing ever does), never here.
-          currentDefine.meshes.push(current);
+          pushDefineMesh(currentDefine, current, 'mesh');
         } else {
-          meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(current)));
+          pushTopLevelMesh(current, 'mesh');
         }
         current = null;
       } else if (token === 'vertex') {
@@ -5637,6 +5658,17 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // a second array.
   obstacles.push(...meshes);
 
+  // A name the map gave more than one obstacle -- an editor's `Box copy 7`,
+  // written 25 times -- gains a count from its second on, so the inspector
+  // can tell them apart. Not a teleporter's: links find those by name.
+  const nameUses = new Map();
+  for (const obs of obstacles) {
+    if (!obs.name || obs.kind === 'teleporter') continue;
+    const uses = (nameUses.get(obs.name) || 0) + 1;
+    nameUses.set(obs.name, uses);
+    if (uses > 1) obs.name = `${obs.name}#${uses}`;
+  }
+
   // A world-space AABB for every obstacle, in the same `{minX, maxX, minY,
   // maxY, minZ, maxZ}` shape a mesh's own `.bounds` (`computeMeshBounds`,
   // above) already has -- computed once, here, rather than re-derived from
@@ -5897,8 +5929,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // its first `lod`'s draw commands, 13 a physics driver's `angular`, 14 a
 // plugin's objects apart from the unread, 15 the drivers by index, 16 a
 // group's transforms in the order written and its team on a base, 17 a
-// template's scale baked in where its faces project their texcoords.
-const WORLD_FORMAT = 17;
+// template's scale baked in where its faces project their texcoords, 18 a
+// name on every obstacle, none shared but a teleporter's.
+const WORLD_FORMAT = 18;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).
