@@ -8,6 +8,8 @@ metadata
   title HiX
   version 3
   author Tim Riker <timriker@gmail.com>
+  created 2001-03-11
+  sourceurl https://github.com/timriker/bzo/blob/main/maps/hix.bzw
   license AGPL-3.0-only
   description An experimental team play world.
 endmetadata

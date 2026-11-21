@@ -8400,17 +8400,24 @@ group guardrail
 	scale 520 4 3
 	shift -90 452 0
 end
+# A curb insert from the rail into the curve, both ends buried: it angles 3
+# degrees out of the rail to stand 0.5 proud where the curve begins and on
+# into the curve's wall, so a tank riding the rail slides off it before the
+# curve turns it, instead of being pinned there.
+group guardrail
+	scale 89.876 1 3
+	spin -3.0000 0 0 1
+	shift 148.118 451.147 0
+end
 group guardrail
 	scale 520 4 3
 	shift -90 388 0
 end
-# Set 0.5 out from the rail, and 0.5 in at its far end, so a tank riding the
-# rail is not pinned where the curve starts to turn it.
 arc
 	ratio 0.032258
 	divisions 24
 	angle 90
-	shift 169.5 330.5 0
+	shift 170 330 0
 	size 124 124 3
 end
 arc
@@ -8454,18 +8461,25 @@ group guardrail
 	scale 4 480 3
 	shift 472 -90 0
 end
+# A curb insert from the rail into the curve, both ends buried: it angles 3
+# degrees out of the rail to stand 0.5 proud where the curve begins and on
+# into the curve's wall, so a tank riding the rail slides off it before the
+# curve turns it, instead of being pinned there.
+group guardrail
+	scale 89.876 1 3
+	spin -93.0000 0 0 1
+	shift 471.147 -308.118 0
+end
 group guardrail
 	scale 4 480 3
 	shift 408 -90 0
 end
-# Set 0.5 out from the rail, so a tank riding it is not pinned where the curve
-# starts to turn it.
 arc
 	ratio 0.032258
 	divisions 24
 	angle 180
 	rotation 180
-	shift 350.5 -330 0
+	shift 350 -330 0
 	size 124 124 3
 end
 arc
