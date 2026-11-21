@@ -2097,6 +2097,17 @@ function describeOwner(owner, bzid) {
   return `<a href="${escapeHtml(href)}">${escapeHtml(owner)}</a>`;
 }
 
+// A map's authors, each linked to their forum profile as an owner is: by
+// BZID where a bzo row has shown us that name's, by name otherwise. An address
+// in `<...>` stays out of it; the profile is how to reach them.
+function describeAuthors(authors, bzidOf = () => null) {
+  return (Array.isArray(authors) ? authors : [])
+    .map((author) => String(author).replace(/<[^>]*>/g, '').trim())
+    .filter(Boolean)
+    .map((name) => describeOwner(name, bzidOf(name)))
+    .join(', ');
+}
+
 // A real forum BZID is numeric; `self` and the like are placeholders.
 function isForumBzid(bzid) {
   return /^\d+$/.test(String(bzid ?? ''));
@@ -2459,7 +2470,7 @@ function listFilterInput(filterId, t) {
 // carries the rest -- including what that picker only puts in a row tooltip.
 // The pane's third column is the map's own overview picture
 // (`server/map-overview.cjs`).
-function renderMapList(listId, filterId, maps, t) {
+function renderMapList(listId, filterId, maps, t, bzidOf) {
   if (!maps.length) return `<p class="muted">${escapeHtml(t('None.'))}</p>`;
   const entries = maps.map((map) => {
     const registered = MAP_REGISTRY.get(map.fileName);
@@ -2537,7 +2548,7 @@ function renderMapList(listId, filterId, maps, t) {
     + `--col-sz:${listColumnWidth(sizeLabel, data.map((entry) => entry.sz || ''))}`;
   return `<div class="listWrap" id="${escapeHtml(listId)}" style="${widths}">`
     + `<div class="panes">${entries
-      .map((entry, index) => renderMapReadout(entry, index, index !== 0, t)).join('\n')}</div>`
+      .map((entry, index) => renderMapReadout(entry, index, index !== 0, t, bzidOf)).join('\n')}</div>`
     + `<div class="listBar">`
     + listFilterInput(filterId, t)
     + entries.map((entry, index) => `<div class="rowActions" id="map-pane-${index}-actions"`
@@ -2727,6 +2738,27 @@ function paneRow(label, value) {
     + `<span>${escapeHtml(value === undefined || value === null ? '' : String(value))}</span></div>`;
 }
 
+// The same row with a value that is already HTML, such as a link.
+function paneRawRow(label, html) {
+  return `<div class="paneRow"><span>${escapeHtml(label)}</span><span>${html || ''}</span></div>`;
+}
+
+// A map's title, authors, date and where it was published, from its
+// `metadata` block (docs/bzw.md, "Metadata"), as a bzo row carries them: each
+// a short list of short strings, the date `YYYY-MM-DD` and the link https.
+// Shaped again at every hop, since a report is an untrusted instance's word.
+function listMapMeta(meta) {
+  const list = (value, keep = () => true) => (Array.isArray(value) ? value : [])
+    .filter((item) => typeof item === 'string' && item.trim() && keep(item))
+    .slice(0, 4).map((item) => item.trim().slice(0, 120));
+  return {
+    title: list(meta?.title),
+    author: list(meta?.author),
+    created: list(meta?.created, (date) => /^\d{4}-\d{2}-\d{2}$/.test(date.trim())),
+    sourceurl: list(meta?.sourceurl, (url) => /^https:\/\/\S+$/i.test(url.trim()) && url.length <= 120),
+  };
+}
+
 // Text as a link to `url`, or as text where there is none.
 function linkTo(url, text) {
   return url ? `<a href="${escapeHtml(url)}">${escapeHtml(text)}</a>` : escapeHtml(text);
@@ -2770,7 +2802,7 @@ function renderReplayReadout(entry, index, hidden, t) {
 // columns a server's pane has -- and the overview picture beside them. Every
 // label is always present, blank where the map says nothing, so the pane keeps
 // its height as the selection moves.
-function renderMapReadout(entry, index, hidden, t) {
+function renderMapReadout(entry, index, hidden, t, bzidOf) {
   const stats = entry.stats || {};
   const counts = stats.counts || {};
   // The map's `metadata` block, each field a list (docs/bzw.md, "Metadata").
@@ -2798,7 +2830,7 @@ function renderMapReadout(entry, index, hidden, t) {
     + `</div>`
     + `<div class="paneCol">`
     + paneRow(t('File'), entry.file)
-    + paneRow(t('Author'), meta('author', ', '))
+    + paneRawRow(t('Author'), describeAuthors(stats.metadata?.author, bzidOf))
     + paneRow(t('Created'), meta('created', ', '))
     + paneRow(t('Version'), meta('version', ' '))
     + paneRow(t('License'), meta('license', ', '))
@@ -3109,7 +3141,8 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
   const ownerBzids = new Map(bzoServers
     .filter((s) => s.owner && isForumBzid(s.ownerBzid))
     .map((s) => [s.owner.toLowerCase(), s.ownerBzid]));
-  const ownerLink = (owner) => describeOwner(owner, ownerBzids.get(String(owner || '').toLowerCase()));
+  const ownerBzid = (owner) => ownerBzids.get(String(owner || '').toLowerCase());
+  const ownerLink = (owner) => describeOwner(owner, ownerBzid(owner));
   const t = l10n.translator(locale);
   const action = (href, msgid) => `<a class="action" href="${escapeHtml(href)}">${escapeHtml(msgid)}</a>`;
   const bzfsEntries = servers.map((s, index) => {
@@ -3345,7 +3378,10 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
             : describeImportedWorld(...splitHostPort(proxy.target), t)),
         ]
         : [
-          [t('Map'), escapeHtml(String(s.map || '').replace(/\.bzw$/, ''))],
+          [t('Map'), linkTo(listMapMeta(s.mapMeta).sourceurl[0] || '',
+            listMapMeta(s.mapMeta).title.join(' ') || String(s.map || '').replace(/\.bzw$/, ''))],
+          [t('Author'), describeAuthors(listMapMeta(s.mapMeta).author, ownerBzid)],
+          [t('Created'), escapeHtml(listMapMeta(s.mapMeta).created.join(', '))],
           [t('Version'), escapeHtml(s.version || '')],
           // Only a bzo row can have this: a bzfs server holds no key and sends
           // no report, and the public BZFlag list carries no uptime.
@@ -3378,7 +3414,7 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
     mapsHeading: `${localMaps.length}${missingOverviewCount(localMaps.map(
       (map) => ({ overviewUrl: localMapOverviewUrl(map.fileName) }),
     ), t)}`,
-    mapsTable: renderMapList('mapList', 'mapFilter', localMaps, t),
+    mapsTable: renderMapList('mapList', 'mapFilter', localMaps, t, ownerBzid),
   };
   listTablesCache.set(cacheKey, { at: Date.now(), tables });
   return tables;
@@ -6076,6 +6112,7 @@ function sanitizeListServerStatus(body) {
     // so a field dropped here is a field that instance can never show: this is
     // the only thing that writes `live` for a server reporting over HTTP.
     map: typeof body?.map === 'string' ? body.map.slice(0, 120) : '',
+    mapMeta: listMapMeta(body?.mapMeta),
     // Exactly the shape `registerMapFile` produces, because it becomes a file
     // name here. Anything else is dropped rather than cleaned: a hash that
     // needed cleaning is not a hash.
@@ -6454,6 +6491,7 @@ function listPublicListServerRows() {
         maxShots: record.live.maxShots,
         style: record.live.style,
         map: String(record.live.map || ''),
+        mapMeta: listMapMeta(record.live.mapMeta),
         // Where that instance's overview picture is, or null while this
         // server has not drawn one yet. An absolute URL on the designated
         // instance, stated here rather than assembled by each reader: this is
@@ -12845,6 +12883,7 @@ async function saveRecording(name, { seconds = null, from = null, callsign = '' 
       teamIndex: bzflagTeamIndex,
       config: () => GAME_CONFIG,
       flagName: (type) => getFlagType(type)?.name || '',
+      driverAt: physicsDriverAt,
     },
   });
   const bytes = writeReplay(replay);
@@ -13490,6 +13529,8 @@ function computeListServerStatus() {
     // Which world this is, which a row had no way to say. `random` for a
     // generated one, as `MAP_SOURCE` itself spells it.
     map: MAP_SOURCE,
+    // Who made it and when, from its `metadata` block, for the row's pane.
+    mapMeta: listMapMeta(mapMetadata),
     // The live world's content hash, so the list server can draw this
     // instance's overview picture (issue #147). Just the hash, never a URL:
     // the list server derives `<this instance's registered url>/maps/<hash>
@@ -14199,7 +14240,11 @@ async function seatNativeClient(link, payload) {
       }
       if (update.player !== link.id) return;
       const target = players.get(String(update.target));
-      setLockTarget(seated, target && canLockOn(seated) && canLockOnto(target) ? target.id : null);
+      const refused = !target ? `names slot ${update.target}`
+        : !canLockOn(seated) ? 'has no missile to steer'
+          : !canLockOnto(target) ? `"${target.name}" is not lockable` : null;
+      if (refused && seated.lockTargetId !== null) log(`[GM] "${seated.name}" ${refused}`);
+      setLockTarget(seated, refused ? null : target.id);
     } else if (code === 'sb') {
       // A shot it fired. bzo's server flies it and decides what it hits, as
       // it does for a browser's; the client's own id for it is kept so what
@@ -16329,7 +16374,9 @@ function getLockTarget(shooterId) {
 function expireLockTargets() {
   players.forEach((player) => {
     if (player.lockTargetId === null) return;
-    if (canLockOn(player) && canLockOnto(players.get(player.lockTargetId))) return;
+    const target = players.get(player.lockTargetId);
+    if (canLockOn(player) && canLockOnto(target)) return;
+    log(`[GM] "${player.name}" ${canLockOn(player) ? `"${target?.name ?? player.lockTargetId}" is not lockable` : 'has no missile to steer'}`);
     setLockTarget(player, null);
   });
 }

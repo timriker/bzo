@@ -6,6 +6,23 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- A bzo server's pane on `/list` names its map by title, linked to where it
+  was published, with its authors and date, from the map's `metadata` block.
+  Authors there and in the Maps pane link to their forum profiles.
+- Every obstacle has a name of its own in the world viewer: an unnamed mesh
+  is called for what it was written as, `arc#3`, also inside a group, and a
+  name the map repeats gains a count, `Box copy 7#2`.
+- TimeTrial's top and east curves keep their walls where they were; a curb
+  insert angled off the rail before each curve keeps a tank riding the rail
+  from being pinned there, nose against the rail included.
+- hix names the date it was first published, 2001-03-11, and links to its
+  file.
+
+### Fixed
+- A saved replay shows a tank riding a conveyor carried along it between
+  updates, rather than standing still and jumping.
+
 ## [1.4.16] - 2026-11-20
 
 ### Changed
