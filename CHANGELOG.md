@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.17] - 2026-11-21
+
 ### Changed
 - A bzo server's pane on `/list` names its map by title, linked to where it
   was published, with its authors and date, from the map's `metadata` block.
