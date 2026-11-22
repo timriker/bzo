@@ -6,6 +6,36 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.18] - 2026-11-22
+
+### Added
+- bzo's title picture reads Battlezone Online, with the address the page was
+  loaded from and bzo's version stamped on. bzo.bzw and empty.bzw show it on
+  a lit billboard where a red tank shoots a blue one; a BZFlag client sees
+  its own title there.
+- A zone can set fog and `_syncTime` for a tank inside it. TimeTrial's
+  tunnel goes dark that way, with chase lights running down each lane at its
+  conveyor speed.
+- `_showVelocities` adds a speed column to the scoreboard; observers always
+  see it. TimeTrial turns it on.
+- `/set` and `/reset` work offline, in practice and Map Viewer, for that
+  page.
+
+### Changed
+- The sun and moon light the world at upstream's strength, so sunlit and
+  shaded sides of a building differ as they do in BZFlag.
+- BZFlag clients draw the sky over the server's location (`_syncLocation`).
+- laptimer reads TimeTrial's finish line and checkpoints from its zones.
+- The offline message names the way back online: ⚙ Settings → Player
+  Options → Server.
+
+### Fixed
+- The mountains face the directions upstream puts them.
+- See-through signs no longer show the buildings, shadows or teleporters
+  behind them.
+- A soft fade on a half-see-through material runs out to clear instead of
+  stopping at a visible edge.
+
 ## [1.4.17] - 2026-11-21
 
 ### Changed
