@@ -6,6 +6,7 @@
  */
 
 import * as THREE from 'three';
+import { CLIENT_VERSION } from './version.mjs';
 
 const textureLoader = new THREE.TextureLoader();
 
@@ -120,6 +121,45 @@ function registerAlphaCallback(entry, onAlpha) {
   }
 }
 
+// bzo's `title` is its own art with no words but its name on it
+// (scripts/gen-title.sh). This paints the address the player reached bzo at
+// at lower left and the client's version at lower right, where upstream's
+// picture carries bzflag.org and its release. A native BZFlag client shows
+// its own `title`.
+function stampTitle(image) {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return image;
+  ctx.drawImage(image, 0, 0);
+  const scale = image.width / 512;
+  const bottom = image.height - 8 * scale;
+  drawGlowText(ctx, window.location.origin, 14 * scale, bottom, 15 * scale, 'left');
+  drawGlowText(ctx, `v${CLIENT_VERSION}`, image.width - 14 * scale, bottom, 19 * scale, 'right');
+  return canvas;
+}
+
+// Black in a soft light glow: a wide light stroke blurred into a halo, then
+// the black text over it.
+function drawGlowText(ctx, text, x, y, size, align) {
+  ctx.font = `bold ${Math.round(size)}px "Liberation Sans", Arial, sans-serif`;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'bottom';
+  ctx.save();
+  ctx.filter = `blur(${size / 9}px)`;
+  ctx.lineWidth = size / 4;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#e6e6e6';
+  ctx.strokeText(text, x, y);
+  ctx.strokeText(text, x, y);
+  ctx.restore();
+  ctx.fillStyle = '#000';
+  ctx.fillText(text, x, y);
+}
+
+const TEXTURE_STAMPS = new Map([['/textures/title.png', stampTitle]]);
+
 function loadTexture(path, onAlpha) {
   let entry = sharedTextures.get(path);
   if (!entry) {
@@ -127,6 +167,9 @@ function loadTexture(path, onAlpha) {
       texture: null, pending: [], hasAlpha: null, minAlpha: 1, alphaCallbacks: [],
     };
     entry.texture = configureTexture(textureLoader.load(path, () => {
+      const stamp = TEXTURE_STAMPS.get(path);
+      // `image` rather than `source`: every clone shares the one source.
+      if (stamp) entry.texture.image = stamp(entry.texture.image);
       resolveSharedTexture(entry);
       resolveTextureAlpha(entry);
     }));

@@ -21,10 +21,23 @@
 //   node scripts/gen-tank-bzw.mjs > /tmp/spintank.bzw
 //
 // Regenerate and paste over the `define SpinTank` block in maps/bzo.bzw.
+// `--name`, `--material` and `--angvel` write the other tanks it places; an
+// angvel of 0 writes a tank that stands still:
+//
+//   node scripts/gen-tank-bzw.mjs --name BillboardRedTank \
+//     --material billboard_red_tank --angvel 0
 
 import fs from 'node:fs';
+import { parseArgs } from 'node:util';
 
-const ANGVEL = 45;          // degrees/sec -- one turn every eight seconds
+const { values: args } = parseArgs({
+  options: {
+    name: { type: 'string', default: 'SpinTank' },
+    material: { type: 'string', default: 'Tank' },
+    angvel: { type: 'string', default: '45' }, // degrees/sec -- one turn every eight seconds
+  },
+});
+const ANGVEL = Number(args.angvel);
 const INDICES_PER_LINE = 51; // what upstream's own exporter wraps `tris` at
 
 const source = fs.readFileSync('src/tank.obj', 'utf8');
@@ -87,7 +100,7 @@ for (const face of rawFaces) {
 }
 
 const out = [];
-out.push('define SpinTank');
+out.push(`define ${args.name}`);
 out.push('  mesh');
 out.push(`    # ${verts.out.length} vertices, ${norms.out.length} normals, `
   + `${txcds.out.length} texcoords, ${corners.length} corners, `
@@ -96,10 +109,10 @@ for (const [x, y, z] of verts.out) out.push(`    vertex ${x} ${y} ${z}`);
 for (const [x, y, z] of norms.out) out.push(`    normal ${x} ${y} ${z}`);
 for (const [u, v] of txcds.out) out.push(`    texcoord ${u} ${v}`);
 out.push('    drawInfo');
-out.push(`      angvel ${ANGVEL}`);
+if (ANGVEL) out.push(`      angvel ${ANGVEL}`);
 for (const [v, n, t] of corners) out.push(`      corner ${v} ${n} ${t}`);
 out.push('      lod');
-out.push('        matref Tank');
+out.push(`        matref ${args.material}`);
 for (let i = 0; i < tris.length; i += INDICES_PER_LINE) {
   out.push(`          tris ${tris.slice(i, i + INDICES_PER_LINE).join(' ')}`);
 }

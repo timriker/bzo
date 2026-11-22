@@ -155,6 +155,12 @@ These are deliberate. Do not "fix" them without being asked.
   scale, matching what a box's own two caps wear instead. Deliberate, not a
   parity gap -- do not "fix" the base cap to match upstream's `pyrwall`
   again; see `PYRAMID_ROOF_TEXTURE_SCALE` in `public/js/render-world.js`.
+- **The `title` texture reads Battlezone Online, bzo's address and version.**
+  A map naming `title` puts up the client's own title picture: a BZFlag
+  client shows BZFlag, bzflag.org and its release, a bzo client shows bzo's
+  art (`scripts/gen-title.sh`, from `src/empty-title.png`) with the address
+  the page was loaded from and its version stamped on as it loads
+  (`stampTitle`, `public/js/texture.js`).
 - **Tanks are selectable OBJ models, not one compiled-in model.** BZFlag draws
   one tank, compiled in at three LODs from `src/geometry/models/tank/` and
   varied only by `animatedTreads` and `treadStyle`. It also ships
