@@ -402,13 +402,15 @@ export class SkyRendering {
       this.ambientLight.color.copy(ambientThreeColor);
       this.ambientLight.intensity = 1.0;
     }
+    this.sunBrightness = sunElevation >= -0.009 ? directBrightness : 0;
 
     if (this.sunLight) {
       this.sunLight.position.set(sunX, sunY, sunZ);
       this.sunLight.target.position.set(0, 0, 0);
       this.worldFrame.add(this.sunLight.target);
       this.sunLight.color.copy(directThreeColor);
-      this.sunLight.intensity = sunElevation >= -0.009 ? Math.max(0.35, directBrightness) : 0.0;
+      // Full strength, as upstream's light is: the colour alone dims it.
+      this.sunLight.intensity = sunElevation >= -0.009 ? 1.0 : 0.0;
       this.sunLight.castShadow = sunElevation > (0.5 * BZFLAG_DAY_ELEVATION);
     }
 
@@ -417,7 +419,7 @@ export class SkyRendering {
       this.moonLight.target.position.set(0, 0, 0);
       this.worldFrame.add(this.moonLight.target);
       this.moonLight.color.copy(toThreeColor(moonColor));
-      this.moonLight.intensity = sunElevation < -0.009 && moonElevation > -0.009 ? 0.35 : 0.0;
+      this.moonLight.intensity = sunElevation < -0.009 && moonElevation > -0.009 ? 1.0 : 0.0;
       this.moonLight.castShadow = this.moonLight.intensity > 0;
     }
 
@@ -471,15 +473,19 @@ export class SkyRendering {
       this.ambientLight.color.copy(asColor(ambient));
       this.ambientLight.intensity = 1.0;
     }
+    this.sunBrightness = sunUp ? brightness : 0;
     // The sun lights the world while it is up, the moon while it is up and the
-    // sun is not, and neither when both are down (SceneRenderer.cxx:599-616).
+    // sun is not, and neither when both are down (SceneRenderer.cxx:599-616),
+    // each at full strength in its own colour, as upstream's one GL light is:
+    // `getSunColor` dims the sun toward dusk by colour, and the moon is 0.4.
+    // Its `brightness` is kept apart, for what reads it (`sunBrightness`).
     // Only the sun casts shadows (`areShadowsCast`).
     if (this.sunLight) {
       this.sunLight.position.set(sunX, sunY, sunZ);
       this.sunLight.target.position.set(0, 0, 0);
       this.worldFrame.add(this.sunLight.target);
       this.sunLight.color.copy(directColor);
-      this.sunLight.intensity = sunUp ? Math.max(0.35, brightness) : 0.0;
+      this.sunLight.intensity = sunUp ? 1.0 : 0.0;
       this.sunLight.castShadow = areShadowsCast(sunDir);
     }
     if (this.moonLight) {
@@ -487,7 +493,7 @@ export class SkyRendering {
       this.moonLight.target.position.set(0, 0, 0);
       this.worldFrame.add(this.moonLight.target);
       this.moonLight.color.copy(asColor(SKY_MOON_COLOR));
-      this.moonLight.intensity = !sunUp && moonUp ? 0.35 : 0.0;
+      this.moonLight.intensity = !sunUp && moonUp ? 1.0 : 0.0;
       this.moonLight.castShadow = false;
     }
 
@@ -1047,10 +1053,12 @@ export class SkyRendering {
 
     for (let i = 0; i <= segmentCount; i += 1) {
       const angle = startAngle + angleStep * i;
+      // Upstream's own placement, counter-clockwise from east in the game's
+      // frame (BackgroundRenderer.cxx:1950), facing in toward the world.
       const x = radius * Math.cos(angle);
-      const y = 0 - (radius * Math.sin(angle));
+      const y = radius * Math.sin(angle);
       const nx = -Math.SQRT1_2 * Math.cos(angle);
-      const ny = Math.SQRT1_2 * Math.sin(angle);
+      const ny = -Math.SQRT1_2 * Math.sin(angle);
       let u = i / segmentCount;
       if (MOUNTAIN_TEXTURE_PATHS.length !== 1) {
         u = (u * (textureWidth - 2) + 1) / textureWidth;

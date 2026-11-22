@@ -253,6 +253,11 @@ export const BZDB_CONFIG_VARS = new Map([
   // How long a player's score waits for them to come back (allejo's
   // ScoreRestorer plugin, which many servers run).
   ['_scoreSaveTime', { key: 'SCORE_SAVE_TIME', allowZero: true }],
+  // Upstream's client setting of the same name, without the underscore,
+  // turned into a world's: each tank's speed on every player's scoreboard,
+  // not only an observer's. Read as on or off; upstream's levels are kept for
+  // later.
+  ['_showVelocities', { key: 'SHOW_VELOCITIES', allowZero: true }],
   // allejo's ctfOverseer plugin: no capturing a team's own flag, and a
   // captured team flag out of enemy reach for this many seconds.
   ['_disallowSelfCap', { key: 'DISALLOW_SELF_CAP', parse: bzdbIsTrue }],

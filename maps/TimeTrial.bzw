@@ -11,6 +11,9 @@ endmetadata
 
 options
 	-set _tankSpeed 35
+	# Every racer's speed on the scoreboard. bzo only; a BZFlag server skips it
+	# as unknown and loads the map.
+	-set _showVelocities 1
 	# Shots fast enough to catch a racer on the fastest belt (35 + 100): a
 	# Guided Missile flies at this speed whatever the tank's. _shotRange stays
 	# 350, so they reach no farther.
@@ -55,11 +58,11 @@ zone
 	team 0 1 2 3 4
 end
 
-finishline
+zone
 	position -85 90 2
-	heading 180
-	width 30
-	height 10
+	size 1 30 10
+	rotation 180
+	finishline
 end
 
 # Flags on the course, three shots each, across the lanes past checkpoint 1.
@@ -82,44 +85,39 @@ end
 
 # A lap counts only through every checkpoint, in order.
 
-checkpoint
-	order 1
+zone
 	position -75 -90 2
-	heading 0
-	width 30
-	height 10
+	size 1 30 10
+	rotation 0
+	checkpoint 1
 end
 
-checkpoint
-	order 2
+zone
 	position -440 0 2
-	heading 90
-	width 30
-	height 10
+	size 1 30 10
+	rotation 90
+	checkpoint 2
 end
 
-checkpoint
-	order 3
+zone
 	position -90 420 2
-	heading 0
-	width 30
-	height 10
+	size 1 30 10
+	rotation 0
+	checkpoint 3
 end
 
-checkpoint
-	order 4
+zone
 	position 440 -90 2
-	heading 270
-	width 30
-	height 10
+	size 1 30 10
+	rotation 270
+	checkpoint 4
 end
 
-checkpoint
-	order 5
+zone
 	position 260 -165 2
-	heading 90
-	width 30
-	height 10
+	size 1 30 10
+	rotation 90
+	checkpoint 5
 end
 
 world
@@ -207,18 +205,6 @@ textureMatrix
 	fixedscale 0.25 0.1875
 end
 textureMatrix
-	name Sign1
-	fixedspin -90
-	fixedshift 0.41 3.25
-	fixedscale 7.8 2.4
-end
-textureMatrix
-	name Sign2
-	fixedspin 180
-	fixedshift 3.25 0.6
-	fixedscale 7.8 2.4
-end
-textureMatrix
 	name winnerscircle
 	fixedspin 180
 	fixedscale 1.1 1.1
@@ -287,6 +273,1503 @@ material
 	texture roof
 	color gray50
 end
+# The tunnel's inside: its walls and roof as the boxes outside wear them,
+# dimmed.
+material
+	name TunnelLining
+	texture boxwall
+	color 0.25 0.25 0.28
+end
+# Air in the tunnel, seen from outside: black and half see-through, so a tank
+# in there is a shadow. Its faces point out, so from inside it is not drawn.
+material
+	name TunnelGloom
+	notextures
+	diffuse 0 0 0 0.4
+	noradar
+	noshadow
+end
+
+# Chase lights: in each of the tunnel's ten bays a round lamp over every
+# lane, a faint round cone from it and the soft patch it lights on the road,
+# lit one bay at a time in the order racers drive, south to north, each lane
+# at its own conveyor's speed: a bay (50) a second on the 50 lane, every two
+# thirds of one on the 75, every half on the 100. Each lamp's `dynamicColor` is a
+# ten-step `sequence` on with its own step; the lens dims rather than going
+# out. A patch is a fan whose centre takes the bright middle of
+# `blend_flash` and whose rim its clear edge, so it fades every way. The
+# middle lane's light is yellow, the slow lane's on the left a little red,
+# the fast lane's on the right a little green.
+dynamicColor
+	name chasew0_lens
+	red limits 0.3 1
+	red sequence 1 0 2 0 0 0 0 0 0 0 0 0
+	green limits 0.18 0.65
+	green sequence 1 0 2 0 0 0 0 0 0 0 0 0
+	blue limits 0.12 0.45
+	blue sequence 1 0 2 0 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasew0_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 2 0 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasew0_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 2 0 0 0 0 0 0 0 0 0
+end
+material
+	name chasew0_lens
+	dyncol chasew0_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew0_beam
+	dyncol chasew0_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew0_pool
+	dyncol chasew0_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasew1_lens
+	red limits 0.3 1
+	red sequence 1 0 0 2 0 0 0 0 0 0 0 0
+	green limits 0.18 0.65
+	green sequence 1 0 0 2 0 0 0 0 0 0 0 0
+	blue limits 0.12 0.45
+	blue sequence 1 0 0 2 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasew1_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 0 2 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasew1_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 0 2 0 0 0 0 0 0 0 0
+end
+material
+	name chasew1_lens
+	dyncol chasew1_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew1_beam
+	dyncol chasew1_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew1_pool
+	dyncol chasew1_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasew2_lens
+	red limits 0.3 1
+	red sequence 1 0 0 0 2 0 0 0 0 0 0 0
+	green limits 0.18 0.65
+	green sequence 1 0 0 0 2 0 0 0 0 0 0 0
+	blue limits 0.12 0.45
+	blue sequence 1 0 0 0 2 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasew2_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 0 0 2 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasew2_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 0 0 2 0 0 0 0 0 0 0
+end
+material
+	name chasew2_lens
+	dyncol chasew2_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew2_beam
+	dyncol chasew2_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew2_pool
+	dyncol chasew2_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasew3_lens
+	red limits 0.3 1
+	red sequence 1 0 0 0 0 2 0 0 0 0 0 0
+	green limits 0.18 0.65
+	green sequence 1 0 0 0 0 2 0 0 0 0 0 0
+	blue limits 0.12 0.45
+	blue sequence 1 0 0 0 0 2 0 0 0 0 0 0
+end
+dynamicColor
+	name chasew3_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 0 0 0 2 0 0 0 0 0 0
+end
+dynamicColor
+	name chasew3_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 0 0 0 2 0 0 0 0 0 0
+end
+material
+	name chasew3_lens
+	dyncol chasew3_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew3_beam
+	dyncol chasew3_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew3_pool
+	dyncol chasew3_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasew4_lens
+	red limits 0.3 1
+	red sequence 1 0 0 0 0 0 2 0 0 0 0 0
+	green limits 0.18 0.65
+	green sequence 1 0 0 0 0 0 2 0 0 0 0 0
+	blue limits 0.12 0.45
+	blue sequence 1 0 0 0 0 0 2 0 0 0 0 0
+end
+dynamicColor
+	name chasew4_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 0 0 0 0 2 0 0 0 0 0
+end
+dynamicColor
+	name chasew4_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 0 0 0 0 2 0 0 0 0 0
+end
+material
+	name chasew4_lens
+	dyncol chasew4_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew4_beam
+	dyncol chasew4_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew4_pool
+	dyncol chasew4_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasew5_lens
+	red limits 0.3 1
+	red sequence 1 0 0 0 0 0 0 2 0 0 0 0
+	green limits 0.18 0.65
+	green sequence 1 0 0 0 0 0 0 2 0 0 0 0
+	blue limits 0.12 0.45
+	blue sequence 1 0 0 0 0 0 0 2 0 0 0 0
+end
+dynamicColor
+	name chasew5_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 0 0 0 0 0 2 0 0 0 0
+end
+dynamicColor
+	name chasew5_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 0 0 0 0 0 2 0 0 0 0
+end
+material
+	name chasew5_lens
+	dyncol chasew5_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew5_beam
+	dyncol chasew5_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew5_pool
+	dyncol chasew5_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasew6_lens
+	red limits 0.3 1
+	red sequence 1 0 0 0 0 0 0 0 2 0 0 0
+	green limits 0.18 0.65
+	green sequence 1 0 0 0 0 0 0 0 2 0 0 0
+	blue limits 0.12 0.45
+	blue sequence 1 0 0 0 0 0 0 0 2 0 0 0
+end
+dynamicColor
+	name chasew6_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 0 0 0 0 0 0 2 0 0 0
+end
+dynamicColor
+	name chasew6_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 0 0 0 0 0 0 2 0 0 0
+end
+material
+	name chasew6_lens
+	dyncol chasew6_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew6_beam
+	dyncol chasew6_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew6_pool
+	dyncol chasew6_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasew7_lens
+	red limits 0.3 1
+	red sequence 1 0 0 0 0 0 0 0 0 2 0 0
+	green limits 0.18 0.65
+	green sequence 1 0 0 0 0 0 0 0 0 2 0 0
+	blue limits 0.12 0.45
+	blue sequence 1 0 0 0 0 0 0 0 0 2 0 0
+end
+dynamicColor
+	name chasew7_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 0 0 0 0 0 0 0 2 0 0
+end
+dynamicColor
+	name chasew7_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 0 0 0 0 0 0 0 2 0 0
+end
+material
+	name chasew7_lens
+	dyncol chasew7_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew7_beam
+	dyncol chasew7_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew7_pool
+	dyncol chasew7_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasew8_lens
+	red limits 0.3 1
+	red sequence 1 0 0 0 0 0 0 0 0 0 2 0
+	green limits 0.18 0.65
+	green sequence 1 0 0 0 0 0 0 0 0 0 2 0
+	blue limits 0.12 0.45
+	blue sequence 1 0 0 0 0 0 0 0 0 0 2 0
+end
+dynamicColor
+	name chasew8_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 0 0 0 0 0 0 0 0 2 0
+end
+dynamicColor
+	name chasew8_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 0 0 0 0 0 0 0 0 2 0
+end
+material
+	name chasew8_lens
+	dyncol chasew8_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew8_beam
+	dyncol chasew8_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew8_pool
+	dyncol chasew8_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasew9_lens
+	red limits 0.3 1
+	red sequence 1 0 0 0 0 0 0 0 0 0 0 2
+	green limits 0.18 0.65
+	green sequence 1 0 0 0 0 0 0 0 0 0 0 2
+	blue limits 0.12 0.45
+	blue sequence 1 0 0 0 0 0 0 0 0 0 0 2
+end
+dynamicColor
+	name chasew9_cone
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.2
+	alpha sequence 1 0 0 0 0 0 0 0 0 0 0 2
+end
+dynamicColor
+	name chasew9_glow
+	red limits 1 1
+	green limits 0.62 0.62
+	blue limits 0.45 0.45
+	alpha limits 0 0.45
+	alpha sequence 1 0 0 0 0 0 0 0 0 0 0 2
+end
+material
+	name chasew9_lens
+	dyncol chasew9_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasew9_beam
+	dyncol chasew9_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasew9_pool
+	dyncol chasew9_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem0_lens
+	red limits 0.3 1
+	red sequence 0.667 0 2 0 0 0 0 0 0 0 0 0
+	green limits 0.25 0.9
+	green sequence 0.667 0 2 0 0 0 0 0 0 0 0 0
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 2 0 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasem0_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 2 0 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasem0_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 2 0 0 0 0 0 0 0 0 0
+end
+material
+	name chasem0_lens
+	dyncol chasem0_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem0_beam
+	dyncol chasem0_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem0_pool
+	dyncol chasem0_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem1_lens
+	red limits 0.3 1
+	red sequence 0.667 0 0 2 0 0 0 0 0 0 0 0
+	green limits 0.25 0.9
+	green sequence 0.667 0 0 2 0 0 0 0 0 0 0 0
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 0 2 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasem1_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 0 2 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasem1_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 0 2 0 0 0 0 0 0 0 0
+end
+material
+	name chasem1_lens
+	dyncol chasem1_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem1_beam
+	dyncol chasem1_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem1_pool
+	dyncol chasem1_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem2_lens
+	red limits 0.3 1
+	red sequence 0.667 0 0 0 2 0 0 0 0 0 0 0
+	green limits 0.25 0.9
+	green sequence 0.667 0 0 0 2 0 0 0 0 0 0 0
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 0 0 2 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasem2_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 0 0 2 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasem2_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 0 0 2 0 0 0 0 0 0 0
+end
+material
+	name chasem2_lens
+	dyncol chasem2_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem2_beam
+	dyncol chasem2_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem2_pool
+	dyncol chasem2_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem3_lens
+	red limits 0.3 1
+	red sequence 0.667 0 0 0 0 2 0 0 0 0 0 0
+	green limits 0.25 0.9
+	green sequence 0.667 0 0 0 0 2 0 0 0 0 0 0
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 0 0 0 2 0 0 0 0 0 0
+end
+dynamicColor
+	name chasem3_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 0 0 0 2 0 0 0 0 0 0
+end
+dynamicColor
+	name chasem3_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 0 0 0 2 0 0 0 0 0 0
+end
+material
+	name chasem3_lens
+	dyncol chasem3_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem3_beam
+	dyncol chasem3_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem3_pool
+	dyncol chasem3_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem4_lens
+	red limits 0.3 1
+	red sequence 0.667 0 0 0 0 0 2 0 0 0 0 0
+	green limits 0.25 0.9
+	green sequence 0.667 0 0 0 0 0 2 0 0 0 0 0
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 0 0 0 0 2 0 0 0 0 0
+end
+dynamicColor
+	name chasem4_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 0 0 0 0 2 0 0 0 0 0
+end
+dynamicColor
+	name chasem4_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 0 0 0 0 2 0 0 0 0 0
+end
+material
+	name chasem4_lens
+	dyncol chasem4_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem4_beam
+	dyncol chasem4_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem4_pool
+	dyncol chasem4_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem5_lens
+	red limits 0.3 1
+	red sequence 0.667 0 0 0 0 0 0 2 0 0 0 0
+	green limits 0.25 0.9
+	green sequence 0.667 0 0 0 0 0 0 2 0 0 0 0
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 0 0 0 0 0 2 0 0 0 0
+end
+dynamicColor
+	name chasem5_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 0 0 0 0 0 2 0 0 0 0
+end
+dynamicColor
+	name chasem5_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 0 0 0 0 0 2 0 0 0 0
+end
+material
+	name chasem5_lens
+	dyncol chasem5_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem5_beam
+	dyncol chasem5_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem5_pool
+	dyncol chasem5_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem6_lens
+	red limits 0.3 1
+	red sequence 0.667 0 0 0 0 0 0 0 2 0 0 0
+	green limits 0.25 0.9
+	green sequence 0.667 0 0 0 0 0 0 0 2 0 0 0
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 0 0 0 0 0 0 2 0 0 0
+end
+dynamicColor
+	name chasem6_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 0 0 0 0 0 0 2 0 0 0
+end
+dynamicColor
+	name chasem6_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 0 0 0 0 0 0 2 0 0 0
+end
+material
+	name chasem6_lens
+	dyncol chasem6_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem6_beam
+	dyncol chasem6_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem6_pool
+	dyncol chasem6_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem7_lens
+	red limits 0.3 1
+	red sequence 0.667 0 0 0 0 0 0 0 0 2 0 0
+	green limits 0.25 0.9
+	green sequence 0.667 0 0 0 0 0 0 0 0 2 0 0
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 0 0 0 0 0 0 0 2 0 0
+end
+dynamicColor
+	name chasem7_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 0 0 0 0 0 0 0 2 0 0
+end
+dynamicColor
+	name chasem7_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 0 0 0 0 0 0 0 2 0 0
+end
+material
+	name chasem7_lens
+	dyncol chasem7_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem7_beam
+	dyncol chasem7_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem7_pool
+	dyncol chasem7_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem8_lens
+	red limits 0.3 1
+	red sequence 0.667 0 0 0 0 0 0 0 0 0 2 0
+	green limits 0.25 0.9
+	green sequence 0.667 0 0 0 0 0 0 0 0 0 2 0
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 0 0 0 0 0 0 0 0 2 0
+end
+dynamicColor
+	name chasem8_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 0 0 0 0 0 0 0 0 2 0
+end
+dynamicColor
+	name chasem8_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 0 0 0 0 0 0 0 0 2 0
+end
+material
+	name chasem8_lens
+	dyncol chasem8_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem8_beam
+	dyncol chasem8_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem8_pool
+	dyncol chasem8_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasem9_lens
+	red limits 0.3 1
+	red sequence 0.667 0 0 0 0 0 0 0 0 0 0 2
+	green limits 0.25 0.9
+	green sequence 0.667 0 0 0 0 0 0 0 0 0 0 2
+	blue limits 0.15 0.6
+	blue sequence 0.667 0 0 0 0 0 0 0 0 0 0 2
+end
+dynamicColor
+	name chasem9_cone
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.2
+	alpha sequence 0.667 0 0 0 0 0 0 0 0 0 0 2
+end
+dynamicColor
+	name chasem9_glow
+	red limits 1 1
+	green limits 0.85 0.85
+	blue limits 0.55 0.55
+	alpha limits 0 0.45
+	alpha sequence 0.667 0 0 0 0 0 0 0 0 0 0 2
+end
+material
+	name chasem9_lens
+	dyncol chasem9_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasem9_beam
+	dyncol chasem9_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasem9_pool
+	dyncol chasem9_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee0_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 2 0 0 0 0 0 0 0 0 0
+	green limits 0.3 1
+	green sequence 0.5 0 2 0 0 0 0 0 0 0 0 0
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 2 0 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasee0_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 2 0 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasee0_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 2 0 0 0 0 0 0 0 0 0
+end
+material
+	name chasee0_lens
+	dyncol chasee0_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee0_beam
+	dyncol chasee0_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee0_pool
+	dyncol chasee0_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee1_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 0 2 0 0 0 0 0 0 0 0
+	green limits 0.3 1
+	green sequence 0.5 0 0 2 0 0 0 0 0 0 0 0
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 0 2 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasee1_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 0 2 0 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasee1_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 0 2 0 0 0 0 0 0 0 0
+end
+material
+	name chasee1_lens
+	dyncol chasee1_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee1_beam
+	dyncol chasee1_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee1_pool
+	dyncol chasee1_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee2_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 0 0 2 0 0 0 0 0 0 0
+	green limits 0.3 1
+	green sequence 0.5 0 0 0 2 0 0 0 0 0 0 0
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 0 0 2 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasee2_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 0 0 2 0 0 0 0 0 0 0
+end
+dynamicColor
+	name chasee2_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 0 0 2 0 0 0 0 0 0 0
+end
+material
+	name chasee2_lens
+	dyncol chasee2_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee2_beam
+	dyncol chasee2_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee2_pool
+	dyncol chasee2_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee3_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 0 0 0 2 0 0 0 0 0 0
+	green limits 0.3 1
+	green sequence 0.5 0 0 0 0 2 0 0 0 0 0 0
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 0 0 0 2 0 0 0 0 0 0
+end
+dynamicColor
+	name chasee3_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 0 0 0 2 0 0 0 0 0 0
+end
+dynamicColor
+	name chasee3_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 0 0 0 2 0 0 0 0 0 0
+end
+material
+	name chasee3_lens
+	dyncol chasee3_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee3_beam
+	dyncol chasee3_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee3_pool
+	dyncol chasee3_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee4_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 0 0 0 0 2 0 0 0 0 0
+	green limits 0.3 1
+	green sequence 0.5 0 0 0 0 0 2 0 0 0 0 0
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 0 0 0 0 2 0 0 0 0 0
+end
+dynamicColor
+	name chasee4_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 0 0 0 0 2 0 0 0 0 0
+end
+dynamicColor
+	name chasee4_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 0 0 0 0 2 0 0 0 0 0
+end
+material
+	name chasee4_lens
+	dyncol chasee4_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee4_beam
+	dyncol chasee4_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee4_pool
+	dyncol chasee4_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee5_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 0 0 0 0 0 2 0 0 0 0
+	green limits 0.3 1
+	green sequence 0.5 0 0 0 0 0 0 2 0 0 0 0
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 0 0 0 0 0 2 0 0 0 0
+end
+dynamicColor
+	name chasee5_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 0 0 0 0 0 2 0 0 0 0
+end
+dynamicColor
+	name chasee5_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 0 0 0 0 0 2 0 0 0 0
+end
+material
+	name chasee5_lens
+	dyncol chasee5_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee5_beam
+	dyncol chasee5_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee5_pool
+	dyncol chasee5_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee6_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 0 0 0 0 0 0 2 0 0 0
+	green limits 0.3 1
+	green sequence 0.5 0 0 0 0 0 0 0 2 0 0 0
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 0 0 0 0 0 0 2 0 0 0
+end
+dynamicColor
+	name chasee6_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 0 0 0 0 0 0 2 0 0 0
+end
+dynamicColor
+	name chasee6_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 0 0 0 0 0 0 2 0 0 0
+end
+material
+	name chasee6_lens
+	dyncol chasee6_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee6_beam
+	dyncol chasee6_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee6_pool
+	dyncol chasee6_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee7_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 0 0 0 0 0 0 0 2 0 0
+	green limits 0.3 1
+	green sequence 0.5 0 0 0 0 0 0 0 0 2 0 0
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 0 0 0 0 0 0 0 2 0 0
+end
+dynamicColor
+	name chasee7_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 0 0 0 0 0 0 0 2 0 0
+end
+dynamicColor
+	name chasee7_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 0 0 0 0 0 0 0 2 0 0
+end
+material
+	name chasee7_lens
+	dyncol chasee7_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee7_beam
+	dyncol chasee7_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee7_pool
+	dyncol chasee7_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee8_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 0 0 0 0 0 0 0 0 2 0
+	green limits 0.3 1
+	green sequence 0.5 0 0 0 0 0 0 0 0 0 2 0
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 0 0 0 0 0 0 0 0 2 0
+end
+dynamicColor
+	name chasee8_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 0 0 0 0 0 0 0 0 2 0
+end
+dynamicColor
+	name chasee8_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 0 0 0 0 0 0 0 0 2 0
+end
+material
+	name chasee8_lens
+	dyncol chasee8_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee8_beam
+	dyncol chasee8_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee8_pool
+	dyncol chasee8_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
+dynamicColor
+	name chasee9_lens
+	red limits 0.22 0.75
+	red sequence 0.5 0 0 0 0 0 0 0 0 0 0 2
+	green limits 0.3 1
+	green sequence 0.5 0 0 0 0 0 0 0 0 0 0 2
+	blue limits 0.14 0.5
+	blue sequence 0.5 0 0 0 0 0 0 0 0 0 0 2
+end
+dynamicColor
+	name chasee9_cone
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.2
+	alpha sequence 0.5 0 0 0 0 0 0 0 0 0 0 2
+end
+dynamicColor
+	name chasee9_glow
+	red limits 0.75 0.75
+	green limits 1 1
+	blue limits 0.5 0.5
+	alpha limits 0 0.45
+	alpha sequence 0.5 0 0 0 0 0 0 0 0 0 0 2
+end
+material
+	name chasee9_lens
+	dyncol chasee9_lens
+	notextures
+	nolighting
+	noradar
+end
+material
+	name chasee9_beam
+	dyncol chasee9_cone
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+	noculling
+end
+material
+	name chasee9_pool
+	dyncol chasee9_glow
+	texture blend_flash
+	nolighting
+	noshadow
+	noradar
+end
 material
 	name blk
 	notextures
@@ -300,12 +1783,10 @@ end
 material
 	name Sign1
 	texture title
-	texmat Sign1
 end
 material
 	name Sign2
 	texture title
-	texmat Sign2
 end
 material
 	name Tower
@@ -1552,6 +3033,13 @@ mesh
 	vertex 36.00000 -0.00000 0.00000
 	vertex 35.70711 0.70711 0.00000
 
+# The title fills the board between the beams, z 14 to 29 by 60: its
+# own 4:1. The board runs half a unit under each beam, past 0 and 1.
+	texcoord 0 -0.03333
+	texcoord 1 -0.03333
+	texcoord 1 1.03333
+	texcoord 0 1.03333
+
 # Sign Faces
 
 face
@@ -1632,6 +3120,7 @@ face
 endface
 face
 	vertices 50 54 53 49
+	texcoords 2 3 0 1
 	matref Sign2
 endface
 face
@@ -1640,6 +3129,7 @@ face
 endface
 face
 	vertices 56 55 51 52
+	texcoords 1 2 3 0
 	matref Sign1
 endface
 face
@@ -9516,6 +11006,4873 @@ arc
 end
 
 # Tunnel ************************************
+
+# Dark inside: a lining a hair inside each wall and under the roof, passable so
+# it changes nothing a tank or a shot meets, and black fog for anyone inside
+# (docs/bzw.md, "Zone variables"), so the walls fade to black a few tank
+# lengths ahead. bzo only: a BZFlag server skips each `set` with a warning.
+zone
+	position -440 0 0
+	size 34 250 10
+	set _fogMode linear
+	set _fogStart 10
+	set _fogEnd 150
+	set _fogColor black
+end
+box
+	position -473.9 0 0
+	size 0.1 250 10
+	matref TunnelLining
+	passable
+end
+box
+	position -406.1 0 0
+	size 0.1 250 10
+	matref TunnelLining
+	passable
+end
+box
+	position -440 0 9.9
+	size 34 250 0.1
+	matref TunnelLining
+	passable
+end
+meshbox
+	position -440 0 0
+	size 34 250 9.8
+	matref TunnelGloom
+	passable
+end
+arc
+	position -460 -225 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 -225 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew0_lens
+	passable
+end
+mesh
+	vertex -459.2 -225 9.24
+	vertex -459.307 -224.6 9.24
+	vertex -459.6 -224.307 9.24
+	vertex -460 -224.2 9.24
+	vertex -460.4 -224.307 9.24
+	vertex -460.693 -224.6 9.24
+	vertex -460.8 -225 9.24
+	vertex -460.693 -225.4 9.24
+	vertex -460.4 -225.693 9.24
+	vertex -460 -225.8 9.24
+	vertex -459.6 -225.693 9.24
+	vertex -459.307 -225.4 9.24
+	vertex -452.1 -225 1
+	vertex -453.158 -220.5 1
+	vertex -456.05 -217.206 1
+	vertex -460 -216 1
+	vertex -463.95 -217.206 1
+	vertex -466.842 -220.5 1
+	vertex -467.9 -225 1
+	vertex -466.842 -229.5 1
+	vertex -463.95 -232.794 1
+	vertex -460 -234 1
+	vertex -456.05 -232.794 1
+	vertex -453.158 -229.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew0_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 -225 2.04
+	vertex -453 -225 2.04
+	vertex -453.938 -221 2.04
+	vertex -456.5 -218.072 2.04
+	vertex -460 -217 2.04
+	vertex -463.5 -218.072 2.04
+	vertex -466.062 -221 2.04
+	vertex -467 -225 2.04
+	vertex -466.062 -229 2.04
+	vertex -463.5 -231.928 2.04
+	vertex -460 -233 2.04
+	vertex -456.5 -231.928 2.04
+	vertex -453.938 -229 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew0_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -460 -175 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 -175 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew1_lens
+	passable
+end
+mesh
+	vertex -459.2 -175 9.24
+	vertex -459.307 -174.6 9.24
+	vertex -459.6 -174.307 9.24
+	vertex -460 -174.2 9.24
+	vertex -460.4 -174.307 9.24
+	vertex -460.693 -174.6 9.24
+	vertex -460.8 -175 9.24
+	vertex -460.693 -175.4 9.24
+	vertex -460.4 -175.693 9.24
+	vertex -460 -175.8 9.24
+	vertex -459.6 -175.693 9.24
+	vertex -459.307 -175.4 9.24
+	vertex -452.1 -175 1
+	vertex -453.158 -170.5 1
+	vertex -456.05 -167.206 1
+	vertex -460 -166 1
+	vertex -463.95 -167.206 1
+	vertex -466.842 -170.5 1
+	vertex -467.9 -175 1
+	vertex -466.842 -179.5 1
+	vertex -463.95 -182.794 1
+	vertex -460 -184 1
+	vertex -456.05 -182.794 1
+	vertex -453.158 -179.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew1_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 -175 2.04
+	vertex -453 -175 2.04
+	vertex -453.938 -171 2.04
+	vertex -456.5 -168.072 2.04
+	vertex -460 -167 2.04
+	vertex -463.5 -168.072 2.04
+	vertex -466.062 -171 2.04
+	vertex -467 -175 2.04
+	vertex -466.062 -179 2.04
+	vertex -463.5 -181.928 2.04
+	vertex -460 -183 2.04
+	vertex -456.5 -181.928 2.04
+	vertex -453.938 -179 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew1_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -460 -125 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 -125 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew2_lens
+	passable
+end
+mesh
+	vertex -459.2 -125 9.24
+	vertex -459.307 -124.6 9.24
+	vertex -459.6 -124.307 9.24
+	vertex -460 -124.2 9.24
+	vertex -460.4 -124.307 9.24
+	vertex -460.693 -124.6 9.24
+	vertex -460.8 -125 9.24
+	vertex -460.693 -125.4 9.24
+	vertex -460.4 -125.693 9.24
+	vertex -460 -125.8 9.24
+	vertex -459.6 -125.693 9.24
+	vertex -459.307 -125.4 9.24
+	vertex -452.1 -125 1
+	vertex -453.158 -120.5 1
+	vertex -456.05 -117.206 1
+	vertex -460 -116 1
+	vertex -463.95 -117.206 1
+	vertex -466.842 -120.5 1
+	vertex -467.9 -125 1
+	vertex -466.842 -129.5 1
+	vertex -463.95 -132.794 1
+	vertex -460 -134 1
+	vertex -456.05 -132.794 1
+	vertex -453.158 -129.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew2_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 -125 2.04
+	vertex -453 -125 2.04
+	vertex -453.938 -121 2.04
+	vertex -456.5 -118.072 2.04
+	vertex -460 -117 2.04
+	vertex -463.5 -118.072 2.04
+	vertex -466.062 -121 2.04
+	vertex -467 -125 2.04
+	vertex -466.062 -129 2.04
+	vertex -463.5 -131.928 2.04
+	vertex -460 -133 2.04
+	vertex -456.5 -131.928 2.04
+	vertex -453.938 -129 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew2_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -460 -75 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 -75 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew3_lens
+	passable
+end
+mesh
+	vertex -459.2 -75 9.24
+	vertex -459.307 -74.6 9.24
+	vertex -459.6 -74.307 9.24
+	vertex -460 -74.2 9.24
+	vertex -460.4 -74.307 9.24
+	vertex -460.693 -74.6 9.24
+	vertex -460.8 -75 9.24
+	vertex -460.693 -75.4 9.24
+	vertex -460.4 -75.693 9.24
+	vertex -460 -75.8 9.24
+	vertex -459.6 -75.693 9.24
+	vertex -459.307 -75.4 9.24
+	vertex -452.1 -75 1
+	vertex -453.158 -70.5 1
+	vertex -456.05 -67.206 1
+	vertex -460 -66 1
+	vertex -463.95 -67.206 1
+	vertex -466.842 -70.5 1
+	vertex -467.9 -75 1
+	vertex -466.842 -79.5 1
+	vertex -463.95 -82.794 1
+	vertex -460 -84 1
+	vertex -456.05 -82.794 1
+	vertex -453.158 -79.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew3_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 -75 2.04
+	vertex -453 -75 2.04
+	vertex -453.938 -71 2.04
+	vertex -456.5 -68.072 2.04
+	vertex -460 -67 2.04
+	vertex -463.5 -68.072 2.04
+	vertex -466.062 -71 2.04
+	vertex -467 -75 2.04
+	vertex -466.062 -79 2.04
+	vertex -463.5 -81.928 2.04
+	vertex -460 -83 2.04
+	vertex -456.5 -81.928 2.04
+	vertex -453.938 -79 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew3_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -460 -25 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 -25 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew4_lens
+	passable
+end
+mesh
+	vertex -459.2 -25 9.24
+	vertex -459.307 -24.6 9.24
+	vertex -459.6 -24.307 9.24
+	vertex -460 -24.2 9.24
+	vertex -460.4 -24.307 9.24
+	vertex -460.693 -24.6 9.24
+	vertex -460.8 -25 9.24
+	vertex -460.693 -25.4 9.24
+	vertex -460.4 -25.693 9.24
+	vertex -460 -25.8 9.24
+	vertex -459.6 -25.693 9.24
+	vertex -459.307 -25.4 9.24
+	vertex -452.1 -25 1
+	vertex -453.158 -20.5 1
+	vertex -456.05 -17.206 1
+	vertex -460 -16 1
+	vertex -463.95 -17.206 1
+	vertex -466.842 -20.5 1
+	vertex -467.9 -25 1
+	vertex -466.842 -29.5 1
+	vertex -463.95 -32.794 1
+	vertex -460 -34 1
+	vertex -456.05 -32.794 1
+	vertex -453.158 -29.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew4_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 -25 2.04
+	vertex -453 -25 2.04
+	vertex -453.938 -21 2.04
+	vertex -456.5 -18.072 2.04
+	vertex -460 -17 2.04
+	vertex -463.5 -18.072 2.04
+	vertex -466.062 -21 2.04
+	vertex -467 -25 2.04
+	vertex -466.062 -29 2.04
+	vertex -463.5 -31.928 2.04
+	vertex -460 -33 2.04
+	vertex -456.5 -31.928 2.04
+	vertex -453.938 -29 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew4_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -460 25 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 25 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew5_lens
+	passable
+end
+mesh
+	vertex -459.2 25 9.24
+	vertex -459.307 25.4 9.24
+	vertex -459.6 25.693 9.24
+	vertex -460 25.8 9.24
+	vertex -460.4 25.693 9.24
+	vertex -460.693 25.4 9.24
+	vertex -460.8 25 9.24
+	vertex -460.693 24.6 9.24
+	vertex -460.4 24.307 9.24
+	vertex -460 24.2 9.24
+	vertex -459.6 24.307 9.24
+	vertex -459.307 24.6 9.24
+	vertex -452.1 25 1
+	vertex -453.158 29.5 1
+	vertex -456.05 32.794 1
+	vertex -460 34 1
+	vertex -463.95 32.794 1
+	vertex -466.842 29.5 1
+	vertex -467.9 25 1
+	vertex -466.842 20.5 1
+	vertex -463.95 17.206 1
+	vertex -460 16 1
+	vertex -456.05 17.206 1
+	vertex -453.158 20.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew5_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 25 2.04
+	vertex -453 25 2.04
+	vertex -453.938 29 2.04
+	vertex -456.5 31.928 2.04
+	vertex -460 33 2.04
+	vertex -463.5 31.928 2.04
+	vertex -466.062 29 2.04
+	vertex -467 25 2.04
+	vertex -466.062 21 2.04
+	vertex -463.5 18.072 2.04
+	vertex -460 17 2.04
+	vertex -456.5 18.072 2.04
+	vertex -453.938 21 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew5_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -460 75 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 75 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew6_lens
+	passable
+end
+mesh
+	vertex -459.2 75 9.24
+	vertex -459.307 75.4 9.24
+	vertex -459.6 75.693 9.24
+	vertex -460 75.8 9.24
+	vertex -460.4 75.693 9.24
+	vertex -460.693 75.4 9.24
+	vertex -460.8 75 9.24
+	vertex -460.693 74.6 9.24
+	vertex -460.4 74.307 9.24
+	vertex -460 74.2 9.24
+	vertex -459.6 74.307 9.24
+	vertex -459.307 74.6 9.24
+	vertex -452.1 75 1
+	vertex -453.158 79.5 1
+	vertex -456.05 82.794 1
+	vertex -460 84 1
+	vertex -463.95 82.794 1
+	vertex -466.842 79.5 1
+	vertex -467.9 75 1
+	vertex -466.842 70.5 1
+	vertex -463.95 67.206 1
+	vertex -460 66 1
+	vertex -456.05 67.206 1
+	vertex -453.158 70.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew6_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 75 2.04
+	vertex -453 75 2.04
+	vertex -453.938 79 2.04
+	vertex -456.5 81.928 2.04
+	vertex -460 83 2.04
+	vertex -463.5 81.928 2.04
+	vertex -466.062 79 2.04
+	vertex -467 75 2.04
+	vertex -466.062 71 2.04
+	vertex -463.5 68.072 2.04
+	vertex -460 67 2.04
+	vertex -456.5 68.072 2.04
+	vertex -453.938 71 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew6_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -460 125 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 125 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew7_lens
+	passable
+end
+mesh
+	vertex -459.2 125 9.24
+	vertex -459.307 125.4 9.24
+	vertex -459.6 125.693 9.24
+	vertex -460 125.8 9.24
+	vertex -460.4 125.693 9.24
+	vertex -460.693 125.4 9.24
+	vertex -460.8 125 9.24
+	vertex -460.693 124.6 9.24
+	vertex -460.4 124.307 9.24
+	vertex -460 124.2 9.24
+	vertex -459.6 124.307 9.24
+	vertex -459.307 124.6 9.24
+	vertex -452.1 125 1
+	vertex -453.158 129.5 1
+	vertex -456.05 132.794 1
+	vertex -460 134 1
+	vertex -463.95 132.794 1
+	vertex -466.842 129.5 1
+	vertex -467.9 125 1
+	vertex -466.842 120.5 1
+	vertex -463.95 117.206 1
+	vertex -460 116 1
+	vertex -456.05 117.206 1
+	vertex -453.158 120.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew7_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 125 2.04
+	vertex -453 125 2.04
+	vertex -453.938 129 2.04
+	vertex -456.5 131.928 2.04
+	vertex -460 133 2.04
+	vertex -463.5 131.928 2.04
+	vertex -466.062 129 2.04
+	vertex -467 125 2.04
+	vertex -466.062 121 2.04
+	vertex -463.5 118.072 2.04
+	vertex -460 117 2.04
+	vertex -456.5 118.072 2.04
+	vertex -453.938 121 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew7_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -460 175 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 175 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew8_lens
+	passable
+end
+mesh
+	vertex -459.2 175 9.24
+	vertex -459.307 175.4 9.24
+	vertex -459.6 175.693 9.24
+	vertex -460 175.8 9.24
+	vertex -460.4 175.693 9.24
+	vertex -460.693 175.4 9.24
+	vertex -460.8 175 9.24
+	vertex -460.693 174.6 9.24
+	vertex -460.4 174.307 9.24
+	vertex -460 174.2 9.24
+	vertex -459.6 174.307 9.24
+	vertex -459.307 174.6 9.24
+	vertex -452.1 175 1
+	vertex -453.158 179.5 1
+	vertex -456.05 182.794 1
+	vertex -460 184 1
+	vertex -463.95 182.794 1
+	vertex -466.842 179.5 1
+	vertex -467.9 175 1
+	vertex -466.842 170.5 1
+	vertex -463.95 167.206 1
+	vertex -460 166 1
+	vertex -456.05 167.206 1
+	vertex -453.158 170.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew8_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 175 2.04
+	vertex -453 175 2.04
+	vertex -453.938 179 2.04
+	vertex -456.5 181.928 2.04
+	vertex -460 183 2.04
+	vertex -463.5 181.928 2.04
+	vertex -466.062 179 2.04
+	vertex -467 175 2.04
+	vertex -466.062 171 2.04
+	vertex -463.5 168.072 2.04
+	vertex -460 167 2.04
+	vertex -456.5 168.072 2.04
+	vertex -453.938 171 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew8_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -460 225 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -460 225 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasew9_lens
+	passable
+end
+mesh
+	vertex -459.2 225 9.24
+	vertex -459.307 225.4 9.24
+	vertex -459.6 225.693 9.24
+	vertex -460 225.8 9.24
+	vertex -460.4 225.693 9.24
+	vertex -460.693 225.4 9.24
+	vertex -460.8 225 9.24
+	vertex -460.693 224.6 9.24
+	vertex -460.4 224.307 9.24
+	vertex -460 224.2 9.24
+	vertex -459.6 224.307 9.24
+	vertex -459.307 224.6 9.24
+	vertex -452.1 225 1
+	vertex -453.158 229.5 1
+	vertex -456.05 232.794 1
+	vertex -460 234 1
+	vertex -463.95 232.794 1
+	vertex -466.842 229.5 1
+	vertex -467.9 225 1
+	vertex -466.842 220.5 1
+	vertex -463.95 217.206 1
+	vertex -460 216 1
+	vertex -456.05 217.206 1
+	vertex -453.158 220.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasew9_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -460 225 2.04
+	vertex -453 225 2.04
+	vertex -453.938 229 2.04
+	vertex -456.5 231.928 2.04
+	vertex -460 233 2.04
+	vertex -463.5 231.928 2.04
+	vertex -466.062 229 2.04
+	vertex -467 225 2.04
+	vertex -466.062 221 2.04
+	vertex -463.5 218.072 2.04
+	vertex -460 217 2.04
+	vertex -456.5 218.072 2.04
+	vertex -453.938 221 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasew9_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 -225 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 -225 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem0_lens
+	passable
+end
+mesh
+	vertex -439.2 -225 9.24
+	vertex -439.307 -224.6 9.24
+	vertex -439.6 -224.307 9.24
+	vertex -440 -224.2 9.24
+	vertex -440.4 -224.307 9.24
+	vertex -440.693 -224.6 9.24
+	vertex -440.8 -225 9.24
+	vertex -440.693 -225.4 9.24
+	vertex -440.4 -225.693 9.24
+	vertex -440 -225.8 9.24
+	vertex -439.6 -225.693 9.24
+	vertex -439.307 -225.4 9.24
+	vertex -432.1 -225 1
+	vertex -433.158 -220.5 1
+	vertex -436.05 -217.206 1
+	vertex -440 -216 1
+	vertex -443.95 -217.206 1
+	vertex -446.842 -220.5 1
+	vertex -447.9 -225 1
+	vertex -446.842 -229.5 1
+	vertex -443.95 -232.794 1
+	vertex -440 -234 1
+	vertex -436.05 -232.794 1
+	vertex -433.158 -229.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem0_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 -225 2.04
+	vertex -433 -225 2.04
+	vertex -433.938 -221 2.04
+	vertex -436.5 -218.072 2.04
+	vertex -440 -217 2.04
+	vertex -443.5 -218.072 2.04
+	vertex -446.062 -221 2.04
+	vertex -447 -225 2.04
+	vertex -446.062 -229 2.04
+	vertex -443.5 -231.928 2.04
+	vertex -440 -233 2.04
+	vertex -436.5 -231.928 2.04
+	vertex -433.938 -229 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem0_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 -175 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 -175 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem1_lens
+	passable
+end
+mesh
+	vertex -439.2 -175 9.24
+	vertex -439.307 -174.6 9.24
+	vertex -439.6 -174.307 9.24
+	vertex -440 -174.2 9.24
+	vertex -440.4 -174.307 9.24
+	vertex -440.693 -174.6 9.24
+	vertex -440.8 -175 9.24
+	vertex -440.693 -175.4 9.24
+	vertex -440.4 -175.693 9.24
+	vertex -440 -175.8 9.24
+	vertex -439.6 -175.693 9.24
+	vertex -439.307 -175.4 9.24
+	vertex -432.1 -175 1
+	vertex -433.158 -170.5 1
+	vertex -436.05 -167.206 1
+	vertex -440 -166 1
+	vertex -443.95 -167.206 1
+	vertex -446.842 -170.5 1
+	vertex -447.9 -175 1
+	vertex -446.842 -179.5 1
+	vertex -443.95 -182.794 1
+	vertex -440 -184 1
+	vertex -436.05 -182.794 1
+	vertex -433.158 -179.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem1_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 -175 2.04
+	vertex -433 -175 2.04
+	vertex -433.938 -171 2.04
+	vertex -436.5 -168.072 2.04
+	vertex -440 -167 2.04
+	vertex -443.5 -168.072 2.04
+	vertex -446.062 -171 2.04
+	vertex -447 -175 2.04
+	vertex -446.062 -179 2.04
+	vertex -443.5 -181.928 2.04
+	vertex -440 -183 2.04
+	vertex -436.5 -181.928 2.04
+	vertex -433.938 -179 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem1_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 -125 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 -125 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem2_lens
+	passable
+end
+mesh
+	vertex -439.2 -125 9.24
+	vertex -439.307 -124.6 9.24
+	vertex -439.6 -124.307 9.24
+	vertex -440 -124.2 9.24
+	vertex -440.4 -124.307 9.24
+	vertex -440.693 -124.6 9.24
+	vertex -440.8 -125 9.24
+	vertex -440.693 -125.4 9.24
+	vertex -440.4 -125.693 9.24
+	vertex -440 -125.8 9.24
+	vertex -439.6 -125.693 9.24
+	vertex -439.307 -125.4 9.24
+	vertex -432.1 -125 1
+	vertex -433.158 -120.5 1
+	vertex -436.05 -117.206 1
+	vertex -440 -116 1
+	vertex -443.95 -117.206 1
+	vertex -446.842 -120.5 1
+	vertex -447.9 -125 1
+	vertex -446.842 -129.5 1
+	vertex -443.95 -132.794 1
+	vertex -440 -134 1
+	vertex -436.05 -132.794 1
+	vertex -433.158 -129.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem2_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 -125 2.04
+	vertex -433 -125 2.04
+	vertex -433.938 -121 2.04
+	vertex -436.5 -118.072 2.04
+	vertex -440 -117 2.04
+	vertex -443.5 -118.072 2.04
+	vertex -446.062 -121 2.04
+	vertex -447 -125 2.04
+	vertex -446.062 -129 2.04
+	vertex -443.5 -131.928 2.04
+	vertex -440 -133 2.04
+	vertex -436.5 -131.928 2.04
+	vertex -433.938 -129 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem2_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 -75 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 -75 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem3_lens
+	passable
+end
+mesh
+	vertex -439.2 -75 9.24
+	vertex -439.307 -74.6 9.24
+	vertex -439.6 -74.307 9.24
+	vertex -440 -74.2 9.24
+	vertex -440.4 -74.307 9.24
+	vertex -440.693 -74.6 9.24
+	vertex -440.8 -75 9.24
+	vertex -440.693 -75.4 9.24
+	vertex -440.4 -75.693 9.24
+	vertex -440 -75.8 9.24
+	vertex -439.6 -75.693 9.24
+	vertex -439.307 -75.4 9.24
+	vertex -432.1 -75 1
+	vertex -433.158 -70.5 1
+	vertex -436.05 -67.206 1
+	vertex -440 -66 1
+	vertex -443.95 -67.206 1
+	vertex -446.842 -70.5 1
+	vertex -447.9 -75 1
+	vertex -446.842 -79.5 1
+	vertex -443.95 -82.794 1
+	vertex -440 -84 1
+	vertex -436.05 -82.794 1
+	vertex -433.158 -79.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem3_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 -75 2.04
+	vertex -433 -75 2.04
+	vertex -433.938 -71 2.04
+	vertex -436.5 -68.072 2.04
+	vertex -440 -67 2.04
+	vertex -443.5 -68.072 2.04
+	vertex -446.062 -71 2.04
+	vertex -447 -75 2.04
+	vertex -446.062 -79 2.04
+	vertex -443.5 -81.928 2.04
+	vertex -440 -83 2.04
+	vertex -436.5 -81.928 2.04
+	vertex -433.938 -79 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem3_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 -25 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 -25 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem4_lens
+	passable
+end
+mesh
+	vertex -439.2 -25 9.24
+	vertex -439.307 -24.6 9.24
+	vertex -439.6 -24.307 9.24
+	vertex -440 -24.2 9.24
+	vertex -440.4 -24.307 9.24
+	vertex -440.693 -24.6 9.24
+	vertex -440.8 -25 9.24
+	vertex -440.693 -25.4 9.24
+	vertex -440.4 -25.693 9.24
+	vertex -440 -25.8 9.24
+	vertex -439.6 -25.693 9.24
+	vertex -439.307 -25.4 9.24
+	vertex -432.1 -25 1
+	vertex -433.158 -20.5 1
+	vertex -436.05 -17.206 1
+	vertex -440 -16 1
+	vertex -443.95 -17.206 1
+	vertex -446.842 -20.5 1
+	vertex -447.9 -25 1
+	vertex -446.842 -29.5 1
+	vertex -443.95 -32.794 1
+	vertex -440 -34 1
+	vertex -436.05 -32.794 1
+	vertex -433.158 -29.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem4_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 -25 2.04
+	vertex -433 -25 2.04
+	vertex -433.938 -21 2.04
+	vertex -436.5 -18.072 2.04
+	vertex -440 -17 2.04
+	vertex -443.5 -18.072 2.04
+	vertex -446.062 -21 2.04
+	vertex -447 -25 2.04
+	vertex -446.062 -29 2.04
+	vertex -443.5 -31.928 2.04
+	vertex -440 -33 2.04
+	vertex -436.5 -31.928 2.04
+	vertex -433.938 -29 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem4_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 25 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 25 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem5_lens
+	passable
+end
+mesh
+	vertex -439.2 25 9.24
+	vertex -439.307 25.4 9.24
+	vertex -439.6 25.693 9.24
+	vertex -440 25.8 9.24
+	vertex -440.4 25.693 9.24
+	vertex -440.693 25.4 9.24
+	vertex -440.8 25 9.24
+	vertex -440.693 24.6 9.24
+	vertex -440.4 24.307 9.24
+	vertex -440 24.2 9.24
+	vertex -439.6 24.307 9.24
+	vertex -439.307 24.6 9.24
+	vertex -432.1 25 1
+	vertex -433.158 29.5 1
+	vertex -436.05 32.794 1
+	vertex -440 34 1
+	vertex -443.95 32.794 1
+	vertex -446.842 29.5 1
+	vertex -447.9 25 1
+	vertex -446.842 20.5 1
+	vertex -443.95 17.206 1
+	vertex -440 16 1
+	vertex -436.05 17.206 1
+	vertex -433.158 20.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem5_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 25 2.04
+	vertex -433 25 2.04
+	vertex -433.938 29 2.04
+	vertex -436.5 31.928 2.04
+	vertex -440 33 2.04
+	vertex -443.5 31.928 2.04
+	vertex -446.062 29 2.04
+	vertex -447 25 2.04
+	vertex -446.062 21 2.04
+	vertex -443.5 18.072 2.04
+	vertex -440 17 2.04
+	vertex -436.5 18.072 2.04
+	vertex -433.938 21 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem5_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 75 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 75 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem6_lens
+	passable
+end
+mesh
+	vertex -439.2 75 9.24
+	vertex -439.307 75.4 9.24
+	vertex -439.6 75.693 9.24
+	vertex -440 75.8 9.24
+	vertex -440.4 75.693 9.24
+	vertex -440.693 75.4 9.24
+	vertex -440.8 75 9.24
+	vertex -440.693 74.6 9.24
+	vertex -440.4 74.307 9.24
+	vertex -440 74.2 9.24
+	vertex -439.6 74.307 9.24
+	vertex -439.307 74.6 9.24
+	vertex -432.1 75 1
+	vertex -433.158 79.5 1
+	vertex -436.05 82.794 1
+	vertex -440 84 1
+	vertex -443.95 82.794 1
+	vertex -446.842 79.5 1
+	vertex -447.9 75 1
+	vertex -446.842 70.5 1
+	vertex -443.95 67.206 1
+	vertex -440 66 1
+	vertex -436.05 67.206 1
+	vertex -433.158 70.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem6_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 75 2.04
+	vertex -433 75 2.04
+	vertex -433.938 79 2.04
+	vertex -436.5 81.928 2.04
+	vertex -440 83 2.04
+	vertex -443.5 81.928 2.04
+	vertex -446.062 79 2.04
+	vertex -447 75 2.04
+	vertex -446.062 71 2.04
+	vertex -443.5 68.072 2.04
+	vertex -440 67 2.04
+	vertex -436.5 68.072 2.04
+	vertex -433.938 71 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem6_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 125 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 125 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem7_lens
+	passable
+end
+mesh
+	vertex -439.2 125 9.24
+	vertex -439.307 125.4 9.24
+	vertex -439.6 125.693 9.24
+	vertex -440 125.8 9.24
+	vertex -440.4 125.693 9.24
+	vertex -440.693 125.4 9.24
+	vertex -440.8 125 9.24
+	vertex -440.693 124.6 9.24
+	vertex -440.4 124.307 9.24
+	vertex -440 124.2 9.24
+	vertex -439.6 124.307 9.24
+	vertex -439.307 124.6 9.24
+	vertex -432.1 125 1
+	vertex -433.158 129.5 1
+	vertex -436.05 132.794 1
+	vertex -440 134 1
+	vertex -443.95 132.794 1
+	vertex -446.842 129.5 1
+	vertex -447.9 125 1
+	vertex -446.842 120.5 1
+	vertex -443.95 117.206 1
+	vertex -440 116 1
+	vertex -436.05 117.206 1
+	vertex -433.158 120.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem7_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 125 2.04
+	vertex -433 125 2.04
+	vertex -433.938 129 2.04
+	vertex -436.5 131.928 2.04
+	vertex -440 133 2.04
+	vertex -443.5 131.928 2.04
+	vertex -446.062 129 2.04
+	vertex -447 125 2.04
+	vertex -446.062 121 2.04
+	vertex -443.5 118.072 2.04
+	vertex -440 117 2.04
+	vertex -436.5 118.072 2.04
+	vertex -433.938 121 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem7_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 175 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 175 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem8_lens
+	passable
+end
+mesh
+	vertex -439.2 175 9.24
+	vertex -439.307 175.4 9.24
+	vertex -439.6 175.693 9.24
+	vertex -440 175.8 9.24
+	vertex -440.4 175.693 9.24
+	vertex -440.693 175.4 9.24
+	vertex -440.8 175 9.24
+	vertex -440.693 174.6 9.24
+	vertex -440.4 174.307 9.24
+	vertex -440 174.2 9.24
+	vertex -439.6 174.307 9.24
+	vertex -439.307 174.6 9.24
+	vertex -432.1 175 1
+	vertex -433.158 179.5 1
+	vertex -436.05 182.794 1
+	vertex -440 184 1
+	vertex -443.95 182.794 1
+	vertex -446.842 179.5 1
+	vertex -447.9 175 1
+	vertex -446.842 170.5 1
+	vertex -443.95 167.206 1
+	vertex -440 166 1
+	vertex -436.05 167.206 1
+	vertex -433.158 170.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem8_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 175 2.04
+	vertex -433 175 2.04
+	vertex -433.938 179 2.04
+	vertex -436.5 181.928 2.04
+	vertex -440 183 2.04
+	vertex -443.5 181.928 2.04
+	vertex -446.062 179 2.04
+	vertex -447 175 2.04
+	vertex -446.062 171 2.04
+	vertex -443.5 168.072 2.04
+	vertex -440 167 2.04
+	vertex -436.5 168.072 2.04
+	vertex -433.938 171 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem8_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -440 225 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -440 225 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasem9_lens
+	passable
+end
+mesh
+	vertex -439.2 225 9.24
+	vertex -439.307 225.4 9.24
+	vertex -439.6 225.693 9.24
+	vertex -440 225.8 9.24
+	vertex -440.4 225.693 9.24
+	vertex -440.693 225.4 9.24
+	vertex -440.8 225 9.24
+	vertex -440.693 224.6 9.24
+	vertex -440.4 224.307 9.24
+	vertex -440 224.2 9.24
+	vertex -439.6 224.307 9.24
+	vertex -439.307 224.6 9.24
+	vertex -432.1 225 1
+	vertex -433.158 229.5 1
+	vertex -436.05 232.794 1
+	vertex -440 234 1
+	vertex -443.95 232.794 1
+	vertex -446.842 229.5 1
+	vertex -447.9 225 1
+	vertex -446.842 220.5 1
+	vertex -443.95 217.206 1
+	vertex -440 216 1
+	vertex -436.05 217.206 1
+	vertex -433.158 220.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasem9_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -440 225 2.04
+	vertex -433 225 2.04
+	vertex -433.938 229 2.04
+	vertex -436.5 231.928 2.04
+	vertex -440 233 2.04
+	vertex -443.5 231.928 2.04
+	vertex -446.062 229 2.04
+	vertex -447 225 2.04
+	vertex -446.062 221 2.04
+	vertex -443.5 218.072 2.04
+	vertex -440 217 2.04
+	vertex -436.5 218.072 2.04
+	vertex -433.938 221 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasem9_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 -225 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 -225 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee0_lens
+	passable
+end
+mesh
+	vertex -419.2 -225 9.24
+	vertex -419.307 -224.6 9.24
+	vertex -419.6 -224.307 9.24
+	vertex -420 -224.2 9.24
+	vertex -420.4 -224.307 9.24
+	vertex -420.693 -224.6 9.24
+	vertex -420.8 -225 9.24
+	vertex -420.693 -225.4 9.24
+	vertex -420.4 -225.693 9.24
+	vertex -420 -225.8 9.24
+	vertex -419.6 -225.693 9.24
+	vertex -419.307 -225.4 9.24
+	vertex -412.1 -225 1
+	vertex -413.158 -220.5 1
+	vertex -416.05 -217.206 1
+	vertex -420 -216 1
+	vertex -423.95 -217.206 1
+	vertex -426.842 -220.5 1
+	vertex -427.9 -225 1
+	vertex -426.842 -229.5 1
+	vertex -423.95 -232.794 1
+	vertex -420 -234 1
+	vertex -416.05 -232.794 1
+	vertex -413.158 -229.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee0_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 -225 2.04
+	vertex -413 -225 2.04
+	vertex -413.938 -221 2.04
+	vertex -416.5 -218.072 2.04
+	vertex -420 -217 2.04
+	vertex -423.5 -218.072 2.04
+	vertex -426.062 -221 2.04
+	vertex -427 -225 2.04
+	vertex -426.062 -229 2.04
+	vertex -423.5 -231.928 2.04
+	vertex -420 -233 2.04
+	vertex -416.5 -231.928 2.04
+	vertex -413.938 -229 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee0_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 -175 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 -175 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee1_lens
+	passable
+end
+mesh
+	vertex -419.2 -175 9.24
+	vertex -419.307 -174.6 9.24
+	vertex -419.6 -174.307 9.24
+	vertex -420 -174.2 9.24
+	vertex -420.4 -174.307 9.24
+	vertex -420.693 -174.6 9.24
+	vertex -420.8 -175 9.24
+	vertex -420.693 -175.4 9.24
+	vertex -420.4 -175.693 9.24
+	vertex -420 -175.8 9.24
+	vertex -419.6 -175.693 9.24
+	vertex -419.307 -175.4 9.24
+	vertex -412.1 -175 1
+	vertex -413.158 -170.5 1
+	vertex -416.05 -167.206 1
+	vertex -420 -166 1
+	vertex -423.95 -167.206 1
+	vertex -426.842 -170.5 1
+	vertex -427.9 -175 1
+	vertex -426.842 -179.5 1
+	vertex -423.95 -182.794 1
+	vertex -420 -184 1
+	vertex -416.05 -182.794 1
+	vertex -413.158 -179.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee1_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 -175 2.04
+	vertex -413 -175 2.04
+	vertex -413.938 -171 2.04
+	vertex -416.5 -168.072 2.04
+	vertex -420 -167 2.04
+	vertex -423.5 -168.072 2.04
+	vertex -426.062 -171 2.04
+	vertex -427 -175 2.04
+	vertex -426.062 -179 2.04
+	vertex -423.5 -181.928 2.04
+	vertex -420 -183 2.04
+	vertex -416.5 -181.928 2.04
+	vertex -413.938 -179 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee1_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 -125 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 -125 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee2_lens
+	passable
+end
+mesh
+	vertex -419.2 -125 9.24
+	vertex -419.307 -124.6 9.24
+	vertex -419.6 -124.307 9.24
+	vertex -420 -124.2 9.24
+	vertex -420.4 -124.307 9.24
+	vertex -420.693 -124.6 9.24
+	vertex -420.8 -125 9.24
+	vertex -420.693 -125.4 9.24
+	vertex -420.4 -125.693 9.24
+	vertex -420 -125.8 9.24
+	vertex -419.6 -125.693 9.24
+	vertex -419.307 -125.4 9.24
+	vertex -412.1 -125 1
+	vertex -413.158 -120.5 1
+	vertex -416.05 -117.206 1
+	vertex -420 -116 1
+	vertex -423.95 -117.206 1
+	vertex -426.842 -120.5 1
+	vertex -427.9 -125 1
+	vertex -426.842 -129.5 1
+	vertex -423.95 -132.794 1
+	vertex -420 -134 1
+	vertex -416.05 -132.794 1
+	vertex -413.158 -129.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee2_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 -125 2.04
+	vertex -413 -125 2.04
+	vertex -413.938 -121 2.04
+	vertex -416.5 -118.072 2.04
+	vertex -420 -117 2.04
+	vertex -423.5 -118.072 2.04
+	vertex -426.062 -121 2.04
+	vertex -427 -125 2.04
+	vertex -426.062 -129 2.04
+	vertex -423.5 -131.928 2.04
+	vertex -420 -133 2.04
+	vertex -416.5 -131.928 2.04
+	vertex -413.938 -129 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee2_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 -75 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 -75 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee3_lens
+	passable
+end
+mesh
+	vertex -419.2 -75 9.24
+	vertex -419.307 -74.6 9.24
+	vertex -419.6 -74.307 9.24
+	vertex -420 -74.2 9.24
+	vertex -420.4 -74.307 9.24
+	vertex -420.693 -74.6 9.24
+	vertex -420.8 -75 9.24
+	vertex -420.693 -75.4 9.24
+	vertex -420.4 -75.693 9.24
+	vertex -420 -75.8 9.24
+	vertex -419.6 -75.693 9.24
+	vertex -419.307 -75.4 9.24
+	vertex -412.1 -75 1
+	vertex -413.158 -70.5 1
+	vertex -416.05 -67.206 1
+	vertex -420 -66 1
+	vertex -423.95 -67.206 1
+	vertex -426.842 -70.5 1
+	vertex -427.9 -75 1
+	vertex -426.842 -79.5 1
+	vertex -423.95 -82.794 1
+	vertex -420 -84 1
+	vertex -416.05 -82.794 1
+	vertex -413.158 -79.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee3_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 -75 2.04
+	vertex -413 -75 2.04
+	vertex -413.938 -71 2.04
+	vertex -416.5 -68.072 2.04
+	vertex -420 -67 2.04
+	vertex -423.5 -68.072 2.04
+	vertex -426.062 -71 2.04
+	vertex -427 -75 2.04
+	vertex -426.062 -79 2.04
+	vertex -423.5 -81.928 2.04
+	vertex -420 -83 2.04
+	vertex -416.5 -81.928 2.04
+	vertex -413.938 -79 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee3_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 -25 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 -25 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee4_lens
+	passable
+end
+mesh
+	vertex -419.2 -25 9.24
+	vertex -419.307 -24.6 9.24
+	vertex -419.6 -24.307 9.24
+	vertex -420 -24.2 9.24
+	vertex -420.4 -24.307 9.24
+	vertex -420.693 -24.6 9.24
+	vertex -420.8 -25 9.24
+	vertex -420.693 -25.4 9.24
+	vertex -420.4 -25.693 9.24
+	vertex -420 -25.8 9.24
+	vertex -419.6 -25.693 9.24
+	vertex -419.307 -25.4 9.24
+	vertex -412.1 -25 1
+	vertex -413.158 -20.5 1
+	vertex -416.05 -17.206 1
+	vertex -420 -16 1
+	vertex -423.95 -17.206 1
+	vertex -426.842 -20.5 1
+	vertex -427.9 -25 1
+	vertex -426.842 -29.5 1
+	vertex -423.95 -32.794 1
+	vertex -420 -34 1
+	vertex -416.05 -32.794 1
+	vertex -413.158 -29.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee4_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 -25 2.04
+	vertex -413 -25 2.04
+	vertex -413.938 -21 2.04
+	vertex -416.5 -18.072 2.04
+	vertex -420 -17 2.04
+	vertex -423.5 -18.072 2.04
+	vertex -426.062 -21 2.04
+	vertex -427 -25 2.04
+	vertex -426.062 -29 2.04
+	vertex -423.5 -31.928 2.04
+	vertex -420 -33 2.04
+	vertex -416.5 -31.928 2.04
+	vertex -413.938 -29 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee4_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 25 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 25 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee5_lens
+	passable
+end
+mesh
+	vertex -419.2 25 9.24
+	vertex -419.307 25.4 9.24
+	vertex -419.6 25.693 9.24
+	vertex -420 25.8 9.24
+	vertex -420.4 25.693 9.24
+	vertex -420.693 25.4 9.24
+	vertex -420.8 25 9.24
+	vertex -420.693 24.6 9.24
+	vertex -420.4 24.307 9.24
+	vertex -420 24.2 9.24
+	vertex -419.6 24.307 9.24
+	vertex -419.307 24.6 9.24
+	vertex -412.1 25 1
+	vertex -413.158 29.5 1
+	vertex -416.05 32.794 1
+	vertex -420 34 1
+	vertex -423.95 32.794 1
+	vertex -426.842 29.5 1
+	vertex -427.9 25 1
+	vertex -426.842 20.5 1
+	vertex -423.95 17.206 1
+	vertex -420 16 1
+	vertex -416.05 17.206 1
+	vertex -413.158 20.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee5_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 25 2.04
+	vertex -413 25 2.04
+	vertex -413.938 29 2.04
+	vertex -416.5 31.928 2.04
+	vertex -420 33 2.04
+	vertex -423.5 31.928 2.04
+	vertex -426.062 29 2.04
+	vertex -427 25 2.04
+	vertex -426.062 21 2.04
+	vertex -423.5 18.072 2.04
+	vertex -420 17 2.04
+	vertex -416.5 18.072 2.04
+	vertex -413.938 21 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee5_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 75 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 75 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee6_lens
+	passable
+end
+mesh
+	vertex -419.2 75 9.24
+	vertex -419.307 75.4 9.24
+	vertex -419.6 75.693 9.24
+	vertex -420 75.8 9.24
+	vertex -420.4 75.693 9.24
+	vertex -420.693 75.4 9.24
+	vertex -420.8 75 9.24
+	vertex -420.693 74.6 9.24
+	vertex -420.4 74.307 9.24
+	vertex -420 74.2 9.24
+	vertex -419.6 74.307 9.24
+	vertex -419.307 74.6 9.24
+	vertex -412.1 75 1
+	vertex -413.158 79.5 1
+	vertex -416.05 82.794 1
+	vertex -420 84 1
+	vertex -423.95 82.794 1
+	vertex -426.842 79.5 1
+	vertex -427.9 75 1
+	vertex -426.842 70.5 1
+	vertex -423.95 67.206 1
+	vertex -420 66 1
+	vertex -416.05 67.206 1
+	vertex -413.158 70.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee6_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 75 2.04
+	vertex -413 75 2.04
+	vertex -413.938 79 2.04
+	vertex -416.5 81.928 2.04
+	vertex -420 83 2.04
+	vertex -423.5 81.928 2.04
+	vertex -426.062 79 2.04
+	vertex -427 75 2.04
+	vertex -426.062 71 2.04
+	vertex -423.5 68.072 2.04
+	vertex -420 67 2.04
+	vertex -416.5 68.072 2.04
+	vertex -413.938 71 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee6_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 125 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 125 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee7_lens
+	passable
+end
+mesh
+	vertex -419.2 125 9.24
+	vertex -419.307 125.4 9.24
+	vertex -419.6 125.693 9.24
+	vertex -420 125.8 9.24
+	vertex -420.4 125.693 9.24
+	vertex -420.693 125.4 9.24
+	vertex -420.8 125 9.24
+	vertex -420.693 124.6 9.24
+	vertex -420.4 124.307 9.24
+	vertex -420 124.2 9.24
+	vertex -419.6 124.307 9.24
+	vertex -419.307 124.6 9.24
+	vertex -412.1 125 1
+	vertex -413.158 129.5 1
+	vertex -416.05 132.794 1
+	vertex -420 134 1
+	vertex -423.95 132.794 1
+	vertex -426.842 129.5 1
+	vertex -427.9 125 1
+	vertex -426.842 120.5 1
+	vertex -423.95 117.206 1
+	vertex -420 116 1
+	vertex -416.05 117.206 1
+	vertex -413.158 120.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee7_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 125 2.04
+	vertex -413 125 2.04
+	vertex -413.938 129 2.04
+	vertex -416.5 131.928 2.04
+	vertex -420 133 2.04
+	vertex -423.5 131.928 2.04
+	vertex -426.062 129 2.04
+	vertex -427 125 2.04
+	vertex -426.062 121 2.04
+	vertex -423.5 118.072 2.04
+	vertex -420 117 2.04
+	vertex -416.5 118.072 2.04
+	vertex -413.938 121 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee7_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 175 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 175 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee8_lens
+	passable
+end
+mesh
+	vertex -419.2 175 9.24
+	vertex -419.307 175.4 9.24
+	vertex -419.6 175.693 9.24
+	vertex -420 175.8 9.24
+	vertex -420.4 175.693 9.24
+	vertex -420.693 175.4 9.24
+	vertex -420.8 175 9.24
+	vertex -420.693 174.6 9.24
+	vertex -420.4 174.307 9.24
+	vertex -420 174.2 9.24
+	vertex -419.6 174.307 9.24
+	vertex -419.307 174.6 9.24
+	vertex -412.1 175 1
+	vertex -413.158 179.5 1
+	vertex -416.05 182.794 1
+	vertex -420 184 1
+	vertex -423.95 182.794 1
+	vertex -426.842 179.5 1
+	vertex -427.9 175 1
+	vertex -426.842 170.5 1
+	vertex -423.95 167.206 1
+	vertex -420 166 1
+	vertex -416.05 167.206 1
+	vertex -413.158 170.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee8_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 175 2.04
+	vertex -413 175 2.04
+	vertex -413.938 179 2.04
+	vertex -416.5 181.928 2.04
+	vertex -420 183 2.04
+	vertex -423.5 181.928 2.04
+	vertex -426.062 179 2.04
+	vertex -427 175 2.04
+	vertex -426.062 171 2.04
+	vertex -423.5 168.072 2.04
+	vertex -420 167 2.04
+	vertex -416.5 168.072 2.04
+	vertex -413.938 171 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee8_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
+arc
+	position -420 225 9.3
+	size 1.1 1.1 0.5
+	divisions 16
+	matref TunnelLining
+	passable
+end
+arc
+	position -420 225 9.24
+	size 0.9 0.9 0.06
+	divisions 16
+	matref chasee9_lens
+	passable
+end
+mesh
+	vertex -419.2 225 9.24
+	vertex -419.307 225.4 9.24
+	vertex -419.6 225.693 9.24
+	vertex -420 225.8 9.24
+	vertex -420.4 225.693 9.24
+	vertex -420.693 225.4 9.24
+	vertex -420.8 225 9.24
+	vertex -420.693 224.6 9.24
+	vertex -420.4 224.307 9.24
+	vertex -420 224.2 9.24
+	vertex -419.6 224.307 9.24
+	vertex -419.307 224.6 9.24
+	vertex -412.1 225 1
+	vertex -413.158 229.5 1
+	vertex -416.05 232.794 1
+	vertex -420 234 1
+	vertex -423.95 232.794 1
+	vertex -426.842 229.5 1
+	vertex -427.9 225 1
+	vertex -426.842 220.5 1
+	vertex -423.95 217.206 1
+	vertex -420 216 1
+	vertex -416.05 217.206 1
+	vertex -413.158 220.5 1
+	texcoord 0 0.96
+	texcoord 1 0.96
+	texcoord 1 0.5
+	texcoord 0 0.5
+	matref chasee9_beam
+	passable
+	face
+		vertices 0 1 13 12
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 1 2 14 13
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 2 3 15 14
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 3 4 16 15
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 4 5 17 16
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 5 6 18 17
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 6 7 19 18
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 7 8 20 19
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 8 9 21 20
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 9 10 22 21
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 10 11 23 22
+		texcoords 3 2 1 0
+	endface
+	face
+		vertices 11 0 12 23
+		texcoords 3 2 1 0
+	endface
+end
+mesh
+	vertex -420 225 2.04
+	vertex -413 225 2.04
+	vertex -413.938 229 2.04
+	vertex -416.5 231.928 2.04
+	vertex -420 233 2.04
+	vertex -423.5 231.928 2.04
+	vertex -426.062 229 2.04
+	vertex -427 225 2.04
+	vertex -426.062 221 2.04
+	vertex -423.5 218.072 2.04
+	vertex -420 217 2.04
+	vertex -416.5 218.072 2.04
+	vertex -413.938 221 2.04
+	texcoord 0.5 0.5
+	texcoord 0.5 0.03
+	matref chasee9_pool
+	passable
+	face
+		vertices 0 1 2
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 2 3
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 3 4
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 4 5
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 5 6
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 6 7
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 7 8
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 8 9
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 9 10
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 10 11
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 11 12
+		texcoords 0 1 1
+	endface
+	face
+		vertices 0 12 1
+		texcoords 0 1 1
+	endface
+end
 
 box
 	position -440 0 10

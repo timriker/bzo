@@ -144,6 +144,7 @@ let setPlayerTarget;
 let supersedeEarlierConnection;
 let teamScores;
 let traceShotBeam;
+let updateZoneVars;
 let validateMovement;
 let wireShot;
 
@@ -251,6 +252,7 @@ function useServer(deps, live) {
     supersedeEarlierConnection,
     teamScores,
     traceShotBeam,
+    updateZoneVars,
     validateMovement,
     wireShot,
   } = deps);
@@ -619,6 +621,7 @@ function handleM(player, ws, message) {
     player.rotationSpeed = rs;
     player.verticalVelocity = vv;
     player.slideAzimuth = d; // Store slide direction (undefined if not sliding)
+    updateZoneVars(player);
     // The physics driver the move names, for the others to predict the tank
     // on. The server's own drift check finds its own (`getExtrapolatedPosition`).
     player.physicsDriver = Number.isInteger(message.pd) && message.pd >= 0 ? message.pd : -1;

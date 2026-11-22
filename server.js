@@ -215,6 +215,7 @@ const { MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, normalizeAngle } = require('./
 const { packetVelocity } = require('./public/js/drive.mjs');
 const { absoluteMotion, deadReckon } = require('./public/js/dead-reckoning.mjs');
 const { BZDB_DEFAULTS } = require('./public/js/bzdb-defaults.mjs');
+const { varZoneAt } = require('./public/js/zone-vars.mjs');
 const {
   BZDB_CONFIG_VARS,
   bzdbFromObject,
@@ -1666,7 +1667,7 @@ app.get('/api/world/file/:file', async (req, res) => {
   const { file } = req.params;
   const held = MAP_REGISTRY.get(file);
   const entry = file === 'live' ? LIVE_MAP_ENTRY
-    : held && fs.existsSync(path.join(MAP_CACHE_DIR, `${held.hash}.json`)) ? held
+    : heldMapIsCurrent(held) ? held
       : await prepareMapForView(file);
   if (!entry || !entry.hash) {
     res.status(404).json({ error: 'no such map' });
@@ -1693,7 +1694,7 @@ app.get('/api/practice/:file', async (req, res) => {
     }
   }
   const held = MAP_REGISTRY.get(file);
-  const entry = held && fs.existsSync(path.join(MAP_CACHE_DIR, `${held.hash}.json`)) ? held
+  const entry = heldMapIsCurrent(held) ? held
     : await prepareMapForView(file, { imports: true });
   if (!entry || !entry.hash) {
     res.status(404).json({ error: 'no such map' });
@@ -4839,9 +4840,24 @@ async function parseAndRegisterMap(fileName, filePath, { keepWorld = true } = {}
 // bzfs import on disk through as well, for practice on it.
 // One conversion per file however many viewers ask for it at once.
 const mapViewPreparations = new Map();
+// A kept world still matches its file: its JSON is on disk and the file has
+// not been written since it was parsed. A map edited in place is parsed again
+// for its next viewer. The live map's entry is the game's and stays.
+function heldMapIsCurrent(entry) {
+  if (!entry || !fs.existsSync(path.join(MAP_CACHE_DIR, `${entry.hash}.json`))) return false;
+  if (entry === LIVE_MAP_ENTRY) return true;
+  const filePath = resolveMapFilePath(entry.fileName);
+  if (!filePath) return true;
+  try {
+    return fs.statSync(filePath).mtimeMs <= entry.registeredAt;
+  } catch {
+    return true;
+  }
+}
+
 function prepareMapForView(fileName, { imports = false } = {}) {
   const existing = MAP_REGISTRY.get(fileName);
-  if (existing && existing.keptAt && fs.existsSync(path.join(MAP_CACHE_DIR, `${existing.hash}.json`))) {
+  if (existing && existing.keptAt && heldMapIsCurrent(existing)) {
     existing.keptAt = Date.now();
     return Promise.resolve(existing);
   }
@@ -7218,6 +7234,9 @@ let mapCustomObjects = {};
 // The map's `zone` blocks, in map order, so a flag slot can name the one it
 // belongs to by index the way upstream's `#<flagId>` qualifier does.
 let MAP_ZONES = [];
+// The zones with world variables of their own (`set`), which a BZFlag client
+// is sent as it drives in and out (`updateZoneVars`).
+let MAP_VAR_ZONES = [];
 // The map's `weapon` blocks. Upstream's `WorldWeapons` list, which is the
 // world's and not any player's.
 let WORLD_WEAPONS = [];
@@ -7326,6 +7345,7 @@ if (MAP_SOURCE === 'random') {
   mapMessages = mapData.messages;
   mapCustomObjects = mapData.customObjects || {};
   MAP_ZONES = mapData.zones;
+  MAP_VAR_ZONES = MAP_ZONES.filter((zone) => Object.keys(zone.vars || {}).length > 0);
   // The map's `world size` directive. Applied here, at the one call site that
   // loads the *live* map, rather than as a side effect inside `parseBZWMap`
   // itself -- see that function's own comment on why.
@@ -14935,6 +14955,23 @@ function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
 // whatever flag it holds (LocalPlayer.cxx:1453): the holder of a Jumping flag
 // is sent the Super Jump as its own `_jumpVelocity`, and the world's back
 // when the flag goes. Everyone else keeps the world's.
+// A zone's own world variables (`set`, docs/bzw.md "Zone variables") for a
+// BZFlag client, as its tank drives into the zone, and the world's back as it
+// leaves. A browser tests its own view and needs none of this.
+function updateZoneVars(player) {
+  if (!player.native || MAP_VAR_ZONES.length === 0) return;
+  const zone = varZoneAt(MAP_VAR_ZONES, player.x, player.y, player.z);
+  if (zone === (player.varZone ?? null)) return;
+  const before = player.varZone?.vars || {};
+  const after = zone?.vars || {};
+  player.varZone = zone;
+  for (const name of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    sendToPlayer(player, name in after
+      ? { type: 'playerVar', name, value: after[name] }
+      : { type: 'playerVar', name, value: null, worldValue: String(bzdbValue(name) ?? '') });
+  }
+}
+
 function sendJumpFlagVelocity(player, holdsJumpFlag) {
   if (!player?.native) return;
   const superJump = holdsJumpFlag && ALLOW_JUMPING && GAME_CONFIG.JUMP_FLAG_VELOCITY > 0;
@@ -18139,6 +18176,7 @@ messagesChat.useServer({
   log,
 });
 messagesPlay.useServer({
+  updateZoneVars,
   ALLOW_JUMPING,
   ANTICHEAT_CONFIG,
   ANTIDOTE_FLAGS,
@@ -19151,8 +19189,17 @@ function pluginRecord(player) {
 // defaults loaded plugins registered, which a bzo client may act on before it
 // asks -- `_disallowSelfCap` keeps it from asking for a capture the
 // ctfoverseer plugin would refuse.
+//
+// `_syncLocation` is on unless the world says otherwise: a BZFlag client then
+// draws the sky over the world's `_latitude` and `_longitude`, as a bzo client
+// always does, rather than its player's own (`SceneRenderer::setTimeOfDay`),
+// so every client shows the same time of day.
 function clientBzdb() {
-  return { ...Object.fromEntries(pluginBzdbDefaults), ...Object.fromEntries(liveBzdb) };
+  return {
+    _syncLocation: '1',
+    ...Object.fromEntries(pluginBzdbDefaults),
+    ...Object.fromEntries(liveBzdb),
+  };
 }
 
 function bzdbValue(name) {
@@ -19410,6 +19457,22 @@ const PLUGIN_API = Object.freeze({
   // MapObject while it reads the map. bzo has read it already, so it is read
   // again here for the one name.
   bz_customMapObjects: (name) => customMapObjects(name),
+
+  // bzo's: the live map's zones, each as a box -- centre `x`, `y`, floor `z`,
+  // `halfWidth`/`halfDepth`, `height` (null for no ceiling) and `rotation` in
+  // radians -- with the lines a zone holds that bzo does not read, whole
+  // (`lines`). Upstream's API has no way to read a zone; a plugin keeps its
+  // own words in one rather than a custom object, which bzfs refuses.
+  bz_getMapZones: () => MAP_ZONES.map((zone) => ({
+    x: zone.x,
+    y: zone.y,
+    z: zone.z,
+    halfWidth: zone.halfWidth,
+    halfDepth: zone.halfDepth,
+    height: Number.isFinite(zone.height) ? zone.height : null,
+    rotation: zone.rotation,
+    lines: [...(zone.extra || [])],
+  })),
 
   // bz_setPlayerWins / Losses / TKs and the increments: a plugin's own
   // scoring, sent to every client as the player's record.

@@ -5,25 +5,32 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// laptimer.cjs - times laps of a race track. The map draws the line:
+// laptimer.cjs - times laps of a race track. The map draws the line as a
+// zone with `finishline` in it:
 //
-//   finishline
+//   zone
 //     position -85 90 0
-//     heading 180
-//     width 30
-//     height 10
+//     size 1 30 10
+//     rotation 180
+//     finishline
 //   end
 //
-// `position` is the line's middle, `heading` the way racers cross it in
-// degrees (0 east, 90 north), `width` how far the line reaches either side,
-// and `height` how far above `position` a tank still counts. Crossing it the
-// right way starts a lap, and the next crossing finishes it and starts the
-// next. Crossing it backwards or leaving drops the lap under way.
+// `position` is the line's middle, `rotation` the way racers cross it in
+// degrees (0 east, 90 north), the second `size` how far the line reaches
+// either side, and the third how far above `position` a tank still counts.
+// Crossing it the right way starts a lap, and the next crossing finishes it
+// and starts the next. Crossing it backwards or leaving drops the lap under
+// way.
 //
-// `checkpoint` blocks are lines of the same shape, with `order` for which
-// comes first (file order where none is given). A lap counts only once every
-// checkpoint has been crossed in order since it started, so no teleporter or
-// cut across the infield is a shortcut.
+// `checkpoint` zones are lines of the same shape, `checkpoint 2` saying which
+// comes in what order (file order where none is given). A lap counts only
+// once every checkpoint has been crossed in order since it started, so no
+// teleporter or cut across the infield is a shortcut.
+//
+// A zone rather than an object of the plugin's own, because a BZFlag server
+// refuses a map holding an object no plugin there registered, and skips a
+// zone's line it does not know with a warning. The zones come from
+// `bz_getMapZones`, bzo's: upstream's API has no way to read one.
 //
 // A racer killed on the course comes back where they died, the lap and its
 // clock still running, and any flag they held goes back to where it lies in
@@ -55,6 +62,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const RECORDS_KEPT = 10;
+// How far above a line a tank still counts, where its zone states no height.
+const DEFAULT_LINE_HEIGHT = 10;
 // A move faster than this, across or up, is a teleport or a respawn, not a
 // crossing. A BZFlag client sends its position only when it strays from where
 // it said it was going, about once a second on a conveyor, so the step is
@@ -218,8 +227,7 @@ module.exports = {
     this.racers = new Map();
     this.file = path.join(bz.bz_getDataDir(), 'laptimer.json');
     this.records = this.load();
-    bz.bz_registerCustomMapObject('FINISHLINE', (name, data) => this.mapObject(name, data));
-    bz.bz_registerCustomMapObject('CHECKPOINT', (name, data) => this.mapObject(name, data));
+    this.readZones();
     bz.Register(bz.bz_ePlayerUpdateEvent);
     bz.Register(bz.bz_ePlayerDieEvent);
     bz.Register(bz.bz_eGetPlayerSpawnPosEvent);
@@ -359,38 +367,31 @@ module.exports = {
   },
 
 
-  mapObject(name, data) {
-    if ((name !== 'FINISHLINE' && name !== 'CHECKPOINT') || !data) return false;
-    const line = { x: 0, y: 0, z: 0, heading: 0, width: 30, height: 10, order: this.checkpoints.length };
-    for (const text of data.data) {
-      const nubs = String(text).trim().split(/\s+/);
-      const key = nubs[0].toUpperCase();
-      const n = (i) => Number.parseFloat(nubs[i]);
-      if ((key === 'POSITION' || key === 'POS') && nubs.length > 3) {
-        [line.x, line.y, line.z] = [n(1), n(2), n(3)];
-      } else if (key === 'HEADING' && nubs.length > 1) {
-        line.heading = n(1);
-      } else if (key === 'WIDTH' && nubs.length > 1) {
-        line.width = n(1);
-      } else if (key === 'HEIGHT' && nubs.length > 1) {
-        line.height = n(1);
-      } else if (key === 'ORDER' && nubs.length > 1) {
-        line.order = n(1);
+  // The map's lines: every zone whose own lines name `finishline` or
+  // `checkpoint [order]`.
+  readZones() {
+    const { bz } = this;
+    for (const zone of bz.bz_getMapZones?.() ?? []) {
+      for (const text of zone.lines) {
+        const [word, order] = String(text).trim().split(/\s+/);
+        const kind = String(word).toLowerCase();
+        if (kind !== 'finishline' && kind !== 'checkpoint') continue;
+        const line = {
+          x: zone.x,
+          y: zone.y,
+          z: zone.z,
+          width: zone.halfDepth,
+          height: zone.height ?? DEFAULT_LINE_HEIGHT,
+          order: order !== undefined ? Number.parseFloat(order) : this.checkpoints.length,
+          dirX: Math.cos(zone.rotation),
+          dirY: Math.sin(zone.rotation),
+        };
+        if (![line.x, line.y, line.z, line.width, line.height, line.order].every(Number.isFinite)) continue;
+        if (kind === 'finishline') this.finishes.push(line);
+        else this.checkpoints.push(line);
       }
     }
-    if (![line.x, line.y, line.z, line.heading, line.width, line.height, line.order].every(Number.isFinite)) {
-      return false;
-    }
-    const radians = line.heading * Math.PI / 180;
-    line.dirX = Math.cos(radians);
-    line.dirY = Math.sin(radians);
-    if (name === 'FINISHLINE') {
-      this.finishes.push(line);
-    } else {
-      this.checkpoints.push(line);
-      this.checkpoints.sort((a, b) => a.order - b.order);
-    }
-    return true;
+    this.checkpoints.sort((a, b) => a.order - b.order);
   },
 
   Event(data) {

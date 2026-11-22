@@ -109,6 +109,7 @@ flag scales both halves and not equally -- see AGENTS.md's **Shot timing**.
 | `_hideTeamFlagsOnRadar` | 0 | team flags lying on the ground are off the radar |
 | `_hideFlagsOnRadar` | 0 | every flag lying on the ground is off the radar; a carried flag still shows with its tank |
 | `_forbidHunting` | 0 | a hunted tank in the sights is never announced; marking still works |
+| `_showVelocities` | 0 (bzo's) | every player's scoreboard shows each tank's speed, as an observer's always does: whole numbers, grey stopped, white within the tank's top speed, yellow past it, red past one and a half times it. The top speed is `_tankSpeed`, raised by Velocity or Thief, and leaves conveyors out, so a conveyor rider reads fast. Upstream's client setting of the same name, without the underscore; bzo reads it as on or off |
 | `_spawnSafeRadMod` | 20 | tank radii a spawn keeps from a tank facing it |
 | `_spawnSafeSRMod` | 3 | tank radii a spawn keeps from a Steamroller or Burrow tank |
 | `_spawnSafeSWMod` | 1.5 | the share of a Shock Wave's reach a spawn keeps from it |
@@ -150,7 +151,7 @@ walls keep their old tiling, until the next map, as for a BZFlag client.
 | `_skyColor` | white | a tint over the whole sky; white is none |
 | `_latitude`, `_longitude` | 37.5, 122 | where the sky stands: degrees north, and degrees *west* (upstream's sign) |
 | `_syncTime` | -1 | hold the sky still at that many seconds past the Unix epoch; -1 is the real time now. `-synctime`'s 1 is the first second of 1970 |
-| `_syncLocation` | 0 | read, always on: a browser has no place of its own, so the world's `_latitude` and `_longitude` place the sky |
+| `_syncLocation` | 1 (bzo's) | always on in a bzo client, which has no place of its own; sent on to a BZFlag client unless the world sets it, so it too draws the sky over the world's `_latitude` and `_longitude` instead of its player's own, and every client shows the same time of day |
 | `_fogMode` | none | `none`, `linear`, `exp` or `exp2`; any but `none` is fog, and one bzo does not know is `exp`, as upstream reads it |
 | `_fogDensity`, `_fogStart`, `_fogEnd` | 0.001, `0.5 * _worldSize`, `_worldSize` | the fog's density, and where linear fog starts and ends |
 | `_fogColor` | 0.25 0.25 0.25 | the fog's colour |

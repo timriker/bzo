@@ -206,6 +206,11 @@ bzo's own:
 - `bz_setPublicDescriptionSuffix(text)`: words after the server's title on
   both lists, from the next push to each, '' for none; never written into
   `server.json`. The BZFlag list's title is cut to fit, the map's name kept.
+- `bz_getMapZones()`: the live map's zones, each `{ x, y, z, halfWidth,
+  halfDepth, height, rotation, lines }`: the box (`height` null for no
+  ceiling, `rotation` in radians) and the lines in it bzo does not read,
+  whole. A plugin's own words in a zone load on a BZFlag server with a
+  warning, where an object of its own stops the map loading there.
 - `bz_endServerShot(shotID)` ends a server shot still flying, drawn as if it
   struck something there, and answers where, `[x, y, z]`, or null for one
   already gone: a firework's burst.
@@ -341,7 +346,7 @@ TimeLimit and wwzones. Of allejo's: ctfOverseer (`_disallowSelfCap` and
 client sees, and discord, a Discord channel's chat both ways and Linked Roles
 (`docs/discord.md`), the job upstream's ircRelay did for IRC; matrix, a
 Matrix room's chat both ways (`docs/matrix.md`); and laptimer, which times
-laps across a map's `finishline` object through its `checkpoint`s in order,
+laps across a map's `finishline` zone through its `checkpoint` zones in order,
 points each racer's waypoint at the next line, leaves the scoreboard to
 kills, and keeps each map's ten fastest: registered players on any client,
 then bzo on

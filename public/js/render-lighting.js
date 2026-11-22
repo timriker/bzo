@@ -17,7 +17,8 @@ import { BZFLAG_LIGHT_ATTENUATION } from './render.js';
 const PROJECTED_SHADOW_MIN_LIGHT_Z = 0.05;
 
 const PROJECTED_SHADOW_STENCIL_REF = 1;
-// Write the stencil before the darkening overlay pass reads it.
+// The casters only mark the stencil and are opaque, so they draw in the
+// opaque pass, before the darkening overlay reads it whatever its order.
 const PROJECTED_SHADOW_RENDER_ORDER = 10;
 const PROJECTED_SHADOW_DARKEN_OPACITY = 0.35;
 const PROJECTED_SHADOW_CASTER_Z = 0.01;
@@ -25,6 +26,11 @@ const PROJECTED_SHADOW_CASTER_Z = 0.01;
 // airborne tanks. Sizes the darkening pass, not the shadows themselves.
 const PROJECTED_SHADOW_CASTER_HEADROOM = 20;
 const PROJECTED_SHADOW_OVERLAY_Z = 0.03;
+// Upstream draws ground shadows with the ground, before any obstacle
+// (`SceneRenderer::renderScene`, `renderGroundEffects`), so a see-through
+// obstacle covers them. After the ground grid (-1), ahead of every obstacle
+// (0). The casters marking the stencil are opaque, so they are all drawn first.
+const PROJECTED_SHADOW_OVERLAY_RENDER_ORDER = -0.5;
 
 // Ground light receivers, mirroring BackgroundRenderer::drawGroundReceivers
 // (BackgroundRenderer.cxx:1312): a small additive fan on the ground under every
@@ -41,6 +47,16 @@ const GROUND_RECEIVER_SUN_DIMMING = 0.6;      // draw(): B = 1 - 0.6 * sunBright
 // Above the shadow darkening pass, so a shot lights ground it has just darkened.
 const GROUND_RECEIVER_Z = 0.04;
 const GROUND_RECEIVER_RENDER_ORDER = 21;
+
+// Every material of a multi-material caster is off: none is drawn, so the
+// caster throws no shadow. A loop, not `every`, since it runs per caster per
+// frame.
+function allHidden(materials) {
+  for (const material of materials) {
+    if (material.visible !== false) return false;
+  }
+  return true;
+}
 
 // maxDist, the radius upstream culls a light at (OpenGLLight.cxx:40). Its own
 // cutoff equation puts one of these lights at 2% around 41 units, so nothing
@@ -452,7 +468,11 @@ export class LightingRendering {
       mesh.children.forEach((child) => this._projectShadowForMesh(child, projection, casting));
       return;
     }
-    const castsNone = !isTank && !Array.isArray(mesh.material) && mesh.material?.userData?.noShadow;
+    // A material a `dyncol` has faded to nothing casts nothing either
+    // (`MeshSceneNode.cxx:266`).
+    const castsNone = !isTank && (Array.isArray(mesh.material)
+      ? allHidden(mesh.material)
+      : mesh.material?.userData?.noShadow || mesh.material?.visible === false);
     if (!casting || mesh.visible === false || castsNone) {
       const shadowMesh = mesh.userData.shadowMesh;
       if (shadowMesh) shadowMesh.visible = false;
@@ -519,7 +539,7 @@ export class LightingRendering {
 
     const overlayMesh = new THREE.Mesh(overlayGeometry, overlayMaterial);
     overlayMesh.position.z = PROJECTED_SHADOW_OVERLAY_Z;
-    overlayMesh.renderOrder = 20;
+    overlayMesh.renderOrder = PROJECTED_SHADOW_OVERLAY_RENDER_ORDER;
     overlayMesh.userData.extent = overlayExtent;
     return overlayMesh;
   }
@@ -692,7 +712,7 @@ export class LightingRendering {
   // Upstream's sunBrightness dims the receivers in daylight so a shot does not
   // paint a bright pool on ground the sun is already lighting.
   _getGroundReceiverDimming() {
-    const sunBrightness = Math.max(0, Math.min(1, this.sunLight ? this.sunLight.intensity : 0));
+    const sunBrightness = Math.max(0, Math.min(1, this.sunBrightness ?? 0));
     return 1 - (GROUND_RECEIVER_SUN_DIMMING * sunBrightness);
   }
 

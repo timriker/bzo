@@ -66,9 +66,9 @@ passable.
 
 - **Weather regions.** Rain or snow when a tank enters a region, cleared on
   exit: `_rainType`, `_rainDensity`, `_rainBaseColor`, puddles.
-- **Caves and night.** Darker `_fogEnd`/`_fogColor` inside a region. Fog
-  hides tanks, so per-player fog changes who sees whom; use it as a rule,
-  not decoration.
+- **Night inside a zone.** Fog in a zone is built (bzw.md, "Zone
+  variables"); `_syncTime` there, to make it night, is untested on a BZFlag
+  client.
 - **Alerts in the sky.** Flash a team's `_skyColor` when its flag is taken.
 - **Badger King's ground snow** is a world-built layer whose `dynamicColor`
   alpha runs on the shared game clock. It cannot differ per player; a

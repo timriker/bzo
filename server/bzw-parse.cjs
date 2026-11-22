@@ -14,6 +14,7 @@ const { BZDB_CONFIG_VARS, bzdbIsTrue, evalBzdb, gameplayFromBzdb, parseColorStri
 const { encodeMeshArrays, meshArrays, meshDrawArrays } = require('../public/js/mesh-arrays.mjs');
 const { getObstacleHeight } = require('../public/js/collision.mjs');
 const { WEATHER_RAIN_TYPES, WEATHER_RAIN_NUMERIC_VARS, applyWeatherVar } = require('../public/js/weather-vars.mjs');
+const { ZONE_VARS } = require('../public/js/zone-vars.mjs');
 
 // Everything here is built in upstream's own frame, the one a `.bzw` is
 // written in: +Z up, +Y north, x east, an angle counter-clockwise about +Z.
@@ -375,8 +376,8 @@ const bzwMaterialFlags = (m) => ({
 // meshes -- `tetra`, `cone`/`meshpyr`, `arc`/`meshbox` and `sphere` -- resolve
 // a material per side and then assemble ordinary faces from it field by field,
 // so a field this does not name is silently dropped on the way. A hand-written
-// `mesh` face never had that problem: it starts from the mesh's own material
-// and keeps what it does not overwrite. Naming the whole set in one place is
+// `mesh` face starts from the mesh's own material through this too, and keeps
+// what it does not overwrite. Naming the whole set in one place is
 // what stops the two routes drifting apart again -- `texmat` and `dyncol` were
 // dead on an `arc` while the same material animated on a `mesh` beside it, and
 // the lighting properties went the same way.
@@ -1984,11 +1985,6 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // Boxes, pyramids and teleporters placed by a group spun off vertical or
   // sheared -- its meshes take the whole transform, these stay upright.
   let tippedObstacleCount = 0;
-  // Which zone keywords a map asked for that bzo does not act on, gathered so
-  // the load can say so once rather than for every zone. `zone` blocks are
-  // otherwise the one place a map states something invisible: a spawn zone that
-  // is skipped moves every tank in the world.
-  const unreadZoneKeywords = new Set();
   // A world weapon occupies nothing, so it is not an obstacle.
   const weapons = [];
   let currentWeapon = null;
@@ -2547,10 +2543,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // individually -- or is collated into one node with the faces sharing
       // its material; `MeshSceneNode.cxx:517-519` states outright that it
       // does not use the flag, because everything there is grouped already.
-      // bzo builds one merged geometry group per material and draws the
-      // whole mesh as a single object, which *is* the collated case, so a
-      // map stating this asks for what bzo does regardless. Read and
-      // dropped, the same as `ambient` below -- not a parity gap to report.
+      // Read and dropped, the same as `ambient` below: bzo sorts a face
+      // translucent by its colour on its own either way (`_buildMeshObject`),
+      // which only orders it more finely than the collated node would.
       return true;
     }
     if (token === 'specular' || token === 'emission' || token === 'shininess') {
@@ -2690,9 +2685,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // Half extents in BZW's own x/y, kept in those axes because
         // getRandomZonePoint rotates the offset the way upstream does and
         // converts only the result.
-        const [, x, y] = line.split(/\s+/);
+        const [, x, y, z] = line.split(/\s+/);
         currentZone.halfWidth = Math.abs(parseFloat(x) || 0);
         currentZone.halfDepth = Math.abs(parseFloat(y) || 0);
+        // The full height, as a box's; upstream reads it and uses none.
+        if (Number.isFinite(parseFloat(z))) currentZone.height = Math.abs(parseFloat(z));
         continue;
       }
       if (token === 'rotation' || token === 'rot') {
@@ -2787,9 +2784,19 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         }
         continue;
       }
-      // `name` is a zone's label and nothing else reads it; anything else is a
-      // keyword bzo does not act on, named once for the whole map.
-      if (token !== 'name') unreadZoneKeywords.add(token);
+      // `set <variable> <value>`, bzo's: a world variable a viewer inside the
+      // zone sees instead of the map's (docs/bzw.md, "Zone variables").
+      // bzfs skips the line with a warning and loads the map.
+      if (token === 'set') {
+        const [, name, ...value] = line.split(/\s+/);
+        if (ZONE_VARS.has(name)) currentZone.vars[name] = value.join(' ');
+        else warn(`${mapLabel}: a zone cannot set ${name || 'nothing'}`);
+        continue;
+      }
+      // `name` is a zone's label and nothing else reads it. Anything else is
+      // kept whole for a plugin (`bz_getMapZones`), which bzfs skips with a
+      // warning.
+      if (token !== 'name') currentZone.extra.push(line);
       continue;
     }
 
@@ -3293,6 +3300,13 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         unknownFlagCounts: new Map(),
         teams: new Set(),
         safety: new Set(),
+        // Up from `z`; a zone stating no height reaches all the way up.
+        height: Infinity,
+        // bzo's: the world variables a viewer inside sees (`zone-vars.mjs`).
+        vars: {},
+        // Lines this parser does not read, whole, for a plugin to
+        // (`bz_getMapZones`): laptimer's `finishline` and `checkpoint`.
+        extra: [],
       };
       continue;
     }
@@ -3899,13 +3913,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           smoothBounce: current.smoothBounce,
           driveThrough: current.driveThrough, shootThrough: current.shootThrough,
           ricochet: false,
-          texture: current.texture, textureUrl: current.textureUrl,
-          color: current.color, noRadar: current.noRadar, noLighting: current.noLighting,
-          noShadow: !!current.noShadow, useSphereMap: !!current.useSphereMap,
-          materialId: current.materialId ?? null,
-          specular: current.specular, emission: current.emission, shininess: current.shininess,
-          alphaThreshold: current.alphaThreshold,
-          ...bzwMaterialFlags(current),
+          // The mesh's whole material, `dyncol` and `texmat` included.
+          ...bzwFaceMaterial(current),
         };
       } else if (BZW_PASSABILITY_KEYWORDS.has(token)) {
         Object.assign(current, BZW_PASSABILITY_KEYWORDS.get(token));
@@ -5576,12 +5585,6 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       + `vertical or sheared in ${mapLabel} -- bzo's box/pyramid model can't tip that way`
     );
   }
-  if (unreadZoneKeywords.size > 0) {
-    warn(
-      `Ignoring zone keywords bzo does not read in ${mapLabel}:`
-      + ` ${Array.from(unreadZoneKeywords).sort().join(', ')}`
-    );
-  }
   if (unreadWeaponKeywords.size > 0) {
     warn(
       `Ignoring weapon keywords bzo does not read in ${mapLabel}:`
@@ -5930,8 +5933,10 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // plugin's objects apart from the unread, 15 the drivers by index, 16 a
 // group's transforms in the order written and its team on a base, 17 a
 // template's scale baked in where its faces project their texcoords, 18 a
-// name on every obstacle, none shared but a teleporter's.
-const WORLD_FORMAT = 18;
+// name on every obstacle, none shared but a teleporter's, 19 a zone's height,
+// its `set` lines and the lines left to plugins, 20 a mesh's `dyncol` and
+// `texmat` reaching its faces.
+const WORLD_FORMAT = 20;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).
@@ -6238,6 +6243,11 @@ function buildWorldFile(map, { gameConfig, serverBzdb, puffClouds, defaultMapSiz
     // map states no `_rainType`. Purely a client render: no collision, so
     // there is no server-side equivalent of `mapWaterLevel`'s kill check.
     weather: map.weather || null,
+    // The zones with world variables of their own (`set`), which every viewer
+    // tests its own view against (`zone-vars.mjs`).
+    varZones: (map.zones || []).filter((zone) => Object.keys(zone.vars || {}).length > 0)
+      .map(({ x, y, z, halfWidth, halfDepth, height, rotation, vars }) => (
+        { x, y, z, halfWidth, halfDepth, height: Number.isFinite(height) ? height : null, rotation, vars })),
     // `groundMaterial` -- a Map Viewer preview draws it from this same JSON
     // too (see `applyWorldData`/`buildGround` in client.js/render-world.js),
     // `null` when the map states no `-gndtex` or `GroundMaterial` block.

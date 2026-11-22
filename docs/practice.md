@@ -24,8 +24,13 @@ https://<this bzo>/?practice=<level>&map=<file>&bots=<n>
 | `map` | a map file this server lists, or `import-<host>_<port>.bzw` | the last world played |
 | `bots` | 0 to 15 | 3 |
 
-The chat says where you are: "Offline, against bots, on hix.bzw. Reload to
-reconnect."
+The chat says where you are and how to leave: "Offline, against bots, in
+hix.bzw, ⚙ Settings → Player Options → Server: This server, joins the game."
+A reload starts the same practice or view over.
+
+The arena is yours, so `/set` and `/reset` work there as an admin's do on a
+server, for this page only: `/set _syncTime 1795377240` holds the sky at one
+instant. A reload starts from the map's own values again.
 
 **Map Viewer** is practice with nobody else in it: `?viewmap=<file>`, with
 its `cam=` and `pos=`, and Map Viewer in the entry dialog, open the map

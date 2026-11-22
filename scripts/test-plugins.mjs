@@ -706,17 +706,12 @@ ${extra}end
 // for a point and a place among the map's records; crossing back, or dying,
 // drops the lap under way.
 {
-  const map = `finishline
-  position 0 0 0
-  heading 180
-  width 30
-  height 10
-end
-checkpoint
-  position 0 100 0
-  heading 0
-end
-`;
+  // The map's zones as `bz_getMapZones` gives them: a finish line crossed
+  // westward, and a checkpoint crossed eastward with the default height.
+  const zones = [
+    { x: 0, y: 0, z: 0, halfWidth: 1, halfDepth: 30, height: 10, rotation: Math.PI, lines: ['finishline'] },
+    { x: 0, y: 100, z: 0, halfWidth: 1, halfDepth: 30, height: null, rotation: 0, lines: ['checkpoint 1'] },
+  ];
   const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-laptimer-'));
   const said = [];
@@ -737,7 +732,7 @@ end
     settings: { laptimer: true },
     api: {
       BZ_SERVER: -2, BZ_ALLUSERS: -1,
-      bz_customMapObjects: (name) => scanCustomMapObjects(map, name),
+      bz_getMapZones: () => zones,
       bz_getDataDir: () => dataDir,
       bz_getMapName: () => 'track',
       bz_getPlayerByIndex: (id) => tanks.get(id) ?? null,
@@ -753,8 +748,8 @@ end
     },
   });
   host.loadAll();
-  assert.deepEqual([...host.mapObjects()], ['FINISHLINE', 'CHECKPOINT'],
-    'a BZFlag client\'s world skips its objects, as bzfs does');
+  assert.deepEqual([...host.mapObjects()], [],
+    'its lines are zones, so a BZFlag client\'s world needs nothing skipped');
   const move = (x, at) => {
     now = at;
     host.callEvents('bz_ePlayerUpdateEvent', { playerID: 1, state: { pos: [x, 5, 1] } });

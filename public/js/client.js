@@ -181,6 +181,7 @@ import {
   setFlagHelp,
   updateFlagHelpHud,
   updateScoreboard,
+  updateScoreboardSpeeds,
   updateAltimeter,
   updateDegreeBar,
   updateShotStatus,
@@ -318,6 +319,7 @@ import {
   getRunOverSeparation,
   configureFlagEffects,
   FLAG_ABBREVIATIONS,
+  getMotionEffects,
 } from './flags.mjs';
 import { steerGuidedShot, pickTargetInSights, getFlagFlightState } from './flags.mjs';
 import { pickObstacle } from './world-pick.mjs';
@@ -341,6 +343,7 @@ import {
 } from './shots.mjs';
 import { getShotTankHit } from './shots.mjs';
 import { CLIENT_VERSION } from './version.mjs';
+import { varZoneAt } from './zone-vars.mjs';
 import {
   VOICE_DUCK_HOLD_MS,
   VOICE_REF_DISTANCE,
@@ -652,7 +655,28 @@ let liveBzdb = new Map();
 // lines go over as the live map's do.
 let serverBzdb = new Map();
 function recomputeLiveConfig() {
-  if (worldBaseConfig) liveGameConfig = evaluateWorldConfig(worldBaseConfig, liveBzdb);
+  if (worldBaseConfig) liveGameConfig = evaluateWorldConfig(worldBaseConfig, withZoneVars(liveBzdb));
+}
+
+// The world variables of the zone this view is in (`set`, docs/bzw.md "Zone
+// variables"), over whatever else holds them, and the zone they came from.
+let viewZoneVars = new Map();
+let viewZone = null;
+
+function withZoneVars(bzdb) {
+  return viewZoneVars.size > 0 ? new Map([...bzdb, ...viewZoneVars]) : bzdb;
+}
+
+// Every frame, from wherever this view is: a playing tank's eye or a roaming
+// observer's. A zone's variables change only how things look, so this client
+// applies them itself, as the server sends them to a BZFlag client.
+function updateViewZone() {
+  const zone = varZoneAt(currentWorldData?.varZones, myX, myY, myZ);
+  if (zone === viewZone) return;
+  viewZone = zone;
+  viewZoneVars = new Map(Object.entries(zone?.vars || {}));
+  recomputeLiveConfig();
+  applyWorldGameplay(currentWorldData);
 }
 
 // The config a world plays by here: the live world's, or a previewed map's own
@@ -661,7 +685,7 @@ function configForWorld(world) {
   if (!worldBaseConfig) return liveGameConfig;
   if (!isPreviewingAltWorld()) return liveGameConfig;
   const bzdb = new Map([...serverBzdb, ...bzdbFromObject(world?.bzdb)]);
-  return evaluateWorldConfig({ ...worldBaseConfig, ...(world?.gameplay || {}) }, bzdb);
+  return evaluateWorldConfig({ ...worldBaseConfig, ...(world?.gameplay || {}) }, withZoneVars(bzdb));
 }
 let serverMotdText = '';
 let serverTitleText = '';
@@ -1431,8 +1455,9 @@ function getDestinationChoices() {
   if (readOfflineWorld()) choices.push(...PRACTICE_LEVELS.map((level) => `practice:${level}`));
   // Watching is reached from the View dialog rather than chosen here, but a
   // page already on one has to be able to name where it is -- and to leave.
+  // So is a Map Viewer link, which is practice with no world saved to offer.
   const here = currentDestination();
-  if (here.startsWith('watch:') || here.startsWith('replay:')) choices.unshift(here);
+  if (!choices.includes(here) && /^(watch|replay|practice):/.test(here)) choices.unshift(here);
   return choices;
 }
 
@@ -9719,6 +9744,8 @@ function receiveSetVar(message) {
   const before = liveGameConfig;
   recomputeLiveConfig();
   applyWorldGameplay(currentWorldData);
+  // `_showVelocities` adds or drops the scoreboard's speed column.
+  if (scoreboardModel && scoreboardModel.showSpeeds !== showingScoreboardSpeeds()) refreshScoreboards();
   if (isPreviewingAltWorld() || !currentWorldData) return;
   applyLiveSceneVars(message.name, before, liveGameConfig);
 }
@@ -10644,6 +10671,7 @@ function getScoreboardModel() {
       // roster when the server agrees, so this decides the column and not the
       // secret.
       isAdmin: amAdmin,
+      showSpeeds: showingScoreboardSpeeds(),
     };
   }
   return scoreboardModel;
@@ -10663,10 +10691,62 @@ function syncHuntScoreboard() {
   else returnScoreboard();
 }
 
+// Each tank's speed on the scoreboard: an observer's board, as upstream's
+// Extended Observer Info shows it while roaming, or everyone's on a world that
+// sets `_showVelocities` (bzo reads it as on or off; upstream's client setting
+// of the same name has levels).
+function showingScoreboardSpeeds() {
+  return isObserver() || Boolean(gameConfig?.SHOW_VELOCITIES);
+}
+
+// A tank's speed across the ground with whatever pushes it, and the top speed
+// upstream compares it with: `_tankSpeed`, raised by Velocity or Thief and by
+// nothing else (`Player::getMaxSpeed`). The velocity is the one a shot
+// inherits: this tank's, as its moves are sent; another's, from its last move.
+function getScoreboardSpeed(id) {
+  if (!gameConfig) return null;
+  const isMine = id === String(myPlayerId);
+  const tank = isMine ? myTank : tanks.get(id);
+  const state = tank?.userData?.playerState;
+  if (!tank || !state?.alive) return null;
+  let velocity;
+  if (state.paused) {
+    velocity = { x: 0, y: 0 };
+  } else if (isMine) {
+    velocity = shotTankVelocity;
+  } else {
+    const data = tank.userData;
+    const airborne = data.jumpAzimuth !== null && data.jumpAzimuth !== undefined;
+    velocity = packetVelocity({
+      air: airborne ? 1 : 0,
+      vx: data.airVelocityX,
+      vy: data.airVelocityY,
+      fs: data.forwardSpeed,
+      sd: data.slideAzimuth,
+      a: tankAzimuth(tank),
+      x: tank.position.x,
+      y: tank.position.y,
+    }, gameConfig, airborne ? null : physicsDriverByIndex(data.physicsDriver));
+  }
+  const flagType = getPlayerFlag(id)?.type ?? null;
+  return {
+    speed: Math.hypot(velocity.x || 0, velocity.y || 0),
+    maxSpeed: (gameConfig.TANK_SPEED ?? 25) * Math.max(1, getMotionEffects(flagType).speedFactor),
+  };
+}
+
+// Four times a second: often enough to read as live, rare enough to cost
+// nothing on a board that is otherwise only redrawn when the roster changes.
+const SCOREBOARD_SPEED_INTERVAL_MS = 250;
+setInterval(() => {
+  if (scoreboardModel?.showSpeeds) updateScoreboardSpeeds(getScoreboardSpeed);
+}, SCOREBOARD_SPEED_INTERVAL_MS);
+
 function refreshScoreboards() {
   syncHuntScoreboard();
   scoreboardModel = null;
   updateScoreboard(getScoreboardModel());
+  if (scoreboardModel.showSpeeds) updateScoreboardSpeeds(getScoreboardSpeed);
   // The Hunt row reads the same roster and the same marks, so a board repaint
   // is also when the row goes stale -- a player leaving takes a name out of its
   // list, and a key press changes the ring it is showing.
@@ -18836,6 +18916,7 @@ function animate(frameTime) {
   // With the flags, and after the camera for the same reason: a beacon fades on
   // how far the viewer ended up from what it marks.
   updateSkyBeacons();
+  updateViewZone();
   markFramePhase('sim');
   updateRadar();
   markFramePhase('radar');

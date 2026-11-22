@@ -41,6 +41,7 @@ import { WorldRendering } from './render-world.js';
 import { TankRendering } from './render-tanks.js';
 import { EffectsRendering } from './render-effects.js';
 import { FlagRendering } from './render-flags.js';
+import { installTransparentSort } from './render-sort.js';
 
 // BZDB_MUZZLEFRONT (global.cxx: "_tankRadius + 0.1") is upstream's own
 // invariant: the muzzle never sits more than 0.1 past the tank's closest
@@ -564,6 +565,7 @@ class RenderManager {
     }
 
     this.renderer.outputColorSpace = DISPLAY_OUTPUT_COLOR_SPACE;
+    installTransparentSort(this.renderer, this.scene);
     this.renderer.xr.enabled = true;
     // Set before any session starts, because it is read when the session builds
     // its framebuffer and changing it afterwards does nothing.

@@ -24,6 +24,7 @@
 import { createBotGame, motionOf, TICK_SECONDS } from './bot-game.mjs';
 import { DEFAULT_PILOT } from './autopilot.mjs';
 import { ALL_PLAYERS, SERVER_PLAYER } from './player-ids.mjs';
+import { BZDB_DEFAULTS } from './bzdb-defaults.mjs';
 import { getTeamColorIndex, isColorTeam } from './teams.mjs';
 import { getInitialPlayerColor, getJoinPlayerColor, pickDistinctColor } from './player-colors.mjs';
 
@@ -50,8 +51,9 @@ let lastTickAt = 0;
 
 const send = (message) => self.postMessage(JSON.stringify(message));
 
-const offlineLine = () => `Offline, ${botCount > 0 ? 'against bots, ' : ''}on ${world.init.currentMap || 'the last map played'}.`
-  + ' Reload to reconnect.';
+// A reload starts this view over, so the way online is the entry dialog's.
+const offlineLine = () => `Offline, ${botCount > 0 ? 'against bots, ' : ''}in ${world.init.currentMap || 'the last map played'},`
+  + ' ⚙ Settings → Player Options → Server: This server, joins the game.';
 
 function serverMessage(text) {
   send({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text, ts: Date.now() });
@@ -366,4 +368,45 @@ self.onmessage = ({ data }) => {
   } else if (message.type === 'captureFlag' && player.alive && game) {
     game.capture(PLAYER_ID, player.team, Number(message.team));
   } else if (message.type === 'killed' || message.type === 'selfDestruct') die(message);
+  else if (message.type === 'message' && typeof message.text === 'string') command(message.text);
 };
+
+// --- Commands ------------------------------------------------------------------
+
+// The world's variables as the server holds them: the map's own `-set` lines,
+// and whatever `/set` has changed since. A name not here is at its default.
+let worldVars = null;
+const varValue = (name) => worldVars.get(name) ?? BZDB_DEFAULTS[name];
+
+// This arena is the player's own, so they hold the server's `/set` and
+// `/reset`, and each change goes back as the server's `setVar` does. Other
+// chat has no one to reach.
+function command(text) {
+  const [verb, name, ...valueParts] = text.trim().split(/\s+/);
+  if (verb !== '/set' && verb !== '/reset') return;
+  if (!worldVars) worldVars = new Map(Object.entries(world.init.bzdb || {}).map(([key, value]) => [key, String(value)]));
+  if (!name) {
+    serverMessage(`usage: ${verb.slice(1)} <name>${verb === '/set' ? ' [<value>]' : ''}`);
+    return;
+  }
+  if (name === '*' && verb === '/reset') {
+    for (const key of [...worldVars.keys()]) setVar(key, null);
+    return;
+  }
+  if (varValue(name) === undefined) {
+    serverMessage(`variable ${name} does not exist`);
+    return;
+  }
+  if (verb === '/reset') setVar(name, null);
+  else if (valueParts.length === 0) serverMessage(`${name} is ${varValue(name)}`);
+  else {
+    setVar(name, valueParts.join(' '));
+    serverMessage(`${name} set`);
+  }
+}
+
+function setVar(name, value) {
+  if (value === null) worldVars.delete(name);
+  else worldVars.set(name, value);
+  send({ type: 'setVar', name, value });
+}

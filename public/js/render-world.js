@@ -205,7 +205,10 @@ const alphaWithoutThreshold = new Set();
 // without one (`MeshSceneNode.cxx:525`: `if (alphaThreshold != 0.0f)`); bzo
 // keeps a low one, which is the deliberate difference documented in
 // docs/bzw.md -- a foliage cutout's fully-transparent pixels would otherwise
-// still write depth and block what is behind them.
+// still write depth and block what is behind them. The test sees the
+// texture's alpha times the colour's, so the default is scaled by the
+// colour's: it drops what the texture itself left nearly clear, and a
+// half-see-through colour does not cut a soft fade short.
 function resolveAlphaTest(material, textureName) {
   const stated = material?.userData?.alphaThreshold;
   if (Number.isFinite(stated) && stated !== 0) return stated;
@@ -214,7 +217,16 @@ function resolveAlphaTest(material, textureName) {
     alphaWithoutThreshold.add(key);
     if (onAlphaWithoutThreshold) onAlphaWithoutThreshold(key);
   }
-  return FOLIAGE_ALPHA_TEST;
+  if (material?.userData) material.userData.scaledAlphaTest = true;
+  return scaledAlphaTest(material?.opacity);
+}
+
+// The default threshold under a colour alpha. Never 0 while drawn: three.js
+// builds a different shader for no alpha test, and a `dynamicColor` that
+// starts hidden would otherwise recompile its material when it first shows.
+function scaledAlphaTest(opacity) {
+  if (!Number.isFinite(opacity) || opacity <= 0) return FOLIAGE_ALPHA_TEST;
+  return FOLIAGE_ALPHA_TEST * Math.min(1, opacity);
 }
 
 // `nosorting` (`BzMaterial::getNoSorting`). Upstream's flag does not ask for
@@ -264,11 +276,16 @@ function setTransparentDepthWrite(material, opaquePass = material.userData?.noSo
 
 // A texture whose most transparent pixel is still at least this opaque
 // draws in the opaque pass, blended but writing depth. Upstream sorts each
-// face of its blended pass by distance; three.js sorts whole objects, and an
-// instanced or merged mesh sorts as one, so a far wall could draw after --
-// and over -- a near one (issue #186). Writing depth makes order not matter,
-// which is right for a surface nothing shows through anyway.
+// face of its blended pass by distance; bzo sorts a mesh's material groups
+// (`render-sort.js`) but a large instanced batch as one, so a far wall could
+// draw after -- and over -- a near one (issue #186). Writing depth makes
+// order not matter, which is right for a surface nothing shows through anyway.
 const OPAQUE_PASS_MIN_ALPHA = 0.85;
+
+// A `define` placed this many times or fewer draws each placement as its own
+// mesh rather than one instanced batch, so its see-through parts sort
+// placement by placement (`setMeshInstances`).
+const SEPARATE_PLACEMENTS_MAX = 8;
 
 function applyTextureAlpha(material, hasAlpha, textureName = null, minAlpha = 0) {
   if (!hasAlpha) return;
@@ -963,7 +980,9 @@ export class WorldRendering {
       addQuad(quad.base, quad.s, quad.t, texCoords[index], material);
     });
 
-    // Each portal faces out of its own side of the frame.
+    // Each portal faces out of its own side of the frame. Render order 0, an
+    // obstacle's: upstream sorts the link with every other translucent face
+    // by depth, so a nearer see-through sign draws over it, not under.
     const addPortalFace = (xPos, material, facingNegativeX = false) => {
       const portalRepeatV = (height) / Math.max(0.1, 2.0 * innerBreadth);
       const baseY = facingNegativeX ? innerBreadth : -innerBreadth;
@@ -974,7 +993,7 @@ export class WorldRendering {
         [0.0, 0.0, portalHeight],
         [[0.0, 0.0], [1.0, 0.0], [1.0, portalRepeatV], [0.0, portalRepeatV]],
         material,
-        6,
+        0,
       );
     };
 
@@ -1031,6 +1050,13 @@ export class WorldRendering {
         const [r, g, b, a] = evaluateDynamicColor(entry.dynamicColor, timeSeconds);
         entry.material.color.setRGB(r, g, b);
         entry.material.opacity = a;
+        if (entry.material.userData.scaledAlphaTest) entry.material.alphaTest = scaledAlphaTest(a);
+        // An alpha of exactly 0 is not drawn at all, blended or not
+        // (`MeshSceneNode.cxx:249`, `MeshFragSceneNode.cxx:394`): an opaque
+        // face whose sequence switches it off disappears rather than staying.
+        // The ground is not a mesh upstream (`BackgroundRenderer`) and is
+        // never hidden this way.
+        if (entry.source !== 'ground') entry.material.visible = a !== 0;
       }
       if (entry.textureMatrix) {
         applyTextureMatrix(entry.textureMatrix, timeSeconds, entry.texture.matrix);
@@ -2113,6 +2139,34 @@ export class WorldRendering {
         });
       }
       for (const prototype of built.get(name)) {
+        // Each placement its own mesh, sharing the template's geometry and
+        // materials, where see-through parts must sort against the world one
+        // placement at a time: one batch is sorted at one depth, so a sign
+        // and the tower glass behind it drew in whichever order their two
+        // batches fell (#186). A few placements cost a few draws. A template
+        // whose see-through-ness comes from a texture only shows it once the
+        // image loads, so a large batch of those stays instanced.
+        const separate = placements.length <= SEPARATE_PLACEMENTS_MAX
+          || (Array.isArray(prototype.material) ? prototype.material : [prototype.material])
+            .some((material) => material.transparent);
+        if (separate) {
+          placements.forEach((instance) => {
+            const scale = Array.isArray(instance.scale) ? instance.scale : [1, 1, 1];
+            position.set(instance.x || 0, instance.y || 0, instance.z || 0);
+            quaternion.setFromAxisAngle(zAxis, instance.spin || 0);
+            scaleVector.set(scale[0] || 1, scale[1] || 1, scale[2] || 1);
+            const placed = new THREE.Mesh(prototype.geometry, prototype.material);
+            placed.name = prototype.name;
+            placed.matrixAutoUpdate = false;
+            placed.matrix.compose(position, quaternion, scaleVector);
+            placed.matrixWorldNeedsUpdate = true;
+            placed.castShadow = prototype.castShadow;
+            placed.receiveShadow = prototype.receiveShadow;
+            this.worldFrame.add(this._tagDraws(placed, 'mesh'));
+            this.meshObjects.push(placed);
+          });
+          continue;
+        }
         const batch = new THREE.InstancedMesh(
           prototype.geometry, prototype.material, placements.length,
         );
@@ -2293,13 +2347,15 @@ export class WorldRendering {
     // `import-xs.bzexcess.com_5155.bzw` it is the difference between a few
     // dozen draws and tens of thousands.
     //
-    // Sparse and indexed by material, so the buckets come out in the order the
-    // materials were first met, and a face's triangles keep their order inside
-    // one. Faces of *different* materials are no longer interleaved in map
-    // order: a mesh's translucent faces are drawn unsorted either way -- bzo
-    // merges them where upstream keeps them out of the fragment to sort them --
-    // so this reorders something that was already arbitrary against the view.
-    const indicesByMaterial = [];
+    // The buckets come out in the order they were first met, and a face's
+    // triangles keep their order inside one. A face translucent by its colour
+    // gets a bucket of its own, as upstream gives it a scene node of its own
+    // to sort (`MeshSceneNodeGenerator.cxx:212`), and every bucket records
+    // where it is (`center`) for `render-sort.js` to sort by. A face whose
+    // texture turns out to have alpha stays with its material: that is only
+    // known once the image loads, after this has run.
+    const buckets = [];
+    const bucketByMaterial = [];
     const edgeA = new THREE.Vector3();
     const edgeB = new THREE.Vector3();
 
@@ -2381,25 +2437,44 @@ export class WorldRendering {
         materials.push(material);
         materialIndexByKey.set(key, materialIndex);
       }
-      let bucket = indicesByMaterial[materialIndex];
+      const ownBucket = !face.noSorting && ((face.color?.[3] ?? 1) < 1
+        || (face.dynamicColor && dynamicColorCanHaveAlpha(face.dynamicColor)));
+      let bucket = ownBucket ? null : bucketByMaterial[materialIndex];
       if (!bucket) {
-        bucket = [];
-        indicesByMaterial[materialIndex] = bucket;
+        bucket = {
+          materialIndex,
+          indices: [],
+          min: [Infinity, Infinity, Infinity],
+          max: [-Infinity, -Infinity, -Infinity],
+        };
+        buckets.push(bucket);
+        if (!ownBucket) bucketByMaterial[materialIndex] = bucket;
       }
-      for (let i = 0; i < faceIndices.length; i += 1) bucket.push(faceIndices[i]);
+      for (let i = 0; i < faceIndices.length; i += 1) bucket.indices.push(faceIndices[i]);
+      for (let p = baseVertex * 3; p < positions.length; p += 3) {
+        for (let axis = 0; axis < 3; axis += 1) {
+          const value = positions[p + axis];
+          if (value < bucket.min[axis]) bucket.min[axis] = value;
+          if (value > bucket.max[axis]) bucket.max[axis] = value;
+        }
+      }
     }
 
-    // One run per material, laid end to end. `forEach` skips the holes a
-    // material whose every face was degenerate leaves behind.
+    // One run per bucket, laid end to end.
     const indices = [];
     const geometryGroups = [];
-    indicesByMaterial.forEach((bucket, materialIndex) => {
-      if (!bucket.length) return;
-      geometryGroups.push({ start: indices.length, count: bucket.length, materialIndex });
+    buckets.forEach(({ materialIndex, indices: bucketIndices, min, max }) => {
+      if (!bucketIndices.length) return;
+      geometryGroups.push({
+        start: indices.length,
+        count: bucketIndices.length,
+        materialIndex,
+        center: [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2],
+      });
       // Appended one at a time: a spread is an argument list, and a bucket on a
       // map like `import-xs.bzexcess.com_5155.bzw` runs to hundreds of
       // thousands of indices, well past what a call can carry.
-      for (let i = 0; i < bucket.length; i += 1) indices.push(bucket[i]);
+      for (let i = 0; i < bucketIndices.length; i += 1) indices.push(bucketIndices[i]);
     });
 
     if (!indices.length) return null;
@@ -2409,7 +2484,12 @@ export class WorldRendering {
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normalsOut, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvsOut, 2));
     geometry.setIndex(indices);
-    geometryGroups.forEach(({ start, count, materialIndex }) => geometry.addGroup(start, count, materialIndex));
+    geometryGroups.forEach(({ start, count, materialIndex, center }) => {
+      geometry.addGroup(start, count, materialIndex);
+      // Only where there is more than one: a lone group is the whole mesh,
+      // which Three already sorts by.
+      if (geometryGroups.length > 1) geometry.groups[geometry.groups.length - 1].center = center;
+    });
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
 

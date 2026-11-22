@@ -1036,6 +1036,13 @@ export const SCOREBOARD_COLUMNS = Object.freeze([
   // account page already shows them. Admin-only, enforced on the server: a
   // non-admin's roster never carries the field at all.
   Object.freeze({ id: 'bzid', label: 'BZID', short: 'BZID', width: 7, narrowWidth: 7, align: 'right' }),
+  // Each tank's speed across the ground, conveyor push included, where upstream
+  // draws it: in front of the callsign (`ScoreboardRenderer.cxx:742`). Drawn
+  // for an observer, as upstream draws it while roaming with Extended Observer
+  // Info on, and for everyone on a world that sets `_showVelocities`. Whole
+  // numbers, and refreshed in place (`updateScoreboardSpeeds`), not by a
+  // rebuild.
+  Object.freeze({ id: 'speed', label: N_('Speed'), short: N_('Spd'), width: 5, narrowWidth: 4, align: 'right' }),
   Object.freeze({ id: 'player', label: N_('Player'), short: N_('Player'), width: 0, narrowWidth: 0, align: 'left' }),
   // `getScore()` is `wins - losses` (Player.h:486), the number upstream puts
   // in front of the record and sorts the board by. bzo sorted by it already
@@ -1090,11 +1097,12 @@ export const SCOREBOARD_TIER = Object.freeze({
   NARROW: 'narrow',
 });
 
-export function getScoreboardColumns({ tier = SCOREBOARD_TIER.WIDE, isAdmin = false } = {}) {
+export function getScoreboardColumns({ tier = SCOREBOARD_TIER.WIDE, isAdmin = false, showSpeeds = false } = {}) {
   const wide = tier === SCOREBOARD_TIER.WIDE;
   const narrow = tier === SCOREBOARD_TIER.NARROW;
   return SCOREBOARD_COLUMNS.filter((column) => {
     if (column.id === 'bzid') return isAdmin && wide;
+    if (column.id === 'speed') return showSpeeds;
     if (column.id === 'tally') return wide;
     if (column.id === 'record') return !narrow;
     return true;
@@ -1496,6 +1504,43 @@ function writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting, silenc
   });
 }
 
+// A speed's colour against the tank's own top speed, as upstream colours it:
+// grey stopped, white within it, yellow past it (`ScoreboardRenderer.cxx:
+// 748-756`). Upstream meant red past one and a half times it, and paints yellow
+// straight over the red; bzo shows the red. The top speed leaves out conveyors,
+// as upstream's `getMaxSpeed` does, so a conveyor rider reads fast.
+const SCOREBOARD_SPEED_STOPPED = 0.0001;
+const SCOREBOARD_SPEED_BAD_FACTOR = 1.5;
+const SCOREBOARD_SPEED_COLORS = Object.freeze({
+  stopped: 0xbfbfbf,
+  within: 0xffffff,
+  over: 0xffff00,
+  far: 0xff0000,
+});
+
+function getScoreboardSpeedColor(speed, maxSpeed) {
+  if (speed < SCOREBOARD_SPEED_STOPPED) return SCOREBOARD_SPEED_COLORS.stopped;
+  if (speed > maxSpeed * SCOREBOARD_SPEED_BAD_FACTOR) return SCOREBOARD_SPEED_COLORS.far;
+  if (speed > maxSpeed) return SCOREBOARD_SPEED_COLORS.over;
+  return SCOREBOARD_SPEED_COLORS.within;
+}
+
+// Rewrites every speed cell on the board from `getSpeed(id)`, which answers
+// `{ speed, maxSpeed }` or null for a tank with none to show. In place, because
+// a speed changes every frame and the board is otherwise rebuilt only when the
+// roster does.
+export function updateScoreboardSpeeds(getSpeed) {
+  const list = document.getElementById('scoreboardList');
+  if (!list) return;
+  list.querySelectorAll('.scoreboardCell-speed[data-player-id]').forEach((cell) => {
+    const reading = getSpeed(cell.dataset.playerId);
+    const text = reading ? String(Math.round(reading.speed)) : '';
+    if (cell.textContent !== text) cell.textContent = text;
+    const color = reading ? colorToCSS(getScoreboardSpeedColor(reading.speed, reading.maxSpeed)) : '';
+    if (cell.style.color !== color) cell.style.color = color;
+  });
+}
+
 // The roster as the flat HUD draws it. Everything it needs arrives already
 // assembled, so this decides only how the rows look -- see the model builder in
 // `client.js`, which is the one entry point every repaint goes through.
@@ -1522,6 +1567,9 @@ export function updateScoreboard({
   // column is offered. The server is what actually withholds the value, so a
   // client that lied here would draw an empty column.
   isAdmin = false,
+  // Whether the speed column is drawn: an observer's board, or a world that
+  // sets `_showVelocities`. Its cells are filled by `updateScoreboardSpeeds`.
+  showSpeeds = false,
   // Seconds left on the match clock, extrapolated by the caller the same way
   // HUDRenderer does upstream; null with no clock configured, -1 while paused.
   timeLeft = null,
@@ -1541,7 +1589,7 @@ export function updateScoreboard({
       : SCOREBOARD_TIER.NARROW;
   updateMatchClock(timeLeft, gameOver);
   updateTeamScoreboard(teamRows);
-  const columns = getScoreboardColumns({ tier, isAdmin });
+  const columns = getScoreboardColumns({ tier, isAdmin, showSpeeds });
   writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting, silenceSelecting);
   const scoreboardList = document.getElementById('scoreboardList');
   if (!scoreboardList) return;
@@ -1682,6 +1730,9 @@ export function updateScoreboard({
       const cell = makeScoreboardCell(column, tier);
       if (column.id === 'player') {
         cell.appendChild(labelSpan);
+      } else if (column.id === 'speed') {
+        // An observer has no tank to time.
+        if (!player.isObserver) cell.dataset.playerId = String(player.id);
       } else {
         cell.textContent = formatScoreboardCell(player, column.id);
         if (column.id === 'type') {

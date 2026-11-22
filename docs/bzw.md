@@ -539,6 +539,11 @@ in `public/js/render-world.js`'s `evaluateDynamicColor`. `dyncol` on a material
 `dynamicColor` animates in exact lockstep, upstream's own shared-pointer
 semantics, not a separate instance per material.
 
+An alpha of exactly `0` hides the face and its shadow, opaque or not
+(`MeshSceneNode.cxx:249,266`). A `sequence` of only `0` and `2` under
+`limits 0 1` therefore switches an opaque face on and off without ever
+blending it: frames that each show for their own slot of one shared loop.
+
 `textureMatrix` / `end` -- one block per named UV transform, `fixedshift
 <u> <v>`/`fixedscale <u> <v>`/`fixedspin <degrees>`/`fixedcenter <u> <v>`
 baked once (a `0` on `fixedscale` leaves the axis at its prior value, never
@@ -740,7 +745,10 @@ foliage cutout's fully transparent pixels still write depth and block whatever
 is behind them -- which is a visible fault, not a stylistic difference, and
 was blocking teleporter effects through the gaps in a shrub before this
 existed. 0.05 is low enough to catch only the pixels upstream's own default
-would have drawn as fully invisible regardless.
+would have drawn as fully invisible regardless. It is scaled by the
+material's own colour alpha, since the test sees the two multiplied: under
+`diffuse … 0.5` it is 0.025, so a soft fade on a half-see-through colour
+still runs out to clear rather than stopping short at a visible edge.
 
 That difference is a map's to close, not bzo's: a material carrying a
 transparent texture and no `alphathresh` renders one way here and another way
@@ -1339,6 +1347,46 @@ upstream asks (`WorldInfo::getFlagSpawnPoint`). Several zones naming a type
 share it in proportion to their area; a type no zone names spawns anywhere.
 A team flag type is refused, as upstream refuses it. `bzo.bzw`'s grey pad
 east of the good ring is a `flag SW` zone for its two `+f SW` flags.
+
+### Zone variables
+
+bzo's own. A zone's `set <variable> <value>` lines are world variables a
+viewer inside the zone sees in place of the map's: fog for a tunnel or a
+cave.
+
+```
+zone
+  position -440 0 0
+  size 34 250 10
+  set _fogMode linear
+  set _fogStart 10
+  set _fogEnd 70
+  set _fogColor black
+end
+```
+
+A zone here is a box: `position` its centre and floor, `size` its half width,
+half depth and full height, turned by `rotation`. Upstream reads the height
+and uses none of it; a zone stating none reaches all the way up.
+
+A zone may set only what changes how things look, never how anything moves
+or is judged: `_fogMode`, `_fogDensity`, `_fogStart`, `_fogEnd`,
+`_fogColor`, `_fogNoSky` and `_syncTime` (`zone-vars.mjs`). Anything else is
+named in a warning and dropped. A bzo client tests its own view every frame,
+a roaming observer's included. A BZFlag client is sent the zone's values as
+its tank drives in and the map's back as it leaves, each its own and nobody
+else's, so fog in a zone hides the world from those inside it only. Where
+zones overlap, the first in the file wins.
+
+A BZFlag server loads the map and skips each `set` line with a warning.
+
+### Plugin lines
+
+A zone line bzo does not read is kept whole for a plugin
+(`bz_getMapZones`, [plugins.md](plugins.md)), and a BZFlag server skips it
+with a warning. The lap timer's lines are zones of this kind: a zone with
+`finishline`, or `checkpoint <order>`, is a line racers cross the way its
+`rotation` points.
 
 ## World weapons
 
