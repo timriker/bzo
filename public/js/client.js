@@ -8813,6 +8813,7 @@ const SERVER_MESSAGE_HANDLERS = Object.freeze({
   serverConfigUpdate: receiveServerConfigUpdate,
   setVar: receiveSetVar,
   plugins: receivePlugins,
+  bans: receiveBans,
   superKill: receiveSuperKill,
   reload: receiveReload,
 });
@@ -10753,6 +10754,116 @@ function refreshScoreboards() {
   refreshSettingsMenu();
 }
 
+// The Operator panel's Bans section, as the server last sent it, and the
+// column it is sorted by. The rows are rebuilt on every update, so the sort is
+// kept here rather than in the rows' order.
+let operatorBans = null;
+let operatorBanSort = { column: 0, dir: 1 };
+
+// An address sorts by its numbers, IPv4 before IPv6, then by block size.
+function banSortKey(ban, column) {
+  if (column === 1) return ban.until || Infinity;
+  if (column === 2) return `${ban.reason || ''} ${ban.bannedBy || ''}`.toLowerCase();
+  const [address, bits = ''] = ban.mask.split('/');
+  const v4 = address.split('.');
+  if (v4.length === 4) return `4${v4.map((octet) => octet.padStart(3, '0')).join('')}/${bits.padStart(3, '0')}`;
+  const halves = address.split('::');
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves[1] ? halves[1].split(':') : [];
+  const groups = halves.length === 2 ? [...head, ...Array(8 - head.length - tail.length).fill('0'), ...tail] : head;
+  return `6${groups.map((group) => group.padStart(4, '0')).join('')}/${bits.padStart(3, '0')}`;
+}
+
+function receiveBans(message) {
+  operatorBans = message;
+  paintOperatorBans();
+}
+
+function paintOperatorBans() {
+  const status = document.getElementById('banMasterStatus');
+  const reload = document.getElementById('banMasterReloadBtn');
+  const body = document.querySelector('#banTable tbody');
+  if (!operatorBans || !body) return;
+  const master = operatorBans.master || {};
+  if (status) {
+    status.textContent = !master.on ? t('master list off')
+      : master.loadedAt ? t('{count} from the master list, loaded {when}', {
+        count: master.count, when: new Date(master.loadedAt).toLocaleString(),
+      })
+        : t('master list not loaded');
+  }
+  if (reload) reload.disabled = !master.on;
+  const filter = (document.getElementById('banFilterInput')?.value || '').trim().toLowerCase();
+  const { column, dir } = operatorBanSort;
+  const sorted = [...(operatorBans.ip || [])].sort((a, b) => {
+    const left = banSortKey(a, column);
+    const right = banSortKey(b, column);
+    return (left < right ? -1 : left > right ? 1 : 0) * dir;
+  });
+  body.innerHTML = '';
+  for (const ban of sorted) {
+    // `(m)` marks the master list's, as /banlist does.
+    const cells = [
+      ban.master ? `${ban.mask} (m)` : ban.mask,
+      ban.until ? new Date(ban.until).toLocaleString() : t('never'),
+      ban.bannedBy ? t('{reason} (by {who})', { reason: ban.reason || '', who: ban.bannedBy }) : ban.reason || '',
+    ];
+    if (filter && !cells.some((cell) => cell.toLowerCase().includes(filter))) continue;
+    const row = document.createElement('tr');
+    for (const text of cells) {
+      const cell = document.createElement('td');
+      cell.textContent = text;
+      row.appendChild(cell);
+    }
+    const action = document.createElement('td');
+    if (!ban.master) {
+      const remove = document.createElement('button');
+      remove.className = 'btn';
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.title = t('Remove');
+      remove.setAttribute('aria-label', t('Remove'));
+      remove.addEventListener('click', () => sendToServer({ type: 'removeBan', mask: ban.mask }));
+      action.appendChild(remove);
+    }
+    row.appendChild(action);
+    body.appendChild(row);
+  }
+}
+
+function wireOperatorBans() {
+  const mask = document.getElementById('banMaskInput');
+  const duration = document.getElementById('banDurationInput');
+  const reason = document.getElementById('banReasonInput');
+  const add = () => {
+    if (!mask?.value.trim()) return;
+    sendToServer({
+      type: 'addBan',
+      mask: mask.value.trim(),
+      duration: duration?.value.trim() || 'default',
+      reason: reason?.value.trim() || '',
+    });
+    mask.value = '';
+    if (reason) reason.value = '';
+  };
+  document.getElementById('banAddBtn')?.addEventListener('click', add);
+  for (const input of [mask, duration, reason]) {
+    input?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') add();
+    });
+  }
+  document.getElementById('banFilterInput')?.addEventListener('input', paintOperatorBans);
+  // A header click sorts by that column, and again reverses it.
+  document.querySelectorAll('#banTable thead th').forEach((th, column) => {
+    if (column > 2) return;
+    th.addEventListener('click', () => {
+      operatorBanSort = { column, dir: operatorBanSort.column === column ? -operatorBanSort.dir : 1 };
+      paintOperatorBans();
+    });
+  });
+  document.getElementById('banMasterReloadBtn')?.addEventListener('click', () => sendToServer({ type: 'reloadMasterBans' }));
+}
+
 // The Operator panel's Delete Upload choices: the maps, replays and plugins
 // it uploaded that are still here, as the server lists them.
 function populateDeleteUploadSelect(uploaded) {
@@ -11767,6 +11878,7 @@ function syncOperatorPanel() {
 function openOperatorPanel() {
   operatorStaged = getOperatorServerState();
   syncOperatorPanel();
+  sendToServer({ type: 'getBans' });
 }
 
 // Paints the panel from what the server has, for when nothing is staged. The
@@ -11988,6 +12100,7 @@ function wireOperatorPanel() {
     }
   });
   document.getElementById('operatorApplyBtn')?.addEventListener('click', commitOperatorPanel);
+  wireOperatorBans();
   // Honest from the start: nothing is staged before the panel is opened, so the
   // confirm is disabled rather than sitting there enabled with nothing to do.
   syncOperatorPanelFromServer();

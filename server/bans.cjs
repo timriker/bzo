@@ -8,8 +8,10 @@
 // bans.cjs - the server's ban list, as upstream's AccessControlList keeps
 // its BZID and address bans (src/bzfs/AccessControlList.cxx): who, until
 // when, banned by whom and why. Persisted by the caller through `onChange`
-// and `serialize`, as sessions.json is. `now` is milliseconds, injected so a
-// test can run the clock.
+// and `serialize`, as sessions.json is. The master ban list
+// (`setMasterBans`) sits beside it and is never persisted: it is fetched
+// again, as upstream's is. `now` is milliseconds, injected so a test can run
+// the clock.
 
 const { parseWhitelistEntry, addressMatchesWhitelist } = require('./sessions.cjs');
 
@@ -32,6 +34,83 @@ function parseBanMask(text) {
   const entry = parseWhitelistEntry(mask);
   if (!entry) return null;
   return { mask, entry, key: `${entry.family}:${entry.network}:${entry.mask}` };
+}
+
+// An entry's block in CIDR form, `1.2.0.0/16` or `2001:db8::/32`, whatever
+// spelling it was written in.
+function cidrText(entry) {
+  if (entry.family === 4) {
+    const bits = entry.mask === 0 ? 0 : Math.clz32(~entry.mask >>> 0);
+    const value = entry.network >>> 0;
+    return `${[24, 16, 8, 0].map((shift) => (value >>> shift) & 255).join('.')}/${bits}`;
+  }
+  let bits = 0;
+  for (let bit = 127n; bit >= 0n && ((entry.mask >> bit) & 1n); bit -= 1n) bits += 1;
+  const groups = [];
+  for (let shift = 112n; shift >= 0n; shift -= 16n) groups.push(Number((entry.network >> shift) & 0xffffn));
+  // RFC 5952: the longest run of two or more zero groups becomes `::`.
+  let best = -1;
+  let bestLength = 1;
+  for (let start = 0; start < 8;) {
+    let end = start;
+    while (end < 8 && groups[end] === 0) end += 1;
+    if (end - start > bestLength) {
+      best = start;
+      bestLength = end - start;
+    }
+    start = end + 1;
+  }
+  const hex = groups.map((group) => group.toString(16));
+  const text = best === -1 ? hex.join(':')
+    : `${hex.slice(0, best).join(':')}::${hex.slice(best + bestLength).join(':')}`;
+  return `${text}/${bits}`;
+}
+
+// The master ban list's text (AccessControlList::merge): blocks of an
+// address line -- or `host: <pattern>` or `bzid: <id>` -- then `end: <unix
+// seconds, 0 forever>`, `banner: <who>` and `reason: <why>`. Addresses come
+// back in CIDR form: a trailing `*` octet is a block, as `/ban` takes it, where
+// upstream's merge turns it into the single address `.255`. A ban already over
+// is dropped, and a host ban is counted but not kept, since bzo has no host
+// bans. A block that does not parse is skipped rather than ending the list.
+function parseMasterBans(text, nowMs = Date.now()) {
+  const ip = [];
+  const id = [];
+  let hosts = 0;
+  let refused = 0;
+  const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  for (let index = 0; index < lines.length;) {
+    const head = lines[index];
+    const field = (offset, name) => {
+      const line = lines[index + offset] || '';
+      return line.startsWith(`${name}:`) ? line.slice(name.length + 1).trim() : null;
+    };
+    const end = field(1, 'end');
+    const banner = field(2, 'banner');
+    const reason = field(3, 'reason');
+    if (end === null || banner === null || reason === null || !/^\d+$/.test(end)) {
+      refused += 1;
+      index += 1;
+      while (index < lines.length && /^(end|banner|reason):/.test(lines[index])) index += 1;
+      continue;
+    }
+    index += 4;
+    const until = Number(end) * 1000;
+    if (until && until <= nowMs) continue;
+    const ban = { bannedBy: banner, reason, until, at: nowMs };
+    if (head.startsWith('host:')) {
+      hosts += 1;
+    } else if (head.startsWith('bzid:')) {
+      const bzid = head.slice(5).trim();
+      if (bzid) id.push({ bzid, ...ban });
+      else refused += 1;
+    } else {
+      const parsed = parseBanMask(head);
+      if (parsed) ip.push({ mask: cidrText(parsed.entry), ...ban });
+      else refused += 1;
+    }
+  }
+  return { ip, id, hosts, refused };
 }
 
 // TimeKeeper::printTime: "2 days, 3 hours, 1 min, 5 secs".
@@ -79,15 +158,20 @@ function createBanStore({ onChange = () => {}, now = () => Date.now() } = {}) {
   const idBans = new Map();
   // A mask's key (`parseBanMask`) to { mask, entry, bannedBy, reason, until, at }.
   const ipBans = new Map();
+  // The master ban list's, keyed the same way, each with `fromMaster`.
+  const masterIdBans = new Map();
+  const masterIpBans = new Map();
+  // Where and when the master list was last loaded, and what it held.
+  let masterSource = { urls: [], loadedAt: 0, hosts: 0, refused: 0 };
 
   function expire() {
     const time = now();
     let changed = false;
-    for (const list of [idBans, ipBans]) {
+    for (const list of [idBans, ipBans, masterIdBans, masterIpBans]) {
       for (const [key, ban] of list) {
         if (ban.until && ban.until <= time) {
           list.delete(key);
-          changed = true;
+          if (list === idBans || list === ipBans) changed = true;
         }
       }
     }
@@ -99,12 +183,13 @@ function createBanStore({ onChange = () => {}, now = () => Date.now() } = {}) {
   function ipBan(text, { bannedBy = '', minutes = 0, reason = '' } = {}) {
     const parsed = parseBanMask(text);
     if (!parsed) return null;
+    const mask = cidrText(parsed.entry);
     ipBans.set(parsed.key, {
-      mask: parsed.mask, entry: parsed.entry, bannedBy, reason,
+      mask, entry: parsed.entry, bannedBy, reason,
       until: minutes > 0 ? now() + (minutes * 60000) : 0, at: now(),
     });
     onChange();
-    return parsed.mask;
+    return mask;
   }
 
   function ipUnban(text) {
@@ -115,30 +200,36 @@ function createBanStore({ onChange = () => {}, now = () => Date.now() } = {}) {
   }
 
   // The ban that keeps this address out, or null; a null address is never
-  // banned, since nothing about it can be trusted.
+  // banned, since nothing about it can be trusted. This server's own bans are
+  // asked first, so its reason is the one a player is given.
   function ipBanned(address) {
     if (!address) return null;
     expire();
-    for (const ban of ipBans.values()) {
-      if (addressMatchesWhitelist(address, [ban.entry])) return ban;
+    for (const list of [ipBans, masterIpBans]) {
+      for (const ban of list.values()) {
+        if (addressMatchesWhitelist(address, [ban.entry])) return ban;
+      }
     }
     return null;
   }
 
-  // AccessControlList::sendBan: the mask, the time left under a year, who.
+  // AccessControlList::sendBan: the mask, the time left under a year, `(m)`
+  // for the master list's, who.
   function ipBanLines(ban) {
     let line = ban.mask;
     const remaining = ban.until ? (ban.until - now()) / 1000 : Infinity;
     if (remaining < 365 * 24 * 3600) line += ` (${(remaining / 60).toFixed(1)} minutes)`;
+    if (ban.fromMaster) line += ' (m)';
     if (ban.bannedBy) line += ` banned by: ${ban.bannedBy}`;
     return ban.reason ? [line, `   reason: ${ban.reason}`] : [line];
   }
 
+  // AccessControlList::sendBans: the master list's first.
   function listIpBans(pattern = '') {
     expire();
     const matches = globMatcher(pattern);
     const lines = ['IP Ban List', '-----------'];
-    for (const ban of ipBans.values()) {
+    for (const ban of [...masterIpBans.values(), ...ipBans.values()]) {
       if (!matches(ban.mask) && !matches(ban.reason) && !matches(ban.bannedBy)) continue;
       lines.push(...ipBanLines(ban));
     }
@@ -150,7 +241,42 @@ function createBanStore({ onChange = () => {}, now = () => Date.now() } = {}) {
     const remaining = ban.until ? (ban.until - now()) / 1000 : Infinity;
     return `REFUSED: ${ban.reason || 'General Ban'}`
       + ` (${remaining < 365 * 24 * 3600 ? `${formatRemaining(remaining)} remaining` : 'indefinite'})`
-      + `${ban.bannedBy ? ` by ${ban.bannedBy}` : ''}`;
+      + `${ban.bannedBy ? ` by ${ban.bannedBy}` : ''}`
+      + `${ban.fromMaster ? ' [you are on the master ban list]' : ''}`;
+  }
+
+  // The master list (bz_reloadMasterBans), replacing whatever was loaded:
+  // `parseMasterBans`'s answer, from one or more URLs. Never persisted.
+  function setMasterBans({ ip = [], id = [], hosts = 0, refused = 0 } = {}, urls = []) {
+    masterIpBans.clear();
+    masterIdBans.clear();
+    for (const ban of ip) {
+      const parsed = parseBanMask(ban.mask);
+      if (!parsed) continue;
+      masterIpBans.set(parsed.key, { ...ban, mask: cidrText(parsed.entry), entry: parsed.entry, fromMaster: true });
+    }
+    for (const ban of id) masterIdBans.set(String(ban.bzid), { ...ban, fromMaster: true });
+    masterSource = { urls: [...urls], loadedAt: urls.length ? now() : 0, hosts, refused };
+    return masterIpBans.size + masterIdBans.size;
+  }
+
+  // AccessControlList::listMasterBans, and where they came from.
+  function masterBans() {
+    expire();
+    return {
+      ...masterSource,
+      ip: [...masterIpBans.values()],
+      id: [...masterIdBans].map(([bzid, ban]) => ({ ...ban, bzid })),
+    };
+  }
+
+  // Every address ban, master list's first, as the Operator panel shows them.
+  function ipBanEntries() {
+    expire();
+    return [...masterIpBans.values(), ...ipBans.values()].map((ban) => ({
+      mask: ban.mask, bannedBy: ban.bannedBy, reason: ban.reason,
+      until: ban.until, at: ban.at, master: Boolean(ban.fromMaster),
+    }));
   }
 
   // `minutes` 0 is forever.
@@ -174,7 +300,7 @@ function createBanStore({ onChange = () => {}, now = () => Date.now() } = {}) {
   function idBanned(bzid) {
     if (!bzid) return null;
     expire();
-    const ban = idBans.get(String(bzid));
+    const ban = idBans.get(String(bzid)) || masterIdBans.get(String(bzid));
     return ban ? { bzid: String(bzid), ...ban } : null;
   }
 
@@ -221,7 +347,7 @@ function createBanStore({ onChange = () => {}, now = () => Date.now() } = {}) {
       const parsed = parseBanMask(entry?.mask);
       if (!parsed) continue;
       ipBans.set(parsed.key, {
-        mask: parsed.mask,
+        mask: cidrText(parsed.entry),
         entry: parsed.entry,
         bannedBy: String(entry.bannedBy || ''),
         reason: String(entry.reason || ''),
@@ -235,9 +361,12 @@ function createBanStore({ onChange = () => {}, now = () => Date.now() } = {}) {
 
   return {
     idBan, idUnban, idBanned, listIdBans,
-    ipBan, ipUnban, ipBanned, ipBanLines, listIpBans, ipBanRefusal,
+    ipBan, ipUnban, ipBanned, ipBanLines, listIpBans, ipBanRefusal, ipBanEntries,
+    setMasterBans, masterBans,
     serialize, load,
   };
 }
 
-module.exports = { parseDuration, globMatcher, parseBanMask, formatRemaining, createBanStore };
+module.exports = {
+  parseDuration, globMatcher, parseBanMask, cidrText, parseMasterBans, formatRemaining, createBanStore,
+};

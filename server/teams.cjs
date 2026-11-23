@@ -159,6 +159,10 @@ function normalizeServerTeamMode(value, defaultLimit = Number.MAX_SAFE_INTEGER) 
   };
 }
 
+// Upstream's MaxPlayers (src/bzfs/CmdLineOptions.h:37), the most `-mp N` may
+// ask for.
+const MAX_REAL_PLAYERS_CAP = 200;
+
 function parseBZWTeamMode(lines) {
   let inOptions = false;
   let touched = false;
@@ -208,6 +212,12 @@ function parseBZWTeamMode(lines) {
         team,
         Number.isInteger(counts[index]) && counts[index] >= 0 ? counts[index] : 0,
       ]));
+      touched = true;
+    } else if (option === '-mp' && /^-?\d+$/.test(value ?? '')) {
+      // The single-number form: the playing total, `maxRealPlayers`, which
+      // upstream clamps to 1..MaxPlayers (parsePlayerCount). The list form's
+      // limits above are cut down to it in resolveTeamMode.
+      override.maxRealPlayers = Math.min(MAX_REAL_PLAYERS_CAP, Math.max(1, Number(value)));
       touched = true;
     }
   }

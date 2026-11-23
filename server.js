@@ -226,7 +226,7 @@ const { POLL_DEFAULTS, VotingArbiter, parseVoteAnswer } = require('./server/poll
 const { CustomZoneObject, createPluginHost, scanCustomMapObjects } = require('./server/plugins.cjs');
 const { createWebAuth, indexPage, servePage } = require('./server/plugin-http.cjs');
 const { getKillScoreDeltas } = require('./public/js/scoring.mjs');
-const { createBanStore, parseDuration } = require('./server/bans.cjs');
+const { createBanStore, parseDuration, parseMasterBans } = require('./server/bans.cjs');
 const {
   clampPlayingLimits,
   normalizeRabbitSelection,
@@ -272,6 +272,10 @@ const MESSAGE_HANDLERS = Object.freeze({
   ...messagesChat.MESSAGE_HANDLERS,
   ...messagesPlay.MESSAGE_HANDLERS,
   ...messagesOperator.MESSAGE_HANDLERS,
+  getBans: handleGetBans,
+  addBan: handleAddBan,
+  removeBan: handleRemoveBan,
+  reloadMasterBans: handleReloadMasterBans,
 });
 const {
   SESSION_COOKIE_NAME,
@@ -8061,11 +8065,10 @@ function setWorldVariable(name, raw) {
 // `maxRealPlayers` upstream, which `-mp N` sets: how many tanks may play, and it
 // excludes the observers (CmdLineOptions.cxx:458). bzo's `maxPlayers` is that
 // number -- the default per-team limit, and the cap every playing team's own
-// limit is clamped down to.
+// limit is clamped down to. A map's own `-mp N` wins over it.
 const configuredMaxPlayers = Number(serverConfig.maxPlayers);
-const MAX_REAL_PLAYERS = Number.isInteger(configuredMaxPlayers) && configuredMaxPlayers > 0
-  ? configuredMaxPlayers
-  : 16;
+const MAX_REAL_PLAYERS = mapTeamMode?.maxRealPlayers
+  ?? (Number.isInteger(configuredMaxPlayers) && configuredMaxPlayers > 0 ? configuredMaxPlayers : 16);
 const TEAM_MODE = resolveTeamMode(
   serverConfig.teamMode, mapTeamMode, MAX_REAL_PLAYERS, serverConfig.rabbit);
 // `maxPlayers = maxRealPlayers + maxTeam[ObserverTeam]` (CmdLineOptions.cxx:458).
@@ -9707,16 +9710,173 @@ function writeBansSoon() {
   }, 1000);
   bansWriteTimer.unref?.();
 }
-const bans = createBanStore({ onChange: writeBansSoon });
+const bans = createBanStore({
+  onChange: () => {
+    writeBansSoon();
+    sendBansToAdmins();
+  },
+});
 try {
   if (fs.existsSync(BANS_PATH)) log(`Bans: restored ${bans.load(JSON.parse(fs.readFileSync(BANS_PATH, 'utf8')))}`);
 } catch (error) {
   logError(`Could not read bans from ${BANS_PATH}, starting empty:`, error);
 }
 
+// The master ban list (bzfs's -masterBanURL, -noMasterBanlist): fetched at
+// boot and again daily, held in memory beside bans.json and never written to
+// it. server.json's `masterBans: false` turns it off; `masterBanURL` is a URL
+// or a list of them, upstream's by default. A fetch that fails keeps what
+// was loaded and tries again in an hour.
+const DEFAULT_MASTER_BAN_URL = 'https://www.bzflag.org/master-bans.txt';
+const MASTER_BANS_ON = serverConfig.masterBans !== false;
+const MASTER_BAN_URLS = [serverConfig.masterBanURL ?? DEFAULT_MASTER_BAN_URL].flat()
+  .filter((url) => typeof url === 'string' && url.trim()).map((url) => url.trim());
+const MASTER_BAN_REFRESH_MS = 24 * 60 * 60 * 1000;
+const MASTER_BAN_RETRY_MS = 60 * 60 * 1000;
+let masterBanTimer = null;
+let masterBanLoading = null;
+
+function loadMasterBans() {
+  if (!MASTER_BANS_ON || MASTER_BAN_URLS.length === 0) return Promise.resolve(null);
+  if (masterBanLoading) return masterBanLoading;
+  clearTimeout(masterBanTimer);
+  masterBanLoading = (async () => {
+    const merged = { ip: [], id: [], hosts: 0, refused: 0 };
+    let failed = false;
+    for (const url of MASTER_BAN_URLS) {
+      try {
+        const response = await fetch(url, {
+          headers: { 'User-Agent': BZO_USER_AGENT },
+          signal: AbortSignal.timeout(30000),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const parsed = parseMasterBans(await response.text());
+        merged.ip.push(...parsed.ip);
+        merged.id.push(...parsed.id);
+        merged.hosts += parsed.hosts;
+        merged.refused += parsed.refused;
+        log(`[BANS] master list ${url}: ${parsed.ip.length} address, ${parsed.id.length} BZID`
+          + `${parsed.hosts ? `, ${parsed.hosts} host skipped` : ''}`
+          + `${parsed.refused ? `, ${parsed.refused} unreadable` : ''}`);
+      } catch (error) {
+        failed = true;
+        log(`[BANS] master list ${url} failed: ${error.message}`);
+      }
+    }
+    if (!failed || merged.ip.length + merged.id.length > 0) {
+      bans.setMasterBans(merged, MASTER_BAN_URLS);
+      removeBannedPlayers('the master ban list');
+      sendBansToAdmins();
+    }
+    masterBanTimer = setTimeout(loadMasterBans, failed ? MASTER_BAN_RETRY_MS : MASTER_BAN_REFRESH_MS);
+    masterBanTimer.unref?.();
+    return !failed;
+  })().finally(() => {
+    masterBanLoading = null;
+  });
+  return masterBanLoading;
+}
+loadMasterBans();
+
+// rescanForBans (bzfs.cxx): everybody on whom a ban now covers goes.
+function removeBannedPlayers(bannedBy) {
+  for (const other of [...players.values()]) {
+    if (!other.joined || other.bot) continue;
+    const ban = bans.ipBanned(other.clientIP) || bans.idBanned(other.bzid);
+    if (!ban) continue;
+    replyToPlayer(other, 'You were banned from this server');
+    if (ban.reason) replyToPlayer(other, 'Reason given: {reason}', { reason: ban.reason });
+    announceToAdmins(null, localized('{player} banned by {admin}, reason: {reason}', {
+      player: other.name, admin: ban.bannedBy || bannedBy, reason: ban.reason,
+    }));
+    removeFromServer(other);
+  }
+}
+
+// The Operator panel's Bans section: every address ban, the master list's
+// marked, and where that list came from.
+function bansPanelState() {
+  const master = bans.masterBans();
+  return {
+    type: 'bans',
+    ip: bans.ipBanEntries(),
+    master: {
+      on: MASTER_BANS_ON,
+      urls: MASTER_BAN_URLS,
+      loadedAt: master.loadedAt,
+      count: master.ip.length + master.id.length,
+    },
+    banTime: BAN_TIME_MINUTES,
+  };
+}
+
+function sendBansToAdmins() {
+  const state = bansPanelState();
+  for (const admin of getAdmins()) sendToPlayer(admin, state);
+}
+
+function handleGetBans(player, ws) {
+  if (refuseNonOperator(ws, player, 'getBans')) return;
+  sendToPlayer(player, bansPanelState());
+}
+
+// The panel's Add: what `/ban <ip> <duration> <reason>` does.
+function handleAddBan(player, ws, message) {
+  if (refuseNonOperator(ws, player, 'addBan')) return;
+  const minutes = parseDuration(typeof message.duration === 'string' ? message.duration : 'default');
+  const reason = typeof message.reason === 'string' ? message.reason.trim().slice(0, 200) : '';
+  if (minutes === null) {
+    replyToPlayer(player, 'Error: invalid ban duration');
+    return;
+  }
+  const length = minutes < 0 ? BAN_TIME_MINUTES : minutes;
+  const stored = bans.ipBan(String(message.mask || ''), { bannedBy: player.name, minutes: length, reason });
+  if (!stored) {
+    replyToPlayer(player, 'Malformed address or invalid Player/Slot: {target}', { target: String(message.mask || '') });
+    return;
+  }
+  log(`[OPERATOR] "${player.name}" banned ${stored} for ${length || 'ever'} minutes: ${reason}`);
+  replyToPlayer(player, 'Pattern added to the IP banlist');
+  removeBannedPlayers(player.name);
+}
+
+// The panel's Remove: `/unban`. Only this server's own; a master list ban is
+// not ours to lift.
+function handleRemoveBan(player, ws, message) {
+  if (refuseNonOperator(ws, player, 'removeBan')) return;
+  const mask = String(message.mask || '');
+  if (bans.ipUnban(mask)) {
+    log(`[OPERATOR] "${player.name}" lifted the ban on ${mask}`);
+    replyToPlayer(player, 'Removed IP pattern from the ban list');
+  } else {
+    replyToPlayer(player, 'No pattern removed');
+  }
+}
+
+function handleReloadMasterBans(player, ws) {
+  if (refuseNonOperator(ws, player, 'reloadMasterBans')) return;
+  runMasterBanReload(player);
+}
+
+// `/masterban reload` and the panel's Reload.
+function runMasterBanReload(player) {
+  if (!MASTER_BANS_ON) {
+    replyToPlayer(player, 'The master ban list is disabled on this server.');
+    return;
+  }
+  replyToPlayer(player, 'Previous master ban list entries have been flushed, reloading in background');
+  log(`[BANS] "${player.name}" reloaded the master list`);
+  loadMasterBans().then((ok) => {
+    const { ip, id } = bans.masterBans();
+    replyToPlayer(player, ok ? 'Master ban list loaded: {count} entries' : 'Master ban list could not be fetched',
+      { count: ip.length + id.length });
+  });
+}
+
 // rejectPlayer's words for a BZID ban (bzfs.cxx:2257), less the colours.
 function idBanRefusal(ban) {
-  return `REFUSED:${ban.reason || 'General Ban'}${ban.bannedBy ? ` by ${ban.bannedBy}` : ''}`;
+  return `REFUSED:${ban.reason || 'General Ban'}${ban.bannedBy ? ` by ${ban.bannedBy}` : ''}`
+    + `${ban.fromMaster ? ' [from the master server]' : ''}`;
 }
 
 // removePlayer with its MsgSuperKill (bzfs.cxx:2907). `rejoin: false` keeps a
@@ -9863,6 +10023,42 @@ defineCommand('/checkip', COMMAND_TIER.OPERATOR,
     }
     replyToPlayer(player, '{address} is banned:', { address });
     for (const line of bans.ipBanLines(ban)) replyToPlayer(player, line);
+  });
+
+// MasterBanCommand (BanCommands.cxx:1180). `flush` empties the list until
+// the next reload or the daily fetch.
+defineCommand('/masterban', COMMAND_TIER.OPERATOR,
+  '<flush|reload|list> - manage the masterban list',
+  (player, args) => {
+    const command = args.trim().split(/\s+/)[0].toLowerCase();
+    if (!MASTER_BANS_ON) replyToPlayer(player, 'The master ban list is disabled on this server.');
+    if (command === 'reload') {
+      runMasterBanReload(player);
+    } else if (command === 'flush') {
+      bans.setMasterBans();
+      sendBansToAdmins();
+      log(`[BANS] "${player.name}" flushed the master list`);
+      replyToPlayer(player, 'The master ban list has been flushed.');
+    } else if (command === 'list') {
+      const { ip, id } = bans.masterBans();
+      const all = [...ip.map((ban) => [ban.mask, ban]), ...id.map((ban) => [`bzid: ${ban.bzid}`, ban])];
+      if (all.length === 0) {
+        replyToPlayer(player, 'There are no master bans loaded.');
+        return;
+      }
+      if (all.length > 20) {
+        replyToPlayer(player, 'There are {count} bans, only displaying the first 20', { count: all.length });
+      }
+      const heading = `Master Bans from ${MASTER_BAN_URLS.join(', ')}:`;
+      replyToPlayer(player, heading);
+      replyToPlayer(player, '-'.repeat(heading.length));
+      for (const [mask, ban] of all.slice(0, 20)) {
+        replyToPlayer(player, `${mask}: ${ban.reason} (banned by ${ban.bannedBy})`);
+      }
+    } else {
+      if (command) replyToPlayer(player, 'Unknown masterban command [{command}]', { command });
+      replyToPlayer(player, 'Usage: /masterban list|reload|flush');
+    }
   });
 
 defineCommand('/idban', COMMAND_TIER.OPERATOR,
@@ -10815,6 +11011,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
       const force = (argv[1] || '').toLowerCase() === 'force';
 
       let flag = null;
+      let fill = null;
       if (argv[0].startsWith('#')) {
         const index = Number.parseInt(argv[0].slice(1), 10);
         flag = Number.isInteger(index) ? flags[index] || null : null;
@@ -10859,7 +11056,21 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
             break;
           }
         }
-        if (unused) flag = unused;
+        // bzo's own, past upstream: with no slot holding the type, a random
+        // slot takes it, so an operator can hand out a type the pool has not
+        // rolled. The one the tank carries comes first, since it goes back
+        // anyway; then one waiting on the insertion schedule; then, forced,
+        // a random flag lying unheld in the world, whose slot's update takes
+        // it off the field. A team or zone flag keeps its slot. Filled below,
+        // once the tank is known to be able to take it.
+        const randomSlot = (candidate) => candidate.team === null && candidate.requiredType === null;
+        const held = getPlayerFlag(subject.id);
+        fill = unused || forced ? null
+          : (held && randomSlot(held) ? held : null)
+            ?? flags.find((candidate) => randomSlot(candidate) && !candidate.type)
+            ?? (force ? flags.find((candidate) => randomSlot(candidate) && candidate.type && candidate.owner === null) : null);
+        if (fill) flag = fill;
+        else if (unused) flag = unused;
         else if (!forced) {
           replyToPlayer(player, 'flag type not found');
           return;
@@ -10888,6 +11099,12 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
       if (carried) {
         if (carried.team !== null) dropFlag(carried);
         else resetFlag(carried);
+      }
+      if (fill) {
+        addFlag(fill);
+        fill.type = argv[0].toUpperCase();
+        fill.endurance = getFlagEndurance(fill.type);
+        fill.grabs = getFlagGrabCount(fill.type, GAME_CONFIG.MAX_FLAG_GRABS);
       }
       // And whoever was holding the flag being given, for a forced give. The
       // flag changes hands rather than falling, so this is the drop message

@@ -835,7 +835,8 @@ understands:
 | `-a <vel> <rot>` | the world's acceleration limit, upstream's inertia switch; `0 0` is none |
 | `-noTeamKills` | players on the same team are immune to each other; rogue is excepted |
 | `-tk` | a team killer does *not* die for it -- upstream kills them by default, and this is the opt-out |
-| `-mp a,b,c,d,e,f` | per-team player limits, in BZFlag's team order; a team limited to 0 is not offered |
+| `-mp <count>` | how many tanks may play, observers aside; replaces `server.json`'s `maxPlayers` |
+| `-mp a,b,c,d,e,f` | per-team player limits, in BZFlag's team order; a team limited to 0 is not offered, and none exceeds the playing total |
 | `-j` | tanks may jump |
 | `+r` | every shot ricochets |
 | `-fb` | superflags may spawn on and come to rest on buildings |
@@ -968,7 +969,9 @@ each held for one reload works out to one shot per `_reloadTime / maxShots`; a
 `shotReloadTime` pinned in `server.json` still wins, and a map stating
 `_reloadTime` replaces the basis -- see **Shots** in [bzdb.md](bzdb.md).
 `-sl` replaces the config's `shotLimits` for the flag it names and leaves the
-others as the config set them.
+others as the config set them. `-mp <count>` replaces `maxPlayers` the same
+way, and both forms may be given: `-mp 20` with `-mp 10,10,10,10,10,10` is
+20 tanks, at most 10 a team.
 `-ms 0` means "tanks cannot shoot", and bzo reads it that way too
 (`CmdLineOptions.cxx:897-909`, which warns and then honours it). Only a
 *negative* or unparseable count becomes one shot, upstream's own split. A

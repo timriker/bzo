@@ -85,7 +85,27 @@ a BZID).
 `banTime`, as upstream's does -- and, as upstream's does, names the target
 as who banned it.
 
+## The master ban list
+
+- Fetched from `masterBanURL` (upstream's
+  `https://www.bzflag.org/master-bans.txt` by default) at startup and every
+  day, an hour after a failed fetch. `masterBans: false` turns it off.
+  Upstream fetches it only at startup and on `/masterban reload`, and only
+  on a public server.
+- Each address is turned into a CIDR block on import. A trailing `*` octet
+  is a block, as `/ban` takes it, where upstream's `merge` turns it into
+  the single address `.255`. A ban already over is dropped, a `host:`
+  entry is counted and skipped, and a `bzid:` entry is a BZID ban.
+- Held in memory, never in `bans.json`. This server's own bans are asked
+  first, so their reason is the one given; a master ban's refusal ends
+  with upstream's `[you are on the master ban list]`.
+- A load removes anybody on whom it now covers, as `rescanForBans` does.
+- `/masterban list|reload|flush`, as upstream's. `/banlist` lists the
+  master entries first, marked `(m)`.
+- The Operator panel's Bans section lists every address ban with where it
+  came from, adds and removes this server's own, and reloads the master
+  list. Not staged: each acts at once, as the commands do.
+
 ## Then
 
-- `/hostban` (reverse DNS names) and `/masterban` (the list server's shared
-  list).
+- `/hostban` (reverse DNS names).

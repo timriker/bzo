@@ -371,4 +371,16 @@ for (const left of shadedHues) {
   assert.equal(selectPlayerTeam('red', mode, {}), null);
 }
 
+// `-mp N` is the playing total (parsePlayerCount), clamped to 1..200, and caps
+// the list form's limits whichever comes first.
+{
+  const map = parseBZWTeamMode(['options', '-mp 20', '-mp 10,30,30,30,30,10', 'end']);
+  assert.equal(map.maxRealPlayers, 20);
+  const mode = resolveTeamMode({}, map, map.maxRealPlayers, null);
+  assert.deepEqual([mode.limits.rogue, mode.limits.red, mode.limits.observer], [10, 20, 10]);
+  assert.equal(parseBZWTeamMode(['options', '-mp 500', 'end']).maxRealPlayers, 200);
+  assert.equal(parseBZWTeamMode(['options', '-mp 0', 'end']).maxRealPlayers, 1);
+  assert.equal(parseBZWTeamMode(['options', '-mp 8,8,8,8,8,5', 'end']).maxRealPlayers, undefined);
+}
+
 console.log('team mode tests passed');

@@ -241,8 +241,8 @@ Two things it has to decide:
 
 - **Bans** — `/ban`, `/unban`, `/banlist`, `/checkip`, `/idban`,
   `/idunban`, `/idbanlist` and `/kick` are built, kept in `bans.json`
-  (`server/bans.cjs`; [ban-plan.md](ban-plan.md)). `/hostban` and
-  `/masterban` are not.
+  (`server/bans.cjs`; [ban-plan.md](ban-plan.md)), and `/masterban`.
+  `/hostban` is not.
   `/poll kill|set|flagreset`, `/vote` and `/veto` are built
   (`server/polls.cjs`); the `antipoll*` counter-permissions have no group to
   live in yet.

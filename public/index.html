@@ -207,6 +207,32 @@
           <button id="listServerKeySetBtn" class="btn" type="button" data-i18n>Set</button>
           <span id="listServerKeyStatus"></span>
         </div>
+        <!-- Immediate, not staged, as /ban and /unban are: this server's own
+             address bans, which it can add and remove, and the master ban
+             list's, which it can only reload (docs/ban-plan.md). -->
+        <hr class="operatorDivider">
+        <div class="operatorRow">
+          <label data-i18n>Bans:</label>
+          <span id="banMasterStatus" class="operatorBanNote"></span>
+          <button id="banMasterReloadBtn" class="btn" type="button" data-i18n>Reload Master List</button>
+        </div>
+        <div class="operatorRow operatorBanAdd">
+          <input type="text" id="banMaskInput" placeholder="IPv4 or IPv6 address or CIDR" data-i18n-placeholder maxlength="64">
+          <input type="text" id="banDurationInput" placeholder="default" data-i18n-placeholder maxlength="20">
+          <input type="text" id="banReasonInput" dir="auto" placeholder="Reason" data-i18n-placeholder maxlength="200">
+          <button id="banAddBtn" class="btn" type="button" data-i18n>Ban</button>
+        </div>
+        <div class="operatorRow">
+          <input type="text" id="banFilterInput" placeholder="Filter…" data-i18n-placeholder>
+        </div>
+        <div class="operatorBanScroll">
+          <table id="banTable" class="viewTable">
+            <thead><tr>
+              <th data-i18n>Address</th><th data-i18n>Ends</th><th data-i18n>Reason</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
         <!-- One confirm, labelled by what it is about to do: Apply while every
              staged change is live, Restart the moment one is not. Cancel and the
              X abort everything, so changing a row and thinking better of it costs

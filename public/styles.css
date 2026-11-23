@@ -1393,6 +1393,59 @@ body.scoreboard-collapsed #mainhud {
   color: #e57373;
 }
 
+/* The Bans section: a short add row, then the list in its own scroll area,
+   since the master list alone runs to dozens of rows. */
+.operatorBanNote {
+  color: #999;
+  font-size: 0.85em;
+  margin: 0 8px;
+}
+
+.operatorBanAdd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.operatorBanAdd #banMaskInput,
+.operatorBanAdd #banReasonInput {
+  flex: 2 1 10em;
+}
+
+.operatorBanAdd #banDurationInput {
+  flex: 1 1 5em;
+}
+
+/* `width: 0; min-width: 100%` fills the panel without widening it: the
+   panel is as wide as its widest row, and a long reason would be that. */
+.operatorBanScroll {
+  width: 0;
+  min-width: 100%;
+  max-height: 16em;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.operatorBanScroll table {
+  width: 100%;
+}
+
+/* An address broken across lines reads as two. */
+.operatorBanScroll td:first-child {
+  white-space: nowrap;
+}
+
+/* A reason may hold a URL, which would otherwise set the table's width. */
+.operatorBanScroll td:nth-child(3) {
+  min-width: 8em;
+  overflow-wrap: anywhere;
+}
+
+#operatorOverlay .operatorBanScroll button {
+  padding: 2px 8px;
+  margin: 0;
+}
+
 /* Sets the plugins, their options and their upload apart from the rows
    around them. */
 .operatorDivider {

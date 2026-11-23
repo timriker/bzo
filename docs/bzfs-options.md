@@ -16,7 +16,7 @@ names the equivalents and says why an option has none.
 
 A map option only ever turns a switch on. Where a map and `server.json` both
 give a number, `-st`, `-sw`, `-time`, `-mps` and `-mts` take the larger and
-`-ms`, `-s` and `-sl` take the map's.
+`-ms`, `-s`, `-sl` and `-mp <count>` take the map's.
 
 ## Game
 
@@ -25,7 +25,7 @@ give a number, `-st`, `-sw`, `-time`, `-mps` and `-mts` take the larger and
 | `-a <vel> <rot>` | `linearAcceleration`, `angularAcceleration`; map `-a` | yes |
 | `-c`, `-offa` | `teamMode`; map `-c`, `-offa` | yes |
 | `-autoTeam` | `teamMode.autoTeam`; map `-autoTeam` | yes |
-| `-mp` | `teamMode.limits`, `maxPlayers`; map `-mp` | yes |
+| `-mp` | `teamMode.limits`, `maxPlayers`; map `-mp <count>` and `-mp a,b,c,d,e,f` | yes |
 | `-rabbit [score\|killer\|random]` | `rabbit`; map `-rabbit` | yes |
 | `-handicap` | -- | not yet: [game-modes-plan.md](game-modes-plan.md), Handicap (#62) |
 | `-j` | `jumping`; map `-j` | yes |
@@ -84,7 +84,7 @@ give a number, `-st`, `-sw`, `-time`, `-mps` and `-mts` take the larger and
 | `-userdb`, `-groupdb` | `adminGroups` | intentional: permissions come from bzflag.org groups -- see [login.md](login.md) |
 | `-ban <ip>` | `/ban`, kept in `bans.json` | yes, as a command rather than an option |
 | `-banfile <file>` | `bans.json` beside `server.json` | intentional: one fixed place, beside the config |
-| `-masterBanURL`, `-noMasterBanlist` | -- | not yet: [ban-plan.md](ban-plan.md), "Then" |
+| `-masterBanURL`, `-noMasterBanlist` | `masterBanURL`, `masterBans: false`; `/masterban` | yes, on any server rather than only a public one |
 | `-poll` | `poll`; `banTime` for its `bantime` | yes |
 | `-reportfile`, `-reportpipe` | -- | not yet: [commands-plan.md](commands-plan.md), reports |
 | `-printscore` | -- | intentional: scores are in `server.log` and [`/api/players`](api.md) |

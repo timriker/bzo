@@ -543,9 +543,16 @@ or `short` for server.json's `banTime` (300 minutes by default).
 `/banlist`, `/checkip <ip>` and `/unban <ip>` go with it. Behind a reverse
 proxy bzo bans only an address its startup check of that proxy vouches for
 ([ban-plan.md](ban-plan.md)). Bans are kept in
-`bans.json` beside `server.json`. A kicked or banned browser stays off
-until its player presses a key, taps or pulls a trigger, rather than
-rejoining by itself.
+`bans.json` beside `server.json`, each address as a CIDR block. A kicked
+or banned browser stays off until its player presses a key, taps or pulls
+a trigger, rather than rejoining by itself.
+
+BZFlag's master ban list is fetched at startup and daily, as a BZFlag
+server's is, and applies beside the server's own bans; `/banlist` marks
+its entries `(m)`. `/masterban list|reload|flush` manages it.
+`"masterBans": false` turns it off, and `masterBanURL` names another list,
+or several. The Operator panel's Bans section lists both and adds or
+removes the server's own.
 
 ## Polls
 
