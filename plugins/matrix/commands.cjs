@@ -48,7 +48,6 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
   // announcements, again whenever one changes.
   let directs = answer;
   let serverRooms = new Set();
-  const refused = new Set();
   const me = () => ({ name, room, url, account: client.userId, links: Boolean(answer) });
 
   // The ways a member may name a server: its name with or without the port,
@@ -82,27 +81,14 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
     return answered.ok ? (answered.data.rooms || []).map((each) => each.room_id).filter((id) => id !== spaceId) : [];
   }
 
-  // A room of the space joined, as anyone may join a public one or a member
-  // of the space one open to its members; an invite-only one is passed over,
-  // and said so once.
-  async function join(roomId) {
-    const joined = await client.api('POST', `/join/${enc(roomId)}`, { body: {} });
-    if (!joined.ok && !refused.has(roomId)) {
-      refused.add(roomId);
-      log(`cannot join ${roomId} (${joined.status} ${joined.data.errcode || ''}); invite me to read its server`);
-    }
-    return joined.ok;
-  }
-
-  // Every server announced in a room of the space, or this one alone without
-  // a space. A server that answers direct rooms joins a room it is not in
-  // yet, to list it.
+  // Every server announced in a room of the space the bot is in, or this one
+  // alone without a space. The bot joins no room by itself: an admin invites
+  // it.
   async function servers() {
     if (!spaceId) return [me()];
     const found = [];
     for (const roomId of await spaceRooms()) {
-      let state = await client.api('GET', `/rooms/${enc(roomId)}/state`);
-      if (!state.ok && directs && await join(roomId)) state = await client.api('GET', `/rooms/${enc(roomId)}/state`);
+      const state = await client.api('GET', `/rooms/${enc(roomId)}/state`);
       if (!state.ok || !Array.isArray(state.data)) continue;
       for (const event of state.data) {
         if (event.type === SERVER_EVENT && event.content?.name) found.push({ ...event.content, roomId });
@@ -127,8 +113,7 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
   }
 
   // This server announced in its own room. The server that answers links
-  // also joins every room in the space it may, and clears the announcements
-  // servers once made in the space itself.
+  // also clears the announcements servers once made in the space itself.
   async function start() {
     if (space) {
       spaceId = space.startsWith('#')
@@ -139,7 +124,6 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
     });
     if (!announced.ok) log(`could not announce in ${room}: ${announced.status}; make me admin there`);
     if (spaceId && answer) {
-      for (const roomId of await spaceRooms()) await join(roomId);
       const state = await client.api('GET', `/rooms/${enc(spaceId)}/state`);
       const old = (state.ok ? state.data : []).filter((event) => event.type === SERVER_EVENT && event.content?.name);
       for (const event of old) {
@@ -150,12 +134,9 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
     log(`announced as ${name} in ${room}`);
   }
 
-  // A room added to the space, joined by the server that answers links; a
-  // server's announcement changed. Either may change who answers what.
-  async function heard({ roomId, event }) {
-    if (event.type === 'm.space.child' && roomId === spaceId && answer && event.content?.via?.length) {
-      await join(event.state_key);
-    }
+  // A room added to the space, or a server's announcement changed. Either
+  // may change who answers what.
+  async function heard({ event }) {
     if (event.type === 'm.space.child' || event.type === SERVER_EVENT) await refresh();
   }
 

@@ -218,8 +218,8 @@ Servers sharing a bot account all see its direct rooms; they agree on which
 answers through their rooms and the account. A member's choice is kept in
 the account's `org.bzflag.targets` data, the direct rooms in its `m.direct`,
 and each server in its own room's `org.bzflag.server` state, which only that
-room's admins may send. The server with `"links": true` joins every public
-room of the space, and each new one as it is added, to read them.
+room's admins may send. The bot joins no room of the space by itself: an
+admin invites it to each room it should read or answer in.
 
 A `!` command typed in a server's bridged room runs on that server, with the
 answer in the member's direct room, never the bridged one, since an answer
@@ -233,7 +233,8 @@ They make a bot account of their own, as in "Setting it up", and:
 
 1. Make the server's room, public and unencrypted, with their bot admin
    there.
-2. Ask an admin of the space to add the room to it.
+2. Ask an admin of the space to add the room to it and invite the space's
+   bot there, so `!servers` lists it.
 3. Give the server's `matrix` options the same `space`, without `"links":
    true`.
 

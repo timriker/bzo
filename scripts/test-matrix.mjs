@@ -637,7 +637,8 @@ const sync = (next, events = [], state = []) => ({
   // One homeserver: each room's state, who is in it, and each account's data.
   const state = { '!space': [], '!rikers': [], '!gus': [], '!ops': [], '!chat': [] };
   const members = {
-    '@bot:x': new Set(['!space', '!rikers', '!gus']),
+    // !ops is another operator's room, which an admin invited the bot to.
+    '@bot:x': new Set(['!space', '!rikers', '!gus', '!ops']),
     '@ops:x': new Set(['!ops']),
   };
   const accounts = { '@bot:x': {}, '@ops:x': {} };
@@ -715,7 +716,9 @@ const sync = (next, events = [], state = []) => ({
     [{ name: 'bz.rikers.org:5154', room: '#bz-rikers-org:x', url: 'https://bz.rikers.org:5154', account: '@bot:x', links: true }],
     'announced in its own room');
   assert.deepEqual(state['!space'].find((event) => event.state_key === 'old').content, {}, 'the space announcement cleared');
-  assert.ok(joined.some((each) => each.userId === '@bot:x' && each.room === '!ops'), 'the links server joins the space\'s rooms');
+  assert.ok(!joined.some((each) => each.userId === '@bot:x' && each.room !== '!space'), 'the bot joins no room of the space by itself');
+  await rikers.heard({ roomId: '!space', event: { type: 'm.space.child', state_key: '!chat', content: { via: ['x'] } } });
+  assert.ok(!joined.some((each) => each.room === '!chat'), 'nor one added to the space');
   assert.deepEqual((await rikers.servers()).map((server) => server.name),
     ['bz.rikers.org:5154', 'gus.rikers.org:5154', 'bz.example.net']);
   assert.equal(rikers.directs, true);
