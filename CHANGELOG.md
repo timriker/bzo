@@ -6,6 +6,26 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.19] - 2026-11-23
+
+### Added
+- BZFlag's master ban list is fetched at startup and daily and applies
+  beside the server's own bans. `/masterban list|reload|flush` manages it;
+  `masterBans: false` turns it off and `masterBanURL` names other lists.
+- The Operator panel has a Bans section: list, filter and sort bans, add
+  and remove the server's own, reload the master list.
+- `-mp <count>` sets how many tanks may play.
+- On /list, admins see why a bzfs server blocks bzo and when it is next
+  checked; Import on a blocked server asks again at once.
+
+### Changed
+- Maps are read in a child process, so a server on a large map idles and
+  peaks far lower in memory. The live map and BZFlag world are cached on
+  disk, so a restart on an unchanged map reads nothing.
+- BZFlag clients fetch the world as a file over HTTP, or in MsgGetWorld
+  chunks from the same file.
+- The Matrix bot joins no room of the space by itself; an admin invites it.
+
 ## [1.4.18] - 2026-11-22
 
 ### Added
