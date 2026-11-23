@@ -5133,6 +5133,34 @@ msgstr "Команда заполнена: {team}"
 msgid "You will join {team} when you next spawn"
 msgstr "При следующем появлении ты перейдёшь в команду: {team}"
 
+#: server.js
+msgid "Reason"
+msgstr ""
+
+#: server.js
+msgid "Ends"
+msgstr ""
+
+#: server.js
+msgid "Banned by"
+msgstr ""
+
+#: server.js
+msgid "unreachable"
+msgstr ""
+
+#: server.js
+msgid "{server} still blocks bzo."
+msgstr ""
+
+#: server.js
+msgid "Next check"
+msgstr ""
+
+#: server.js
+msgid "next list refresh"
+msgstr ""
+
 #~ msgid "Bot Pilot:"
 #~ msgstr "Пилот ботов:"
 

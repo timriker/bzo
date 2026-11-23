@@ -134,6 +134,16 @@ server's `/list` reads the list from one bzo server, which hands on only the
 address, description and owner, so they show the same.
 The list heading counts these as excluded, and the filter `/+x` lists them.
 
+What the ban said is kept on the bzo server that was refused. That server's
+admins see it in the row's pane on `/list` -- the reason, when it ends, and
+who set it where bzfs says, or "unreachable" and the day for a server that
+does not answer bzo -- and an Import button that asks your server again at
+once, and imports its world when it lets bzo in. Every row's pane also tells
+them when the background checks next ask that server anything. No one else
+sees either:
+the ban is in nothing bzo publishes, the list server's relay included. bzfs
+names who set an ID ban, not an IP ban.
+
 bzo refuses the same requests by URL, for anyone. It stops the daily hash
 check and world fetches, and once a month joins once to ask whether your
 server still excludes bzo. A lifted ban is found at that join, so your

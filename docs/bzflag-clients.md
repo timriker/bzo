@@ -55,13 +55,21 @@ Issue #174: native BZFlag clients on a bzo server. Configured by server.json's
   a death physics driver nothing can reach; the white edge is kept off it.
   Added after the compile, so `test:bzflag-world` still holds the compile to
   bzfs, and the world hash differs from bzfs's for the same map.
-- **Downloading it over HTTPS.** bzo sends `MsgCacheURL`, as bzfs does with
+- **Downloading it over HTTP.** bzo sends `MsgCacheURL`, as bzfs does with
   `-cacheurl` or its `fastmap` plugin, naming its own copy at
-  `<publicUrl>/bzflag/world/<md5>.bwc`. The client fetches that, checks its
-  MD5 against the world hash, and falls back to `MsgGetWorld`, a kilobyte a
-  round trip, if it can't. `cacheUrl` in the `bzflag` block names another URL,
-  or `false` turns it off. The hash matches bzfs's for the same map, so a
-  world cached from either serves both.
+  `<publicUrl>/bzflag/world/<md5>.bwc`, or without a `publicUrl`,
+  `http://<address>:<port>/bzflag/world/<md5>.bwc` on the address the client
+  connected to. The client fetches that, checks its MD5 against the world
+  hash, and falls back to `MsgGetWorld`, a kilobyte a round trip, if it
+  can't; the server logs each fallback. `cacheUrl` in the `bzflag` block
+  names another URL, or `false` turns it off. The hash matches bzfs's for the
+  same map, so a world cached from either serves both.
+- **Built in a child process, kept on disk.** The world is compiled in a
+  process of its own, which takes the memory a big map needs away with it,
+  and written to `bzflag/<md5>.bwc` in the cache directory. Both ways of
+  downloading it read that file, and a restart on an unchanged map and
+  config reuses it, unless a plugin adds to the world, which builds it
+  again.
 - **Updates once a second.** A BZFlag client hears from every tank at least
   once a second (`MaxUpdateTime`) and dead-reckons from that, so with the
   listener on, bzo's clients send their idle heartbeat every second rather

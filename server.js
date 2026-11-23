@@ -330,8 +330,10 @@ const {
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const v8 = require('v8');
 const { execFile } = require('child_process');
 const os = require('os');
+const net = require('net');
 
 // One short hash over everything the client is served. A tab reconnects across
 // a server restart rather than reloading -- deliberately, so multi-device
@@ -379,11 +381,13 @@ const { generateWorldBzw } = require('./server/world-generator.cjs');
 const {
   NativeTranslator, decodeEnter, decodeClientMessage, moveFromBzfs, shootFromBzfs,
 } = require('./server/bzflag-native.cjs');
-const { compileBzwWorld } = require('./server/bzw-compile.cjs');
-const { findLocalImage, localImageRefusal, IMG_URL_PREFIX } = require('./server/local-images.cjs');
+const { findLocalImage, localImageRefusal } = require('./server/local-images.cjs');
 const { MODEL_FILE_TYPES, localModelFile, textureRefusal, checkLocalModel } = require('./server/local-models.cjs');
 const { listCounts, bzflagTeamCounts } = require('./server/list-counts.cjs');
-const { packWorldDatabase, bzfsWorldHashOfBzw } = require('./server/bzflag-world.cjs');
+const { packWorldDatabase } = require('./server/bzflag-world.cjs');
+const {
+  runMapBuild, runMapBuildSync, codeDigest, keyOf, pruneDir,
+} = require('./server/map-build.cjs');
 const {
   DEFAULT_VOICE_CHANNEL,
   areVoicePeers,
@@ -670,10 +674,8 @@ const precompress = require('./server/precompress.cjs');
 const { Worker } = require('worker_threads');
 const {
   configureBzwParse,
-  buildWorldFile,
   clientZones,
   parseBZWServerOptions,
-  parseBZWMap,
   formatInstancing,
   getMaxObstacleTopY,
   addRequiredFlags,
@@ -848,9 +850,17 @@ const SERVER_VERSION = (() => {
 // server's `build` and `/serverquery`. The release, then the build id, which
 // is what tells two servers on one release apart.
 const BZO_APP_VERSION = `bzo-${SERVER_VERSION}-${CLIENT_BUILD}`;
-// What a map index entry was written by: the release, and the layout its
-// world file is in, so a world written in an older one is parsed again.
-const MAP_INDEX_VERSION = `${SERVER_VERSION}/world${WORLD_FORMAT}`;
+// The code a map's built files come from: the parser, the compiler, the
+// packer and what they require. A change to any of it rebuilds them.
+const MAP_CODE_DIGEST = codeDigest([
+  './bzw-parse.cjs', './bzw-compile.cjs', './bzflag-world.cjs', './map-build-child.cjs',
+].map((name) => path.join(__dirname, 'server', name)));
+// What a map index entry was written by: the layout its world file is in and
+// the code that wrote it, so a world written by another is parsed again.
+const MAP_INDEX_VERSION = `${SERVER_VERSION}/world${WORLD_FORMAT}/${MAP_CODE_DIGEST}`;
+// The BZFlag worlds this server sends, as `<md5>.bwc`: the one a BZFlag
+// client downloads, and the live map's own that a recording carries.
+const BZFLAG_WORLD_DIR = path.join(CACHE_DIR, 'bzflag');
 
 const BZO_USER_AGENT =
   `bzo/${SERVER_VERSION} (${CLIENT_BUILD}; +https://github.com/timriker/bzo)`;
@@ -1880,6 +1890,86 @@ function bansBzo(host, port) {
   return bzfsWorlds.blocksBzo(bzfsWorlds.recordFor(host, port));
 }
 
+// What a bzfs server said as it turned bzo away (`addPlayer`, bzfs.cxx:2217
+// and 2255, and its host ban at 5769): the reason, then for an IP or host ban
+// the time left or `indefinite` in brackets, and for an ID ban (code 11) who
+// set it. Master-list bans say so last.
+function parseBanRefusal(text, code) {
+  let rest = String(text || '').replace(/^(REFUSED:|Host banned for:)\s*/, '');
+  let master = '';
+  rest = rest.replace(/\s*(\[you are on the master ban list\]|\[from the master server\]|from the master server)$/,
+    (match, words) => {
+      master = words;
+      return '';
+    });
+  let left = '';
+  const bracket = /^(.*?)\s*\((indefinite|(.+) remaining)\)$/s.exec(rest);
+  if (bracket) {
+    rest = bracket[1];
+    left = bracket[3] ?? 'indefinite';
+  }
+  let by = '';
+  const at = code === 11 ? rest.lastIndexOf(' by ') : -1;
+  if (at >= 0) {
+    by = rest.slice(at + 4).trim();
+    rest = rest.slice(0, at);
+  }
+  return { reason: [rest.trim(), master].filter(Boolean).join(' '), left, by };
+}
+
+// `TimeKeeper::printTime`'s "2 days, 3 hours, 5 mins, 1 sec" in seconds.
+function printedSeconds(text) {
+  const unit = { day: 86400, hour: 3600, min: 60, sec: 1 };
+  let total = 0;
+  for (const [, count, name] of String(text).matchAll(/(\d+) (day|hour|min|sec)s?/g)) total += Number(count) * unit[name];
+  return total;
+}
+
+// A bzfs server's ban on bzo as its pane shows this server's admins: the
+// reason, when it ends, and who set it, where bzfs said. Kept in
+// `bzfs-worlds.json`; nothing that publishes a server's facts
+// (`publishWorldFacts`) carries it.
+function banRows(host, port, t) {
+  const record = bzfsWorlds.recordFor(host, port);
+  // A server that answers bzo nothing at all, since the list refresh that
+  // first found it so.
+  if (record?.silent === true && record.guest?.banned !== true) {
+    const since = record.silentAt ? new Date(record.silentAt).toISOString().slice(0, 10) : '';
+    return [[t('Reason'), escapeHtml([t('unreachable'), since].filter(Boolean).join(' '))]];
+  }
+  const guest = record?.guest;
+  if (guest?.banned !== true || !guest.bannedDetail) return [];
+  const { reason, left, by } = parseBanRefusal(guest.bannedDetail, guest.bannedCode);
+  let ends = '';
+  if (left === 'indefinite') ends = t('never');
+  else if (left && guest.bannedAt) {
+    ends = `${new Date(guest.bannedAt + printedSeconds(left) * 1000).toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+  }
+  return [
+    [t('Reason'), escapeHtml(reason)],
+    [t('Ends'), escapeHtml(ends)],
+    [t('Banned by'), escapeHtml(by)],
+  ];
+}
+
+// When the background checks (server/bzfs-worlds.cjs) next ask a bzfs server
+// anything, for this server's admins: a time in UTC, "Now" where it is queued,
+// or the next list refresh for one that does not answer.
+function nextCheckText(host, port, t) {
+  const next = bzfsWorlds.nextCheck(host, port);
+  if (!next) return '';
+  if (next.refresh) return escapeHtml(t('next list refresh'));
+  if (next.at <= Date.now()) return escapeHtml(t('Now'));
+  return escapeHtml(`${new Date(next.at).toISOString().slice(0, 16).replace('T', ' ')} UTC`);
+}
+
+// `banRows` for the `host:port` an Import found still blocked, the empty ones
+// left out.
+function recheckedBanRows(server, t) {
+  const target = parseHostPort(server);
+  return target ? banRows(target.host, target.port, t).filter(([, value]) => value) : [];
+}
+
 function publishWorldFacts(host, port) {
   const record = bzfsWorlds.recordFor(host, port);
   // A server that bans bzo shows only that: whatever bzo learned before the
@@ -2607,7 +2697,7 @@ function isBzfsWorldHash(worldHash) {
 }
 
 // The picture of one BZFlag world, by its hash (issue #147): drawn once, by
-// `registerMapFile`, when an import of that world registers, and then outliving
+// `registerWorldFile`, when an import of that world registers, and then outliving
 // the import, so every listed server keeps a picture without this server
 // keeping every world -- imports still age out on `IMPORT_MAX_AGE_MS`. A new
 // hash means a new picture, and `purgeUnreferencedOverviews` drops the old one
@@ -3113,8 +3203,18 @@ function invalidateListTables() {
   listTablesCache.clear();
 }
 
-function renderListTables({ servers, bzoServers, canWatch, locale }) {
-  const cacheKey = `${locale} ${canWatch}`;
+// A button posting a bzfs row's address to `url`.
+function hostPortForm(url, server, label) {
+  return `<form method="post" action="${url}" class="inlineForm">`
+    + `<input type="hidden" name="host" value="${escapeHtml(server.host)}">`
+    + `<input type="hidden" name="port" value="${server.port}">`
+    + `<button type="submit">${escapeHtml(label)}</button></form>`;
+}
+
+function renderListTables({
+  servers, bzoServers, canWatch, admin, locale,
+}) {
+  const cacheKey = `${locale} ${canWatch} ${admin}`;
   const cached = listTablesCache.get(cacheKey);
   if (cached && Date.now() - cached.at < LIST_TABLES_TTL_MS) return cached.tables;
   // `random` is in `listAvailableMapFiles` because it is a map an operator can
@@ -3238,6 +3338,9 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
         [t('Address'), escapeHtml(`${s.host}:${s.port}`)],
         ['IP', blocked ? '' : escapeHtml(s.ip || '')],
         [t('Owner'), ownerLink(s.owner)],
+        // What its ban on bzo said, for this server's admins alone.
+        ...(admin && bans ? banRows(s.host, s.port, t) : []),
+        [t('Next check'), admin ? nextCheckText(s.host, s.port, t) : ''],
         ...(blocked ? [] : [
           [t('Imported'), escapeHtml(importedPath ? statMtimeOrBlank(importedPath) : '')],
           // What this server holds of that world, and what it cost -- see
@@ -3254,7 +3357,10 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       // search for the address instead of showing it.
       // Hands the address to an installed BZFlag client, so it is offered to
       // everyone: nothing on this server is involved.
-      actions: blocked ? '' : (opens ? action(`bzflag://${s.host}:${s.port}`, t('Launch')) : '')
+      // For this server's admins, Import asks a server that bans bzo again
+      // first (`/list/import`).
+      actions: blocked ? (admin && bans ? hostPortForm('/list/import', s, t('Import')) : '')
+        : (opens ? action(`bzflag://${s.host}:${s.port}`, t('Launch')) : '')
         + ((canWatch
           ? action(`/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}`, t('Watch'))
             // Playing there as `bzo-<callsign>`, unregistered, which a server
@@ -3266,10 +3372,7 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
         // held here (`holdImportedWorld`): its settings come with it, its
         // plugins do not.
         + (opens ? action(`/?practice=normal&map=${encodeURIComponent(importFileName)}`, t('Practice'))
-          + `<form method="post" action="/list/import" class="inlineForm">`
-          + `<input type="hidden" name="host" value="${escapeHtml(s.host)}">`
-          + `<input type="hidden" name="port" value="${s.port}">`
-          + `<button type="submit">${escapeHtml(importedPath ? t('Re-import') : t('Import'))}</button></form>`
+          + hostPortForm('/list/import', s, importedPath ? t('Re-import') : t('Import'))
           : '')),
     };
   });
@@ -3426,11 +3529,11 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
 const LIST_PAGE_MSGIDS = l10n.scriptMsgids(path.join(__dirname, 'public', 'js', 'list-page.js'));
 
 function renderListPage({
-  servers, bzoServers, cacheAgeSeconds, imported, importError, session, admin, canWatch, replays = [],
+  servers, bzoServers, cacheAgeSeconds, imported, importError, rechecked = null, session, admin, canWatch, replays = [],
   discoveryHead = '', locale,
 }) {
   const tables = renderListTables({
-    servers, bzoServers, canWatch, locale,
+    servers, bzoServers, canWatch, admin, locale,
   });
   const t = l10n.translator(locale);
   const link = (href, text) => `<a href="${escapeHtml(href)}">${escapeHtml(text)}</a>`;
@@ -3464,7 +3567,13 @@ function renderListPage({
     ? `<p class="flash success">${l10n.html(t('Imported {file} -- it is in the local maps table below.'), { file: code(imported) })}</p>`
     : importError
       ? `<p class="flash error">${escapeHtml(t('Import failed: {error}', { error: importError }))}</p>`
-      : '';
+      // An admin's Import on a server that still blocks bzo, with why, as the
+      // row's pane has it.
+      : rechecked
+        ? `<p class="flash error">${[escapeHtml(t('{server} still blocks bzo.', { server: rechecked })),
+          recheckedBanRows(rechecked, t).map(([label, value]) => `${escapeHtml(label)}: ${value}`).join(' \u00b7 '),
+        ].filter(Boolean).join(' ')}</p>`
+        : '';
   const listMessages = Object.fromEntries(LIST_PAGE_MSGIDS.map((msgid) => [msgid, t(msgid)]));
 
   return `<!doctype html>
@@ -3793,13 +3902,14 @@ app.get('/list', async (req, res) => {
       .sort((a, b) => (b.info?.players ?? -1) - (a.info?.players ?? -1));
     const bzoServers = [...lists.bzo].sort((a, b) => (b.players ?? -1) - (a.players ?? -1));
     const session = sessionFromRequest(req);
-    const admin = isLocalAdminHttp(req) || (session ? isAdminSession(session, ADMIN_GROUPS) : false);
+    const admin = isListAdmin(req, session);
     res.type('html').send(renderListPage({
       servers,
       bzoServers,
       cacheAgeSeconds: lists.bzfsCacheAgeSeconds,
       imported: typeof req.query.imported === 'string' ? req.query.imported : null,
       importError: typeof req.query.error === 'string' ? req.query.error : null,
+      rechecked: admin && typeof req.query.rechecked === 'string' ? req.query.rechecked : null,
       session,
       admin,
       // The same admins `authoriseProxyRequest` lets through. One with no
@@ -3867,8 +3977,27 @@ app.post('/list/import', importRateLimit, (req, res) => {
   }
   const { host, port } = target;
   const file = remoteMapFileName(host, port);
-  log(`/list is importing a remote map from ${host}:${port}`);
-  holdImportedWorld(file).then(({ how, byteLength, file: safeMapName = file }) => {
+  // A server that blocks bzo -- a ban, or no answer at all -- is asked again
+  // first, for an admin alone, rather than at its month or the next list
+  // refresh (`recheckBan`): still blocked, the page says why; let in, the
+  // import goes ahead, and with it the world, its picture and what bzo knows
+  // of it.
+  const banned = bansBzo(host, port);
+  if (banned && !isListAdmin(req)) {
+    res.redirect(302, `/list?${new URLSearchParams({ error: 'that server bans bzo' })}`);
+    return;
+  }
+  (banned ? bzfsWorlds.recheckBan(host, port) : Promise.resolve(true)).then((allowed) => {
+    if (banned) invalidateListTables();
+    if (allowed === false) {
+      res.redirect(302, `/list?${new URLSearchParams({ rechecked: `${host}:${port}` })}`);
+      return null;
+    }
+    log(`/list is importing a remote map from ${host}:${port}`);
+    return holdImportedWorld(file);
+  }).then((held) => {
+    if (!held) return;
+    const { how, byteLength, file: safeMapName = file } = held;
     log(how === 'imported'
       ? `Imported remote map ${host}:${port} as ${safeMapName} (${byteLength} bytes) via /list`
       : `/list kept the copy of ${host}:${port} it holds, ${safeMapName} (${how})`);
@@ -3878,6 +4007,12 @@ app.post('/list/import', importRateLimit, (req, res) => {
     res.redirect(302, `/list?${new URLSearchParams({ error: error.message })}`);
   });
 });
+
+// Whether a `/list` request is from one of this server's admins: the same
+// test that offers Watch on its rows and shows them a ban's details.
+function isListAdmin(req, session = sessionFromRequest(req)) {
+  return isLocalAdminHttp(req) || (session ? isAdminSession(session, ADMIN_GROUPS) : false);
+}
 
 // The pages a search engine or an AI reads (`server/discovery.cjs`, and
 // docs/api.md, "Discovery"): /help from the help pages (docs/help/), robots.txt
@@ -4884,7 +5019,7 @@ function prepareMapForView(fileName, { imports = false } = {}) {
 // Where one obstacle of a registered world came from in its map file, for the
 // world viewer (docs/editor-plan.md): the block's lines and text, and the
 // `group` blocks that placed it, outermost first. The world JSON does not
-// carry this; a worker parses the file again on the first ask for a world
+// carry this; a child process parses the file again on the first ask for a world
 // and the spans stay for the next few. Null when the world has no file (a
 // generated one) or the file has changed since the world was built.
 const OBSTACLE_SOURCE_WORLDS = 4;
@@ -4899,25 +5034,23 @@ function obstacleSourcesFor(hash) {
   }
   const filePath = entry && resolveMapFilePath(entry.fileName);
   if (!filePath) return Promise.resolve(null);
-  const pending = inMapWorkerTurn(() => new Promise((resolve) => {
-    const worker = new Worker(path.join(__dirname, 'server', 'map-spans-worker.cjs'), {
-      workerData: { filePath, gameConfigDefaults: GAME_CONFIG_DEFAULTS },
-    });
-    let result = null;
-    worker.on('message', (message) => { result = message; });
-    worker.on('error', (error) => logError(`Could not read source spans of ${entry.fileName}:`, error));
-    worker.on('exit', () => {
-      const current = result && (!entry.bzfsHash || result.bzfsHash === entry.bzfsHash);
-      resolve(current ? {
-        fileName: entry.fileName,
-        text: result.text,
-        spans: result.spans,
-        missingTextures: result.missingTextures,
-        warnings: result.warnings,
-        materials: result.materials,
-      } : null);
-    });
+  const pending = inMapWorkerTurn(() => runMapBuild({
+    task: 'spans', filePath, configure: { gameConfigDefaults: GAME_CONFIG_DEFAULTS },
+  }, { log: () => {} }).then((result) => {
+    const current = !entry.bzfsHash || result.bzfsHash === entry.bzfsHash;
+    return current ? {
+      fileName: entry.fileName,
+      text: result.text,
+      spans: result.spans,
+      missingTextures: result.missingTextures,
+      warnings: result.warnings,
+      materials: result.materials,
+    } : null;
+  }, (error) => {
+    logError(`Could not read source spans of ${entry.fileName}:`, error);
+    return null;
   }));
+
   obstacleSources.set(hash, pending);
   pending.then((sources) => {
     if (!sources) obstacleSources.delete(hash);
@@ -6129,7 +6262,7 @@ function sanitizeListServerStatus(body) {
     // the only thing that writes `live` for a server reporting over HTTP.
     map: typeof body?.map === 'string' ? body.map.slice(0, 120) : '',
     mapMeta: listMapMeta(body?.mapMeta),
-    // Exactly the shape `registerMapFile` produces, because it becomes a file
+    // Exactly the shape `buildWorldFile` produces, because it becomes a file
     // name here. Anything else is dropped rather than cleaned: a hash that
     // needed cleaning is not a hash.
     mapHash: /^[0-9a-f]{12}$/.test(body?.mapHash) ? body.mapHash : '',
@@ -6246,7 +6379,7 @@ function bzfsInstanceOverviewUrl(host, port) {
 
 function instanceOverviewUrl(hash) {
   if (!/^[0-9a-f]{12}$/.test(hash || '')) return null;
-  // The designated instance's own world is here too: `registerMapFile` draws
+  // The designated instance's own world is here too: `registerWorldFile` draws
   // every local map's picture into the same directory under the same hash.
   return fs.existsSync(overviewPathForHash(hash))
     ? `${LIST_SERVER_URL}/overviews/${hash}.svg`
@@ -6259,7 +6392,7 @@ function instanceOverviewUrl(hash) {
 // endpoint on the far side and costs it a cached file read.
 //
 // The hash is **rechecked here** rather than taken on trust: it is a SHA-256
-// of the exact bytes `/maps/` serves (`registerMapFile`), so hashing what
+// of the exact bytes `/maps/` serves (`buildWorldFile`), so hashing what
 // arrives and comparing proves the JSON is the world the report named. Without
 // that, an instance could have its own picture filed under another instance's
 // hash. It is why the report carries a hash and not a URL.
@@ -7225,10 +7358,6 @@ let OBSTACLES;
 let TELEPORTER_GRAPH = { teleporters: [], links: [] };
 let mapTeamMode = null;
 let mapServerOptions = {};
-// What the live map says to a player who joins it -- -srvmsg lines and the
-// dropped-unsupported-feature tally (parseBZWMap), threaded into its
-// MAP_REGISTRY entry below the same way any other map's is.
-let mapMessages = [];
 // The plugin objects in the live map, `{ name: count }` (bz_registerCustomMapObject).
 let mapCustomObjects = {};
 // The map's `zone` blocks, in map order, so a flag slot can name the one it
@@ -7247,7 +7376,7 @@ let WORLD_WEAPONS = [];
 // the server.
 let FLAG_HEIGHT = FLAG_CLEARANCE;
 // `noWalls` -- skips the world border entirely. Read by the client from its
-// own copy of the live map's JSON (see `registerMapFile`'s `noWalls` field),
+// own copy of the live map's JSON (its `noWalls` field),
 // not sent here, the same way `MAP_SIZE` is not.
 let mapNoWalls = false;
 // `freeCtfSpawns` -- a colour team spawns in any of its zones on every life,
@@ -7274,26 +7403,11 @@ function worldPhysicsDrivers(entry) {
 // for the kill-on-touch rule and by `findFlagSpawnPosition`/`dropSpawnPosition`
 // to keep a flag or a spawn off the surface, the server-side half of what
 // `noWalls` above is the client-side half of: this one also rides along in
-// the live map's own JSON (`registerMapFile`) for the client to draw the
+// the live map's own JSON for the client to draw the
 // plane itself.
 let mapWaterLevel = null;
-// `weather` -- `null` when the map states no `_rainType`. Purely a client
-// render (see "Weather" in docs/bzw.md), so unlike `mapWaterLevel` this has no
-// server-side reader of its own; it only rides along in the live map's own
-// JSON (`registerMapFile`) the same way.
-let mapWeather = null;
-// `groundMaterial` -- `null` when the map states no `-gndtex` or explicit
-// `GroundMaterial` block. Purely a client render, same as `weather` above:
-// no server-side reader, it only rides along in the live map's own JSON
-// (`registerMapFile`) for the client to texture the ground plane itself.
-let mapGroundMaterial = null;
 // The map's `metadata` block, `null` when it has none (server/bzw-metadata.cjs).
 let mapMetadata = null;
-// The live map's own `group` templates and placements (#153). Like `weather`
-// and `groundMaterial` above, no server-side reader: nothing collides with
-// them, so they only ride along in the map's JSON for the client to draw.
-let mapMeshTemplates = {};
-let mapMeshInstances = [];
 // A world with no map is generated (server/world-generator.cjs, after bzfs's
 // own generators) as the `.bzw` it amounts to, and read exactly as a map file is
 // -- and compiled from the same text for a BZFlag client (`getBzflagWorld`).
@@ -7334,15 +7448,83 @@ if (MAP_SOURCE === 'random') {
   log(`Generated a ${colourTeams.length > 0 ? `team world for ${colourTeams.length} colour(s)` : 'random world'}`
     + `, ${Buffer.byteLength(RANDOM_WORLD_BZW)} bytes of .bzw`);
 }
+// The live map, read in a child process (server/map-build.cjs) so the memory
+// a big map takes to read leaves with it: the world file and the plain BZFlag
+// world are written there, and only what the game plays on comes back. Kept
+// in `LIVE_MAP_CACHE_DIR` under a key naming every input, so a restart on an
+// unchanged map reads nothing but that. A generated world is new every boot.
+const LIVE_MAP_CACHE_DIR = path.join(CACHE_DIR, 'live');
+// GAME_CONFIG's own default (defaultBZDB.cxx's `worldSize`, doubled the same
+// way `parseBZWMap` doubles a map's own `world size` line) -- what a map with
+// no `world` block at all gets, both for the live match and for a Map
+// Viewer's preview of one.
+const DEFAULT_MAP_SIZE = 800;
+for (const dir of [MAP_CACHE_DIR, LIVE_MAP_CACHE_DIR, BZFLAG_WORLD_DIR]) {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch (error) {
+    logError(`Could not create ${dir}:`, error);
+  }
+}
+const LIVE_MAP = (() => {
+  const generated = RANDOM_WORLD_BZW !== null;
+  const job = {
+    task: 'live',
+    filePath: generated ? null : mapPath,
+    text: generated ? RANDOM_WORLD_BZW : null,
+    configure: { gameConfigDefaults: GAME_CONFIG_DEFAULTS, ownOrigins: ownOrigins() },
+    build: {
+      gameConfig: { ...GAME_CONFIG },
+      serverBzdb: SERVER_BZDB,
+      puffClouds: PUFF_CLOUDS,
+      defaultMapSize: DEFAULT_MAP_SIZE,
+      withOverview: true,
+    },
+    mapSize: GAME_CONFIG.MAP_SIZE,
+    writeDir: MAP_CACHE_DIR,
+    plainDir: BZFLAG_WORLD_DIR,
+  };
+  let cachePath = null;
+  if (!generated) {
+    const { size, mtimeMs } = fs.statSync(mapPath);
+    const key = keyOf(MAP_CODE_DIGEST, mapPath, size, mtimeMs, job.configure, job.build, job.mapSize);
+    cachePath = path.join(LIVE_MAP_CACHE_DIR, `${key}.v8`);
+    try {
+      const cached = v8.deserialize(fs.readFileSync(cachePath));
+      const plainThere = !cached.plain || fs.existsSync(path.join(BZFLAG_WORLD_DIR, `${cached.plain.md5}.bwc`));
+      if (fs.existsSync(path.join(MAP_CACHE_DIR, `${cached.world.hash}.json`)) && plainThere) {
+        for (const line of cached.logs) log(line);
+        log(`${MAP_SOURCE}: read from ${path.relative(process.cwd(), cachePath)}`);
+        return cached;
+      }
+    } catch {
+      // Not cached, or not readable: read the map.
+    }
+  }
+  const logs = [];
+  const built = runMapBuildSync(job, {
+    log: (line) => {
+      logs.push(line);
+      log(line);
+    },
+  });
+  if (cachePath) {
+    const kept = { ...built, logs };
+    try {
+      fs.writeFileSync(cachePath, v8.serialize(kept));
+      pruneDir(LIVE_MAP_CACHE_DIR, new Set([path.basename(cachePath)]), log);
+    } catch (error) {
+      logError(`Could not write ${cachePath}:`, error);
+    }
+  }
+  return built;
+})();
 {
-  const mapData = RANDOM_WORLD_BZW !== null
-    ? parseBZWMap('random', { text: RANDOM_WORLD_BZW })
-    : parseBZWMap(mapPath);
+  const mapData = LIVE_MAP.map;
   OBSTACLES = mapData.obstacles;
   TELEPORTER_GRAPH = mapData.teleporterGraph;
   mapTeamMode = mapData.teamMode;
   mapServerOptions = mapData.serverOptions;
-  mapMessages = mapData.messages;
   mapCustomObjects = mapData.customObjects || {};
   MAP_ZONES = mapData.zones;
   MAP_VAR_ZONES = MAP_ZONES.filter((zone) => Object.keys(zone.vars || {}).length > 0);
@@ -7365,13 +7547,9 @@ if (MAP_SOURCE === 'random') {
   if (mapFreeCtfSpawns) log('Map option freeCtfSpawns: a colour team spawns in any of its zones every life');
   mapWaterLevel = mapData.waterLevel || null;
   if (mapWaterLevel) log(`Map option waterLevel: height=${mapWaterLevel.height}`);
-  mapWeather = mapData.weather || null;
-  if (mapWeather) log(`Map option _rainType: ${mapWeather.type}`);
-  mapMeshTemplates = mapData.meshTemplates || {};
-  mapMeshInstances = mapData.meshInstances || [];
-  mapGroundMaterial = mapData.groundMaterial || null;
-  if (mapGroundMaterial) {
-    log(`Map option -gndtex: ${mapGroundMaterial.texture || mapGroundMaterial.textureUrl}`);
+  if (mapData.weather) log(`Map option _rainType: ${mapData.weather.type}`);
+  if (mapData.groundMaterial) {
+    log(`Map option -gndtex: ${mapData.groundMaterial.texture || mapData.groundMaterial.textureUrl}`);
   }
   mapMetadata = mapData.metadata;
   WORLD_WEAPONS = mapData.weapons;
@@ -7389,16 +7567,6 @@ if (MAP_SOURCE === 'random') {
 // filename ('random' for a generated world included) -> { fileName, hash, url,
 // obstacles, teleporterGraph, teamMode, clouds, mapSize }.
 const MAP_REGISTRY = new Map();
-// GAME_CONFIG's own default (defaultBZDB.cxx's `worldSize`, doubled the same
-// way `parseBZWMap` doubles a map's own `world size` line) -- what a map with
-// no `world` block at all gets, both for the live match and for a Map
-// Viewer's preview of one.
-const DEFAULT_MAP_SIZE = 800;
-try {
-  fs.mkdirSync(MAP_CACHE_DIR, { recursive: true });
-} catch (error) {
-  logError(`Could not create map cache directory at ${MAP_CACHE_DIR}:`, error);
-}
 
 // Hashes what is actually served -- the parsed, cloud-decorated world data --
 // rather than the source `.bzw` bytes, since nothing here needs to survive a
@@ -7451,19 +7619,6 @@ function worldBuildOptions(fileName) {
   };
 }
 
-// A map parsed here, on the server's own thread: only the live map at boot,
-// whose parse the game itself is built from. Every other map is converted on
-// a worker (`convertMapFile`).
-function registerMapFile(fileName, map, options) {
-  const world = buildWorldFile(map, worldBuildOptions(fileName));
-  // The worker hashes the maps it converts; this is the one parsed here, the
-  // live map, and the hash bzo serves native clients is not its file's own
-  // (it adds the compass letters).
-  const filePath = fileName === 'random' ? null : resolveMapFilePath(fileName);
-  if (filePath) world.bzfsHash = bzfsWorldHashOfBzw(fs.readFileSync(filePath, 'latin1'));
-  return registerWorldFile(fileName, world, options);
-}
-
 // One map worker at a time, server-wide. A large world takes several hundred
 // MB to parse, and the callers that start one -- the boot pass, a proxy
 // target's world kept current, a join, an import, a viewer's source lookup
@@ -7477,35 +7632,20 @@ function inMapWorkerTurn(start) {
   return turn;
 }
 
-// Parses and builds a map file on a worker thread (`server/map-convert-
-// worker.cjs`), resolving to what `buildWorldFile` returns plus the parse's
-// `instancing` and `warnedMessages`. The game goes on meanwhile; the worker
-// ends with the map, and the memory it used with it.
+// Parses and builds a map file in a child process (server/map-build.cjs),
+// resolving to what `buildWorldFile` returns plus the parse's `instancing` and
+// `warnedMessages`. The game goes on meanwhile; the child ends with the map,
+// and the memory it used with it.
 // With `keepWorld` its JSON is written there too, and only the hash comes back.
 function convertMapFile(fileName, filePath, { quiet = true, keepWorld = true } = {}) {
-  return inMapWorkerTurn(() => new Promise((resolve, reject) => {
-    const worker = new Worker(path.join(__dirname, 'server', 'map-convert-worker.cjs'), {
-      workerData: {
-        filePath,
-        quiet,
-        gameConfigDefaults: GAME_CONFIG_DEFAULTS,
-        ownOrigins: ownOrigins(),
-        build: worldBuildOptions(fileName),
-        writeDir: keepWorld ? MAP_CACHE_DIR : null,
-      },
-    });
-    let result = null;
-    let failure = null;
-    worker.on('message', (message) => {
-      if (message.log) log(message.log);
-      if (message.result) result = message.result;
-    });
-    worker.on('error', (error) => { failure = error; });
-    worker.on('exit', (code) => {
-      if (result) resolve(result);
-      else reject(failure || new Error(`converting ${fileName} stopped with code ${code}`));
-    });
-  }));
+  return inMapWorkerTurn(() => runMapBuild({
+    task: 'convert',
+    filePath,
+    quiet,
+    configure: { gameConfigDefaults: GAME_CONFIG_DEFAULTS, ownOrigins: ownOrigins() },
+    build: worldBuildOptions(fileName),
+    writeDir: keepWorld ? MAP_CACHE_DIR : null,
+  }, { log }));
 }
 
 // A built world registered: its JSON written when `keepWorld` says somebody
@@ -7725,23 +7865,7 @@ function sweepStaleImports() {
   }
 }
 
-const LIVE_MAP_ENTRY = registerMapFile(MAP_SOURCE, {
-  obstacles: OBSTACLES,
-  teleporterGraph: TELEPORTER_GRAPH,
-  teamMode: mapTeamMode,
-  mapSize: GAME_CONFIG.MAP_SIZE,
-  messages: mapMessages,
-  noWalls: mapNoWalls,
-  waterLevel: mapWaterLevel,
-  weather: mapWeather,
-  groundMaterial: mapGroundMaterial,
-  metadata: mapMetadata,
-  physicsDrivers: mapPhysicsDrivers,
-  serverOptions: mapServerOptions,
-  meshTemplates: mapMeshTemplates,
-  meshInstances: mapMeshInstances,
-  zones: MAP_ZONES,
-});
+const LIVE_MAP_ENTRY = registerWorldFile(MAP_SOURCE, LIVE_MAP.world);
 
 // A Map Viewer's requested map file, checked against what this process has
 // actually hashed -- the client fetched its preview from `init.viewableMaps`
@@ -7834,7 +7958,7 @@ function hashRemainingMapsInBackground() {
 hashRemainingMapsInBackground();
 // The trickle above only runs once, at startup -- a long-lived process needs
 // the same cycle repeated: pick up and precompress any map that appeared
-// without going through registerMapFile's own synchronous path, delete a
+// without going through the boot's own read, delete a
 // remote import old enough that nobody has asked for it again
 // (sweepStaleImports, chained off hashRemainingMapsInBackground's own
 // completion), and sweep both the map cache and its brotli sidecars for
@@ -12860,13 +12984,24 @@ function recordBroadcast(data, message) {
 // What a saved recording carries besides its packets (`saveHeader`). The world
 // is the map file's own, as bzfs would load it -- not the one bzo serves native
 // clients, which adds compass letters -- so its hash names the map, and the
-// recording matches one made with bzfs on the same file.
-function recordingHeader(callsign) {
+// recording matches one made with bzfs on the same file. The live map's was
+// written as it was read (`LIVE_MAP.plain`); one with a plugin's objects in
+// it, or a generated one, is compiled in a child process.
+async function recordingHeader(callsign) {
   const generated = MAP_SOURCE === 'random';
   const mapPath = generated ? null : resolveMapFilePath(MAP_SOURCE);
-  const text = generated ? RANDOM_WORLD_BZW : (mapPath ? fs.readFileSync(mapPath, 'latin1') : null);
-  if (!text) throw new Error(`no map file for ${MAP_SOURCE}`);
-  const world = packWorldDatabase(compileBzwWorld(text, { customObjects: plugins?.mapObjects() ?? new Set() }));
+  if (!generated && !mapPath) throw new Error(`no map file for ${MAP_SOURCE}`);
+  const customObjects = plugins?.mapObjects() ?? new Set();
+  const file = LIVE_MAP.plain && customObjects.size === 0 ? LIVE_MAP.plain : await runMapBuild({
+    task: 'native',
+    filePath: mapPath,
+    text: generated ? RANDOM_WORLD_BZW : null,
+    configure: { gameConfigDefaults: GAME_CONFIG_DEFAULTS, ownOrigins: ownOrigins() },
+    customObjects,
+    writeDir: BZFLAG_WORLD_DIR,
+    evenUnsupported: true,
+  }, { log });
+  const world = fs.readFileSync(path.join(BZFLAG_WORLD_DIR, `${file.md5}.bwc`));
   const settings = packGameSettings(bzflagGameSettings());
   const frame = Buffer.alloc(4 + settings.length);
   frame.writeUInt16BE(settings.length, 0);
@@ -12898,7 +13033,7 @@ async function saveRecording(name, { seconds = null, from = null, callsign = '' 
   });
   if (entries.length === 0) throw new Error('No buffer to save');
   const replay = bufferToReplay(entries, {
-    header: recordingHeader(callsign),
+    header: await recordingHeader(callsign),
     translator: {
       teamIndex: bzflagTeamIndex,
       config: () => GAME_CONFIG,
@@ -13897,15 +14032,34 @@ function bzflagGameSettings() {
 // a map the compiler cannot reproduce, where it is installed; without it
 // such a map is turned away rather than sent wrong. A generated world has
 // no `.bzw` to compile.
+// Compiled in a child process (server/map-build.cjs) and written to
+// `BZFLAG_WORLD_DIR` as `<md5>.bwc`, which is what a client is sent, by
+// HTTP or in MsgGetWorld chunks: nothing holds it in memory. The file is
+// kept under a key naming every input, so a restart reuses it.
 let bzflagWorld = null;
 
-function bzflagWorldFromBlob(blob, how, generated = false) {
-  // `'p'` for a world from a file and `'t'` for one made up at start, which a
-  // client caches only for the session; then the MD5 of the blob
-  // (bzfs.cxx:1208).
-  const hash = `${generated ? 't' : 'p'}${crypto.createHash('md5').update(blob).digest('hex')}`;
-  log(`[BZFLAG] world for ${MAP_SOURCE} (${how}): ${blob.length} bytes, ${hash}`);
-  return { blob, hash };
+// `'p'` for a world from a file and `'t'` for one made up at start, which a
+// client caches only for the session; then the MD5 of the world
+// (bzfs.cxx:1208).
+function bzflagWorldFromFile(md5, size, how, generated = false) {
+  const hash = `${generated ? 't' : 'p'}${md5}`;
+  log(`[BZFLAG] world for ${MAP_SOURCE} (${how}): ${size} bytes, ${hash}`);
+  return { hash, path: path.join(BZFLAG_WORLD_DIR, `${md5}.bwc`), size };
+}
+
+// A packed world written as `<md5>.bwc`.
+function writeBzflagWorld(blob) {
+  const md5 = crypto.createHash('md5').update(blob).digest('hex');
+  fs.writeFileSync(path.join(BZFLAG_WORLD_DIR, `${md5}.bwc`), blob);
+  return { md5, size: blob.length };
+}
+
+// Everything in `BZFLAG_WORLD_DIR` but the live map's plain world and the
+// files named.
+function pruneBzflagWorlds(...names) {
+  const keep = new Set(names);
+  if (LIVE_MAP.plain) keep.add(`${LIVE_MAP.plain.md5}.bwc`);
+  pruneDir(BZFLAG_WORLD_DIR, keep, (text) => logError(`[BZFLAG] ${text}`));
 }
 
 function bzfsCacheout(mapPath, reason) {
@@ -13925,7 +14079,9 @@ function bzfsCacheout(mapPath, reason) {
         resolve(null);
         return;
       }
-      resolve(bzflagWorldFromBlob(blob, `bzfs -cacheout, ${reason}`));
+      const { md5, size } = writeBzflagWorld(blob);
+      pruneBzflagWorlds(`${md5}.bwc`);
+      resolve(bzflagWorldFromFile(md5, size, `bzfs -cacheout, ${reason}`));
     });
   });
 }
@@ -13944,57 +14100,97 @@ function worldEventData(world) {
   };
 }
 
+// A map's `/img/` texture as a native client must name it: an absolute
+// `http://` URL on the address this server is configured to be found by
+// (`publicAddr`, else `publicUrl`'s host), the only scheme its downloader
+// follows (CacheManager.cxx:72), which its DownloadAccess.txt then has to
+// allow. One address for every client, as the world is one file: without
+// one configured the name stays bare, and the build says so. A bare name
+// stays as it is, for the client's own data directory, as upstream.
+// A browser needs none of this: it is sent the path, on its own origin.
+const NATIVE_TEXTURE_HOST = (() => {
+  if (typeof BZFLAG_CONFIG?.publicAddr === 'string' && BZFLAG_CONFIG.publicAddr.trim()) {
+    return BZFLAG_CONFIG.publicAddr.trim();
+  }
+  try {
+    return PUBLIC_URL ? new URL(PUBLIC_URL).host : '';
+  } catch {
+    return '';
+  }
+})();
+
 function getBzflagWorld() {
   if (bzflagWorld && bzflagWorld.mapHash === LIVE_MAP_ENTRY?.hash
     && bzflagWorld.plugins === plugins?.generation()) return bzflagWorld.promise;
   const generated = MAP_SOURCE === 'random';
   const mapPath = generated ? null : resolveMapFilePath(MAP_SOURCE);
   if (!generated && !mapPath) return Promise.resolve(null);
-  let promise;
-  try {
-    const text = generated ? RANDOM_WORLD_BZW : fs.readFileSync(mapPath, 'latin1');
-    const tree = compileBzwWorld(text, {
-      bzdb: SERVER_BZDB, textureName: nativeTextureName, customObjects: plugins?.mapObjects() ?? new Set(),
-    });
-    if (tree.unsupported.length > 0) {
-      promise = generated
-        ? Promise.resolve(null)
-        : bzfsCacheout(mapPath, `the compiler cannot reproduce ${[...new Set(tree.unsupported)].join(', ')}`);
-    } else {
-      // A plugin may add to the world as compiled (`parseWorldDatabase`'s
-      // shape), compassletters among them. bzo's server never sees what it
-      // adds, so what it adds must be passable or out of reach.
-      if (plugins?.listening('bz_eGetWorldEvent')) {
-        plugins.callEvents('bz_eGetWorldEvent', {
-          ...worldEventData('bzflag'),
-          tree,
-          worldSize: GAME_CONFIG.MAP_SIZE,
-          wallHeight: GAME_CONFIG.WALL_HEIGHT || 0,
-          maxHeight: OBSTACLES.reduce((top, obstacle) => Math.max(top, obstacle.bounds?.maxZ ?? 0), 0),
-        });
+  // A plugin may add to the world as compiled (`parseWorldDatabase`'s
+  // shape), compassletters among them, so the tree comes back for it. bzo's
+  // server never sees what it adds, so what it adds must be passable or out
+  // of reach.
+  const pluginAdds = !!plugins?.listening('bz_eGetWorldEvent');
+  const customObjects = plugins?.mapObjects() ?? new Set();
+  let recordPath = null;
+  if (!generated && !pluginAdds) {
+    const { size, mtimeMs } = fs.statSync(mapPath);
+    const key = keyOf(MAP_CODE_DIGEST, mapPath, size, mtimeMs, SERVER_BZDB, [...customObjects].sort());
+    recordPath = path.join(BZFLAG_WORLD_DIR, `${key}.json`);
+    try {
+      const record = JSON.parse(fs.readFileSync(recordPath, 'utf8'));
+      if (fs.existsSync(path.join(BZFLAG_WORLD_DIR, `${record.md5}.bwc`))
+        && (record.imgTextures === 0 || record.host === NATIVE_TEXTURE_HOST)) {
+        const promise = Promise.resolve(bzflagWorldFromFile(record.md5, record.size, 'kept'));
+        bzflagWorld = { mapHash: LIVE_MAP_ENTRY?.hash, plugins: plugins?.generation(), promise };
+        return promise;
       }
-      promise = Promise.resolve(bzflagWorldFromBlob(packWorldDatabase(tree), generated ? 'generated' : 'compiled', generated));
+    } catch {
+      // Not kept: build it.
     }
-  } catch (error) {
-    promise = generated
-      ? (logError(`[BZFLAG] the generated world did not compile: ${error.message}`), Promise.resolve(null))
-      : bzfsCacheout(mapPath, `the compiler failed (${error.message})`);
   }
+  const promise = runMapBuild({
+    task: 'native',
+    filePath: mapPath,
+    text: generated ? RANDOM_WORLD_BZW : null,
+    configure: { gameConfigDefaults: GAME_CONFIG_DEFAULTS, ownOrigins: ownOrigins() },
+    bzdb: SERVER_BZDB,
+    textureHost: NATIVE_TEXTURE_HOST,
+    customObjects,
+    writeDir: BZFLAG_WORLD_DIR,
+    returnTree: pluginAdds,
+  }, { log }).then((result) => {
+    if (result.unsupported) {
+      return generated ? null : bzfsCacheout(mapPath, `the compiler cannot reproduce ${result.unsupported.join(', ')}`);
+    }
+    if (result.imgTextures > 0 && !NATIVE_TEXTURE_HOST) {
+      log(`[BZFLAG] ${MAP_SOURCE}: ${result.imgTextures} /img/ texture(s) stay bare for BZFlag clients;`
+        + ' set publicUrl or bzflag.publicAddr to serve them');
+    }
+    let { md5, size } = result;
+    if (result.tree) {
+      plugins.callEvents('bz_eGetWorldEvent', {
+        ...worldEventData('bzflag'),
+        tree: result.tree,
+        worldSize: GAME_CONFIG.MAP_SIZE,
+        wallHeight: GAME_CONFIG.WALL_HEIGHT || 0,
+        maxHeight: OBSTACLES.reduce((top, obstacle) => Math.max(top, obstacle.bounds?.maxZ ?? 0), 0),
+      });
+      ({ md5, size } = writeBzflagWorld(packWorldDatabase(result.tree)));
+    }
+    if (recordPath) {
+      fs.writeFileSync(recordPath, JSON.stringify({
+        md5, size, imgTextures: result.imgTextures, host: NATIVE_TEXTURE_HOST,
+      }));
+    }
+    pruneBzflagWorlds(`${md5}.bwc`, ...(recordPath ? [path.basename(recordPath)] : []));
+    return bzflagWorldFromFile(md5, size, generated ? 'generated' : 'compiled', generated);
+  }).catch((error) => (generated
+    ? (logError(`[BZFLAG] the generated world did not compile: ${error.message}`), null)
+    : bzfsCacheout(mapPath, `the compiler failed (${error.message})`)));
   bzflagWorld = { mapHash: LIVE_MAP_ENTRY?.hash, plugins: plugins?.generation(), promise };
   return promise;
 }
 
-// bzfs's `-cacheurl` (CmdLineOptions.cxx:678): where a client may fetch the
-// world over HTTP instead of a kilobyte per round trip. bzfs only points at a
-// file its operator hosts; bzo is a web server, so by default it points at
-// its own copy (`/bzflag/world/<md5>.bwc`). `cacheUrl` false turns it off,
-// and a string is used as written, as bzfs uses it.
-// A map's `/img/` texture as a native client must name it: an absolute
-// `http://` URL on the address it found this server by (`publicAddr`, else
-// `publicUrl`'s host), the only scheme its downloader follows
-// (CacheManager.cxx:72), which its DownloadAccess.txt then has to allow. A
-// bare name stays as it is, for the client's own data directory, as upstream.
-// A browser needs none of this: it is sent the path, on its own origin.
 // The addresses this server's pages are served at, `host:port`: every
 // `publicUrl`'s, its port as written or its scheme's. A map's texture URL on
 // one reaches a browser as a path (`ownPath`, server/bzw-parse.cjs); the same
@@ -14012,24 +14208,22 @@ function ownOrigins() {
   return [...origins];
 }
 
-function nativeTextureName(name) {
-  if (!String(name).toLowerCase().startsWith(IMG_URL_PREFIX)) return name;
-  let host = bzflagPublicAddr;
-  if (!host && PUBLIC_URL) {
-    try {
-      host = new URL(PUBLIC_URL).host;
-    } catch {
-      host = '';
-    }
-  }
-  return host ? `http://${host}${name}` : name;
-}
-
-function bzflagCacheUrl(world) {
+// bzfs's `-cacheurl` (CmdLineOptions.cxx:678): where a client may fetch the
+// world over HTTP instead of a kilobyte per round trip. bzfs only points at a
+// file its operator hosts; bzo is a web server, so it points at its own copy
+// (`/bzflag/world/<md5>.bwc`): on `publicUrl`, else on the address the
+// client reached this server at, over plain HTTP, which the same port
+// answers. `cacheUrl` false turns it off, and a string is used as written,
+// as bzfs uses it.
+function bzflagCacheUrl(world, socket) {
   const configured = BZFLAG_CONFIG?.cacheUrl;
   if (configured === false) return null;
   if (typeof configured === 'string' && configured.trim()) return configured.trim();
-  return PUBLIC_URL ? `${PUBLIC_URL}/bzflag/world/${world.hash.slice(1)}.bwc` : null;
+  const file = `/bzflag/world/${world.hash.slice(1)}.bwc`;
+  if (PUBLIC_URL) return `${PUBLIC_URL}${file}`;
+  const address = String(socket?.localAddress || '').replace(/^::ffff:/, '');
+  if (!address) return null;
+  return `http://${net.isIPv6(address) ? `[${address}]` : address}:${socket.localPort}${file}`;
 }
 
 app.get('/bzflag/world/:md5.bwc', (req, res) => {
@@ -14045,8 +14239,11 @@ app.get('/bzflag/world/:md5.bwc', (req, res) => {
     // The client's libcurl sends no user agent, so the address says who.
     const from = requestAddress(req);
     log(`[BZFLAG] world ${req.params.md5} fetched over HTTP by ${from}`);
-    res.set('Cache-Control', 'public, max-age=31536000, immutable');
-    res.type('application/octet-stream').send(world.blob);
+    res.sendFile(world.path, {
+      maxAge: 31536000000,
+      immutable: true,
+      headers: { 'Content-Type': 'application/octet-stream' },
+    });
   }).catch(() => res.status(500).end());
 });
 

@@ -98,6 +98,13 @@ function mergeGuest(previous, fresh, now) {
   if (typeof fresh?.banned === 'boolean') {
     next.banned = fresh.banned;
     next.bannedAt = now;
+    if (!fresh.banned) {
+      delete next.bannedDetail;
+      delete next.bannedCode;
+    } else if (fresh.bannedDetail) {
+      next.bannedDetail = fresh.bannedDetail;
+      next.bannedCode = fresh.bannedCode;
+    }
   }
   return next;
 }
@@ -333,9 +340,11 @@ function createBzfsWorldTracker(deps) {
   // Whether a server that banned bzo still does: one join, the guest check's,
   // and nothing else. A lifted ban leaves the server due at once, so its world
   // and the rest are learned again on the next tick.
-  async function checkBan(server, record, key, now) {
-    if (!probeGuestAccess) return;
-    if (now - lastGuestVisitAt < GUEST_VISIT_GAP_MS || now - lastImportAt < IMPORT_GAP_MS) return;
+  // `force` is an admin asking now (`recheckBan`), who waits on no gap.
+  // Resolves to whether the ban is lifted, or null where it did not ask.
+  async function checkBan(server, record, key, now, { force = false } = {}) {
+    if (!probeGuestAccess) return null;
+    if (!force && (now - lastGuestVisitAt < GUEST_VISIT_GAP_MS || now - lastImportAt < IMPORT_GAP_MS)) return null;
     lastImportAt = now;
     lastGuestVisitAt = now;
     let guest;
@@ -348,10 +357,16 @@ function createBzfsWorldTracker(deps) {
     }
     const lifted = guest.banned !== true;
     records.set(key, {
-      ...record, guest, fingerprint: listEntryFingerprint(server), checkedAt: now, dueNow: lifted,
+      ...record,
+      guest,
+      // A server off the list keeps the fingerprint it last had.
+      fingerprint: listed.has(key) ? listEntryFingerprint(server) : record.fingerprint,
+      checkedAt: now,
+      dueNow: lifted,
     });
     log(`[WORLDS] ${key} ${lifted ? 'no longer bans bzo' : 'still bans bzo'}`);
     save();
+    return lifted;
   }
 
   async function check(server, now) {
@@ -534,6 +549,49 @@ function createBzfsWorldTracker(deps) {
   return {
     observe,
     blocksBzo,
+    // When this server is next asked about, as `pickDue` would choose it:
+    // `{ at }`, a time, where 0 is as soon as the queue reaches it; `{ refresh:
+    // true }` for one that does not answer, which the next list refresh pings;
+    // or null for one off the list or left out of the checks. Not before `at`:
+    // one server goes per tick, with gaps between joins.
+    nextCheck(host, port) {
+      load();
+      const key = serverKey(host, port);
+      const server = listed.get(key);
+      if (!server || isExcluded(host, port)) return null;
+      const record = records.get(key);
+      if (record?.silent) return { refresh: true };
+      if (record?.guest?.banned === true) return { at: (record.guest.bannedAt || 0) + GUEST_RECHECK_MS };
+      if (record?.error && Date.now() - (record.errorAt || 0) < failureCooldown(record.failCount)) {
+        return { at: (record.errorAt || 0) + failureCooldown(record.failCount) };
+      }
+      if (!record || record.dueNow || !hasPicture(host, port, record.worldHash)) return { at: 0 };
+      return { at: (record.checkedAt || 0) + recheckMs(record.worldHash) };
+    },
+    // A server that blocks bzo, asked again now rather than at its month or
+    // the next list refresh: an admin's Import on `/list`. A ban is asked with
+    // a join (`checkBan`); a server that does not answer (`silent`), with one
+    // status query. Resolves to whether it lets bzo in now, or null for a
+    // server with neither on record.
+    async recheckBan(host, port) {
+      load();
+      const key = serverKey(host, port);
+      const record = records.get(key);
+      if (record?.silent === true) {
+        try {
+          await queryServerStatus(host, port);
+        } catch {
+          log(`[WORLDS] ${key} still does not answer`);
+          return false;
+        }
+        records.set(key, { ...records.get(key), silent: false, silentAt: undefined, dueNow: true });
+        log(`[WORLDS] ${key} answers again`);
+        save();
+        if (records.get(key)?.guest?.banned !== true) return true;
+      }
+      if (records.get(key)?.guest?.banned !== true) return null;
+      return checkBan(listed.get(key) || { host, port }, records.get(key), key, Date.now(), { force: true });
+    },
     // An import somebody else caused -- a `?viewmap=` link, the Operator
     // panel, the `/list` form. It cost the same download this tracker would
     // have made, so recording it here both keeps the picture current and

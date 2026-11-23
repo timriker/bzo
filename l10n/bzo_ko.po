@@ -5118,6 +5118,34 @@ msgstr "팀이 가득 찼어요: {team}"
 msgid "You will join {team} when you next spawn"
 msgstr "다음 스폰 때 {team}에 합류해요"
 
+#: server.js
+msgid "Reason"
+msgstr ""
+
+#: server.js
+msgid "Ends"
+msgstr ""
+
+#: server.js
+msgid "Banned by"
+msgstr ""
+
+#: server.js
+msgid "unreachable"
+msgstr ""
+
+#: server.js
+msgid "{server} still blocks bzo."
+msgstr ""
+
+#: server.js
+msgid "Next check"
+msgstr ""
+
+#: server.js
+msgid "next list refresh"
+msgstr ""
+
 #~ msgid "Bot Pilot:"
 #~ msgstr "봇 파일럿:"
 

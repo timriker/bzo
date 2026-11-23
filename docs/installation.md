@@ -147,9 +147,10 @@ nothing more is needed for them.
 A BZFlag client loads a map's `/img/` texture from
 `http://<publicAddr>/img/...` -- the address it is listed under (`bzflag` in
 `server.json`), else `publicUrl`'s host -- and only once the player allows
-that host. By default it fetches textures from images.bzflag.org alone; a
-player adds a line such as `allow bz.example.org` above `deny *` in
-`DownloadAccess.txt`:
+that host. With neither set, the name is sent bare and the server logs how
+many textures that leaves out. By default it fetches textures from
+images.bzflag.org alone; a player adds a line such as `allow bz.example.org`
+above `deny *` in `DownloadAccess.txt`:
 
 | System | File |
 | --- | --- |

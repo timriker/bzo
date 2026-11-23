@@ -489,6 +489,9 @@ const GUEST_REPLIES = Object.freeze([
 // MsgReject's reasons (Protocol.h) that say nothing about guests: the server
 // is full, or has banned this host. Any other refusal of a well-formed join --
 // a plugin's `bz_eAllowPlayer` comes back as RejectBadRequest -- is one.
+// bzfs's colour codes (`ColorStrings`), ANSI escapes.
+// eslint-disable-next-line no-control-regex
+const ANSI_COLOUR = /\x1b\[[0-9;]*m/g;
 const BANNED_REJECTS = new Set([0x0009, 0x000A, 0x000B]);
 const REJECT_NOT_ABOUT_GUESTS = new Set([
   0x0004, // RejectTeamFull
@@ -529,13 +532,18 @@ async function enterAndProbe(socket, readFrame, selfId, probe = null,
   let accepted = false;
   let gone = false;
   let rejectCode = null;
+  let rejectText = '';
   const deadline = Date.now() + ENTER_TIMEOUT_MS;
   for (;;) {
     const { code, payload } = await read(deadline);
     if (!code) break;
     if (code === 'rj' || code === 'sk') {
       gone = true;
-      if (code === 'rj' && payload?.length >= 2) rejectCode = payload.readUInt16BE(0);
+      if (code === 'rj' && payload?.length >= 2) {
+        rejectCode = payload.readUInt16BE(0);
+        // `rejectPlayer`'s reason (bzfs.cxx:1771), its colours dropped.
+        rejectText = payload.toString('latin1', 2).replace(/\0.*$/s, '').replace(ANSI_COLOUR, '').trim();
+      }
       break;
     }
     if (code === 'ac') { accepted = true; continue; }
@@ -555,6 +563,13 @@ async function enterAndProbe(socket, readFrame, selfId, probe = null,
   // leaves whatever was known.
   if (gone && rejectCode !== null) guest.banned = BANNED_REJECTS.has(rejectCode);
   else if (accepted) guest.banned = false;
+  // What the ban said: its reason, the time left or `indefinite`, and for an
+  // ID ban who set it. For this server's admins only (`banRows`), never
+  // published.
+  if (guest.banned) {
+    guest.bannedDetail = rejectText;
+    guest.bannedCode = rejectCode;
+  }
   if (accepted && !gone) {
     guest.watch = 'yes';
     guest.watchDetail = '';

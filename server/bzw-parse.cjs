@@ -6,8 +6,8 @@
  */
 
 // A `.bzw` file read into the world bzo serves: the parser and the pure
-// helpers it is built from. Its own module so a map can be converted on a
-// worker thread (`server/map-convert-worker.cjs`) as well as in the server.
+// helpers it is built from. Its own module so a map can be converted in a
+// child process (`server/map-build-child.cjs`) as well as in the server.
 // The two things it needs from the server it is given (`configureBzwParse`).
 
 const { BZDB_CONFIG_VARS, bzdbIsTrue, evalBzdb, gameplayFromBzdb, parseColorString, worldConfig } = require('../public/js/bzdb.mjs');

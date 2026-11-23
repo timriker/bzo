@@ -5150,6 +5150,34 @@ msgstr "Team is vol: {team}"
 msgid "You will join {team} when you next spawn"
 msgstr "Je komt bij {team} als je weer spawnt"
 
+#: server.js
+msgid "Reason"
+msgstr ""
+
+#: server.js
+msgid "Ends"
+msgstr ""
+
+#: server.js
+msgid "Banned by"
+msgstr ""
+
+#: server.js
+msgid "unreachable"
+msgstr ""
+
+#: server.js
+msgid "{server} still blocks bzo."
+msgstr ""
+
+#: server.js
+msgid "Next check"
+msgstr ""
+
+#: server.js
+msgid "next list refresh"
+msgstr ""
+
 #~ msgid "Bot Pilot:"
 #~ msgstr "Botpiloot:"
 

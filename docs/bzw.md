@@ -7,9 +7,12 @@ What bzo reads out of a BZFlag `.bzw` file, and what it ignores. The importer is
 Maps live in `maps/`; `mapFile` in `server.json` picks one, and `"random"`
 generates a world instead (see **Generated worlds**). The live map is parsed
 once, on startup, and every client loads the same world file, so the client
-and the server collide against the same geometry by construction. Any other
-map is converted on a worker thread (`server/map-convert-worker.cjs`) when
-someone views it, and while new or edited, for its picture and stats.
+and the server collide against the same geometry by construction. Maps are
+parsed in a child process (`server/map-build-child.cjs`), which gives back
+the memory a big map takes to read: the live map on startup, kept in the
+cache directory until the file, the config or the parser changes, and any
+other map when someone views it, and while new or edited, for its picture
+and stats.
 
 Every keyword is matched case-insensitively against the line's first
 whitespace-delimited token, as upstream matches with `strcasecmp` -- so
@@ -470,8 +473,9 @@ reads both:
   a texture URL naming one of the server's own hosts (any `publicUrl`, or the
   BZFlag `publicAddr`) reaches it as the path alone too.
   A native client is sent a `/img/` name as `http://<publicAddr>/img/...`,
-  which it fetches only once its `DownloadAccess.txt` allows that host; a
-  bare name is sent as written, for its own data directory, as upstream.
+  which it fetches only once its `DownloadAccess.txt` allows that host; with
+  no `publicAddr` or `publicUrl` it stays bare. A bare name is sent as
+  written, for its own data directory, as upstream.
   Hosting such a map: [installation.md](installation.md#map-textures).
 
   **A texture that actually has transparency gets it, real maps do use

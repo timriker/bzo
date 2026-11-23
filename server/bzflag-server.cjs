@@ -13,6 +13,7 @@
 
 'use strict';
 
+const fs = require('fs');
 const https = require('https');
 const dgram = require('dgram');
 const net = require('net');
@@ -182,15 +183,21 @@ function packGameSettings(settings) {
   return payload;
 }
 
-// `sendWorld` (bzfs.cxx:3050): a byte count, then the chunk.
+// `sendWorld` (bzfs.cxx:3050): a byte count, then the chunk, read from the
+// world's file (`{ path, size }`), which nothing holds in memory.
 const WORLD_CHUNK = 1024 - (2 * 2) - 4;
-function packWorldChunk(blob, offset) {
-  const start = Math.min(offset, blob.length);
-  const end = Math.min(blob.length, start + WORLD_CHUNK);
+function packWorldChunk(world, offset) {
+  const start = Math.min(offset, world.size);
+  const end = Math.min(world.size, start + WORLD_CHUNK);
   const payload = Buffer.alloc(4 + (end - start));
   // What was left before this chunk, or 0 once it is the last.
-  payload.writeUInt32BE(end >= blob.length ? 0 : blob.length - start, 0);
-  blob.copy(payload, 4, start, end);
+  payload.writeUInt32BE(end >= world.size ? 0 : world.size - start, 0);
+  const fd = fs.openSync(world.path, 'r');
+  try {
+    fs.readSync(fd, payload, 4, end - start, start);
+  } finally {
+    fs.closeSync(fd);
+  }
   return payload;
 }
 
@@ -259,7 +266,7 @@ function packReject(reason, code = REJECT_BAD_REQUEST) {
 // upstream's numbering. `rejectReason` is what a client that tries to join is
 // told.
 // `getGameSettings()` is MsgGameSettings' fields; `getWorld()` resolves to
-// `{ blob, hash }` or null when this world cannot be sent; `onEnter(link,
+// `{ hash, path, size }` or null when this world cannot be sent; `onEnter(link,
 // payload)` seats a client that sent MsgEnter, and `link.onFrame` then takes
 // every frame it sends. `trustsProxyHeader(address)` says whether a peer may
 // open with a PROXY header naming its client (`proxyProtocolFrom`).
@@ -366,14 +373,17 @@ function createBzflagServer({
         connection.world = world;
         // MsgCacheURL first, as bzfs sends it (bzfs.cxx:4828): the client
         // tries the URL and falls back to MsgGetWorld.
-        const cacheUrl = getCacheUrl(world);
+        const cacheUrl = getCacheUrl(world, socket);
         if (cacheUrl) sendFrame(socket, 'cu', Buffer.from(`${cacheUrl}\0`, 'latin1'));
         sendFrame(socket, 'wh', Buffer.from(`${world.hash}\0`, 'latin1'));
       }).catch((error) => reject(connection, `world unavailable: ${error.message}`));
     } else if (code === 'gw') {
       const { world } = connection;
       if (!world || payload.length < 4) return reject(connection, 'world asked for before its hash');
-      sendFrame(socket, 'gw', packWorldChunk(world.blob, payload.readUInt32BE(0)));
+      const offset = payload.readUInt32BE(0);
+      // The URL should have served it; a client here could not fetch it.
+      if (offset === 0) log(`[BZFLAG] ${connection.address} downloading the world over MsgGetWorld`);
+      sendFrame(socket, 'gw', packWorldChunk(world, offset));
     } else if (code === 'en') {
       if (connection.ban) return reject(connection, connection.ban, REJECT_IP_BANNED);
       if (!connection.world) return reject(connection, 'joined before the world');
