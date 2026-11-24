@@ -44,7 +44,7 @@ import { findFlagSpawnPosition, planFlagSlots } from './flag-spawn.mjs';
 import { getShotTankHit, getWorldReloadSeconds, normalizeShotSlotCount, shockWaveHitsTank } from './shots.mjs';
 import { buildTeleporterIndex } from './teleport.mjs';
 import { traceBeam } from './trace.mjs';
-import { pickSpawnPosition, teamSpawnZones } from './spawn.mjs';
+import { pickSpawnPosition, spawnsOnBuildings, teamSpawnZones } from './spawn.mjs';
 import { pickNewRabbit } from './rabbit.mjs';
 import {
   areFoes, getPlayerRanking, getTeamColorIndex, getTeamFromColorIndex, getTeamScoreDeltasForCapture, isColorTeam,
@@ -247,6 +247,7 @@ export function createBotGame({
       config,
       tanks,
       isFoe: (other) => areFoes(other.team, team, teamsAllowed),
+      onBuildings: spawnsOnBuildings(config, world.waterLevel, bots.has(id)),
     });
     return { x: spot.x, y: spot.y, z: spot.z, azimuth: spot.azimuth };
   }

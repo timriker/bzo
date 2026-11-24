@@ -27,13 +27,10 @@ import { ALL_PLAYERS, SERVER_PLAYER } from './player-ids.mjs';
 import { BZDB_DEFAULTS } from './bzdb-defaults.mjs';
 import { getTeamColorIndex, isColorTeam } from './teams.mjs';
 import { getInitialPlayerColor, getJoinPlayerColor, pickDistinctColor } from './player-colors.mjs';
+import { clampPracticeBots, PRACTICE_DEFAULT_BOTS } from './practice.mjs';
 
 const PLAYER_ID = '0';
-// How many Aces, unless Practice's `&bots=N` says otherwise: every one runs in
-// this browser, so a phone is the limit, not the map.
-const DEFAULT_BOT_COUNT = 3;
-const MAX_BOT_COUNT = 15;
-let botCount = DEFAULT_BOT_COUNT;
+let botCount = PRACTICE_DEFAULT_BOTS;
 // The tick's cap, when the page has been away.
 const MAX_TICK_SECONDS = 0.25;
 const TEAMS_THAT_PLAY = ['rogue', 'red', 'green', 'blue', 'purple'];
@@ -181,7 +178,6 @@ function open() {
     liveConfigKeys: [],
     operatorConfig: {},
     proxies: [],
-    viewableMaps: [],
     title: `Offline: ${init.currentMap || 'last map'}`,
     motd: offlineLine(),
   });
@@ -317,7 +313,7 @@ self.onmessage = ({ data }) => {
   if (!world) {
     world = data.world;
     if (typeof data.level === 'string') level = data.level;
-    if (Number.isInteger(data.bots)) botCount = Math.max(0, Math.min(MAX_BOT_COUNT, data.bots));
+    if (Number.isInteger(data.bots)) botCount = clampPracticeBots(data.bots);
     open();
     loadWorld().then(() => {
       // Joined while the map loaded: on a team of the game it turned out to

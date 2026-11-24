@@ -88,7 +88,6 @@ let CLIENT_BUILD;
 let currentWorldTime;
 let getProxyDestinations;
 let getRemoteServerList;
-let getViewableMapsList;
 let importProxyWorld;
 let importReplayWorld;
 let isLocalAdminHttp;
@@ -125,7 +124,6 @@ function useServer(deps) {
     currentWorldTime,
     getProxyDestinations,
     getRemoteServerList,
-    getViewableMapsList,
     importProxyWorld,
     importReplayWorld,
     isLocalAdminHttp,
@@ -948,7 +946,7 @@ function buildProxyInit(session, mapEntry, viewer, status, enterTeam, zonedOf, o
     // The target's own world, imported and hashed exactly as Map Viewer's is.
     world: { hash: mapEntry.hash, url: mapEntry.url },
     currentMap: mapEntry.fileName,
-    viewableMaps: getViewableMapsList(),
+    currentMapViewable: true,
     // Every target this instance carries, this one included, so a proxied
     // player can move between them and back to the local game without a link.
     proxies: getProxyDestinations(),

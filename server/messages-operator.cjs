@@ -30,7 +30,8 @@ let applyServerConfigChanges;
 let configPath;
 let endMatch;
 let getRemoteServerList;
-let getViewableMapsList;
+let getViewableMapEntry;
+let noteMapUse;
 let hashRemainingMapsInBackground;
 let invalidateListTables;
 let log;
@@ -80,7 +81,8 @@ function useServer(deps, live) {
     configPath,
     endMatch,
     getRemoteServerList,
-    getViewableMapsList,
+    getViewableMapEntry,
+    noteMapUse,
     hashRemainingMapsInBackground,
     invalidateListTables,
     log,
@@ -114,7 +116,7 @@ function handleGetMaps(player, ws) {
   // Reply with all .bzw files in maps/ plus 'random', and indicate current map.
   // Open to every player -- browsing and the View dialog need this list, and
   // only `setMap` (switching the live match) stays operator-only below.
-  sendMapList(ws);
+  sendMapList(ws, { withViewable: true });
   return;
 }
 
@@ -487,7 +489,8 @@ function handleImportMapForView(player, ws, message) {
     // One of this server's own maps: the same request and the same
     // reply, with the conversion standing where the download would.
     prepareMapForView(file).then((prepared) => {
-      if (prepared) reply(true, { viewableMaps: getViewableMapsList() });
+      if (prepared) noteMapUse(file, 'views', player.mapStatsWho);
+      if (prepared) reply(true, { entry: getViewableMapEntry(file) });
       else reply(false, { reason: 'no such map' });
     });
     return;
@@ -501,7 +504,7 @@ function handleImportMapForView(player, ws, message) {
       if (how === 'unchanged') log(`Viewmap link kept the cached copy of ${host}:${port}: its world hash is unchanged`);
       if (how === 'reused') log(`Viewmap link reused the cached copy of ${host}:${port}, ${file} (${byteLength} bytes)`);
       if (how === 'imported') log(`Viewmap link imported remote map ${host}:${port} as ${file} (${byteLength} bytes)`);
-      reply(true, { viewableMaps: getViewableMapsList() });
+      reply(true, { entry: getViewableMapEntry(file) });
     })
     .catch((error) => {
       logError(`Remote map import from ${host}:${port} for a viewmap link failed:`, error);

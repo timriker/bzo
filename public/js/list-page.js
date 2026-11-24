@@ -66,9 +66,10 @@ window.attachTable = function attachTable(tableId, filterId) {
 
 // ---------------------------------------------------------------------------
 // The filter language, which is upstream's (`src/bzflag/ServerListFilter.cxx`).
-// Text with no leading slash is a glob over address, description, version, hash and owner. After a
-// slash comes a comma-separated set of filters, combined with AND; a second
-// slash starts another set, and a server matching any set is shown (OR). A
+// Text with no leading slash is a glob over address, description, version,
+// hash, owner and a map's own description. After a slash comes a
+// comma-separated set of filters, combined with AND; a second slash starts
+// another set, and a server matching any set is shown (OR). A
 // filter is `+name`/`-name` for a boolean, `name<value` (`<`, `<=`, `>`, `>=`,
 // `=`) for a number, or `name)glob`/`name]regex` for a pattern. `#` is a
 // comment.
@@ -380,7 +381,8 @@ window.parseServerFilter = function parseServerFilter(source) {
       if (orFilter && orFilter.check(entry)) return true;
       if (headPattern && !headPattern.test(entry.a || '')
         && !headPattern.test(entry.d || '') && !headPattern.test(entry.hs || '')
-        && !headPattern.test(entry.ow || '') && !headPattern.test(entry.ve || '')) {
+        && !headPattern.test(entry.ow || '') && !headPattern.test(entry.ve || '')
+        && !headPattern.test(entry.de || '')) {
         return false;
       }
       return checkSet(sets[0], entry);

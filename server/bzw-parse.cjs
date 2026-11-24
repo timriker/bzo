@@ -1303,6 +1303,11 @@ function parseBZWServerOptions(lines) {
       options.flagsOnBuildings = true;
       options.gameplay.FLAGS_ON_BUILDINGS = true;
     }
+    // -sb: tanks may spawn on buildings, not only on the ground.
+    if (readOption('-sb')) {
+      options.spawnOnBuildings = true;
+      options.gameplay.SPAWN_ON_BUILDINGS = true;
+    }
     // -noradar: `_radarLimit` -1, no radar for anyone (CmdLineOptions.cxx:935).
     if (readOption('-noradar')) setVars.set('_radarLimit', '-1.0');
     // -j: tanks may jump. bzo already defaults this on, so the switch only
@@ -3772,6 +3777,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // in this function has a face nested inside it.
       const words = line.split(/\s+/);
       if (token === 'drawinfo') {
+        current.hasDrawInfo = true;
         currentDrawInfo = {
           depth: 0, closed: false,
           corners: [], vertices: [], normals: [], texcoords: [],
@@ -3828,6 +3834,21 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           && !(current.drawFaces && current.drawFaces.length > 0)) {
           warn(`Ignoring mesh "${current.name || current.definedIn || '(unnamed)'}" in ${mapLabel}, `
             + `${current.vertices.length} vertices with no faces`);
+        }
+        // A `decorative` mesh with a `drawInfo` is there to be looked at:
+        // upstream makes it passable to tanks and shots, every face with it
+        // (`CustomMesh.cxx:204`, `MeshObstacle::addFace`). Without a
+        // `drawInfo` the keyword does nothing.
+        if (current.decorative && current.hasDrawInfo) {
+          if (!(current.driveThrough && current.shootThrough)) {
+            warn(`A decorative mesh in ${mapLabel} is made passable`);
+          }
+          current.driveThrough = true;
+          current.shootThrough = true;
+          for (const face of current.faces) {
+            face.driveThrough = true;
+            face.shootThrough = true;
+          }
         }
         // The mesh's own transform, baked into its points here -- upstream
         // hands the same folded matrix to `MeshObstacle`'s constructor

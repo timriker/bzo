@@ -1341,6 +1341,20 @@ body.scoreboard-collapsed #mainhud {
   outline: none;
 }
 
+/* Local maps drop columns as the screen narrows, the least telling first:
+   Size, then Objects and Author. A row's tooltip and the filter still have
+   them. Columns: File, Date, Author, Size, Objects, Faces, Views, Servers,
+   Style. */
+@media (max-width: 48rem) {
+  #viewMapTable th:nth-child(4), #viewMapTable td:nth-child(4),
+  #viewMapTable th:nth-child(8), #viewMapTable td:nth-child(8) { display: none; }
+}
+@media (max-width: 36rem) {
+  #viewMapTable th:nth-child(3), #viewMapTable td:nth-child(3),
+  #viewMapTable th:nth-child(5), #viewMapTable td:nth-child(5),
+  #viewMapTable th:nth-child(7), #viewMapTable td:nth-child(7) { display: none; }
+}
+
 #viewOverlay .viewTable thead th {
   position: sticky;
   top: 0;
@@ -2893,4 +2907,15 @@ body.mouse-confined #mouseCursor {
       - (2 * var(--hud-edge))
       - var(--hud-edge-gap));
   }
+}
+
+/* Practice (docs/practice.md, "Settings"): the panel edits this browser's own
+   game, so it shows only the rows practice plays by, and a Level row the
+   server's panel has no use for. */
+#operatorOverlay.practiceMode .dialogContent > :not([data-practice]) {
+  display: none;
+}
+
+#operatorOverlay:not(.practiceMode) .practiceOnly {
+  display: none;
 }

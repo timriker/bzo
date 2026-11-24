@@ -64,6 +64,7 @@
   "shotMaxActive": 1,
   "shotTailLength": 4,
   "sky": "upstream",
+  "spawnOnBuildings": false,
   "superFlags": {
     "count": 0
   },

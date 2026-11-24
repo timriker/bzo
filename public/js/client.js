@@ -421,7 +421,11 @@ import {
   sentMoveStrayed,
 } from './drive.mjs';
 import { deadReckon } from './dead-reckoning.mjs';
-import { bzdbFromObject, evalBzdb, worldConfig as evaluateWorldConfig } from './bzdb.mjs';
+import { bzdbFromObject, evalBzdb, practiceConfig, worldConfig as evaluateWorldConfig } from './bzdb.mjs';
+import {
+  clampPracticeBots, PRACTICE_LEVELS, PRACTICE_MAP_SETTINGS, PRACTICE_MAX_BOTS, practiceUrl, readPracticeChoice,
+  readPracticeMapSettings, withPracticeMapSettings, writePracticeChoice, writePracticeMapSettings,
+} from './practice.mjs';
 import { applyWeatherVar } from './weather-vars.mjs';
 import { isStockTextureName } from './texture.js';
 import { normalizeAngle } from './motion.mjs';
@@ -1241,7 +1245,8 @@ function buildShareViewLink() {
   // A link is only worth handing over for a map this server has hashed and
   // will serve to whoever opens it -- which the served map is, but a `random`
   // world generated at startup is not. A Map Viewer link opened it already.
-  const served = isMapViewLink() || availableViewMaps.some((entry) => entry.file === mapFile);
+  const served = isMapViewLink() || (mapFile === currentMapFile ? currentMapViewable
+    : availableViewMaps.some((entry) => entry.file === mapFile));
   if (!watching && !replaying && (!mapFile || !served)) return null;
   const camNames = {
     [ROAM_VIEW.FREE]: 'free',
@@ -1378,6 +1383,12 @@ function syncMapViewerPreview() {
     }
     return;
   }
+  // Nothing chosen and no list yet: ask for it, and preview once it lands.
+  if (!selectedViewMapFile && availableViewMaps.length === 0 && !viewMapListRequested) {
+    viewMapListRequested = true;
+    sendToServer({ type: 'getMaps' });
+    return;
+  }
   const target = selectedViewMapFile || availableViewMaps[0]?.file || null;
   if (!target || target === previewedMapFile) return;
   const entry = availableViewMaps.find((candidate) => candidate.file === target);
@@ -1409,7 +1420,6 @@ const DESTINATION_LOCAL = 'local';
 // Practice against bots, offline (`offline-worker.mjs`), at one of Ace's
 // levels: `practice:easy`, and so on. Offered once a world has been saved to
 // play offline in.
-const PRACTICE_LEVELS = ['easy', 'normal', 'hard'];
 
 let availableProxies = [];
 let localDestinationTeams = [];
@@ -1439,8 +1449,9 @@ function currentDestination() {
   const replaying = params.get('replay');
   if (replaying) return `replay:${replaying}`;
   if (params.has('practice')) {
+    // A link without a level plays at this browser's last.
     const level = params.get('practice');
-    return `practice:${PRACTICE_LEVELS.includes(level) ? level : 'normal'}`;
+    return `practice:${PRACTICE_LEVELS.includes(level) ? level : readPracticeChoice().level}`;
   }
   // Map Viewer is practice with nobody else in it (`isMapViewLink`).
   if (isMapViewLink()) return 'practice:normal';
@@ -2990,12 +3001,8 @@ function worldFilePrepared(message) {
   const waiting = worldFilePreparations.get(message.file);
   if (!waiting) return;
   worldFilePreparations.delete(message.file);
-  const maps = Array.isArray(message.viewableMaps) ? message.viewableMaps : null;
-  if (maps) {
-    availableViewMaps = maps;
-    viewableMapEntries = maps;
-  }
-  waiting.resolve(message.success && maps ? maps.find((entry) => entry.file === message.file) || null : null);
+  if (message.success && message.entry) rememberViewableMap(message.entry);
+  waiting.resolve(message.success ? message.entry || null : null);
 }
 
 // GAME_CONFIG's own default (defaultBZDB.cxx's `worldSize`, doubled the same
@@ -4395,13 +4402,20 @@ function applyAdminUi() {
     && normalizeMessageEndpoint(chatTarget.value, CHAT_TARGET_ALL) === CHAT_TARGET_ADMIN) {
     chatTarget.value = String(CHAT_TARGET_ALL);
   }
+  // In practice the panel is anybody's: it sets their own game, not the
+  // server's.
+  const practice = isPracticeGame();
   const operatorBtn = document.getElementById('operatorBtn');
   if (operatorBtn) {
-    operatorBtn.disabled = !amAdmin;
-    operatorBtn.title = amAdmin
-      ? t('Show Operator Panel (O)')
-      : t('Operator: sign in with a bzflag.org global callsign that the server grants admin to');
+    operatorBtn.disabled = !amAdmin && !practice;
+    operatorBtn.title = practice ? t('Practice settings (O)')
+      : amAdmin
+        ? t('Show Operator Panel (O)')
+        : t('Operator: sign in with a bzflag.org global callsign that the server grants admin to');
   }
+  document.getElementById('operatorOverlay')?.classList.toggle('practiceMode', practice);
+  const operatorPanelTitle = document.getElementById('operatorPanelTitle');
+  if (operatorPanelTitle && practice) operatorPanelTitle.textContent = t('Practice');
   applyLoginUi();
 }
 
@@ -4904,14 +4918,28 @@ let TELEPORTER_OBSTACLES_BY_INDEX = new Map();
 let TELEPORTER_LINKS_BY_SOURCE_FACE = new Map();
 let TELEPORTER_INDEX = { teleporters: TELEPORTER_OBSTACLES_BY_INDEX, links: TELEPORTER_LINKS_BY_SOURCE_FACE };
 
-// Map Viewer (issue #68). `availableViewMaps` is `init.viewableMaps` verbatim
-// -- every map hashed so far, `{ file, hash, url }`. `selectedViewMapFile` is
+// Map Viewer (issue #68). `availableViewMaps` is every map hashed,
+// `{ file, hash, url }`, as `getMaps` last answered, plus any one map a
+// `?viewmap=` link or a View press was handed. `selectedViewMapFile` is
 // the dialog's staged choice; `previewedMapFile` is whichever map is actually
 // applied to the scene right now, non-null exactly while that differs from
 // the live match (dialog preview or actual Map Viewer play). `liveWorldData`
 // is the live match's own world payload, kept so leaving a preview restores
 // it without a re-fetch.
 let availableViewMaps = [];
+// Whether `getMaps` has been asked since `init`, so staging Map Viewer asks
+// once rather than on every repaint.
+let viewMapListRequested = false;
+// Whether the live match's map can be opened by link (`init`).
+let currentMapViewable = false;
+
+// One map's entry, as `importMapForView` hands it back, kept beside the rest.
+function rememberViewableMap(entry) {
+  const others = (list) => list.filter((candidate) => candidate.file !== entry.file);
+  availableViewMaps = [...others(availableViewMaps), entry];
+  viewableMapEntries = [...others(viewableMapEntries), entry];
+  viewableMapFiles.add(entry.file);
+}
 let selectedViewMapFile = null;
 let previewedMapFile = null;
 let liveWorldData = null;
@@ -8332,7 +8360,7 @@ function saveOfflineWorld(init) {
   const params = new URLSearchParams(window.location.search);
   if (params.has('watch') || params.has('replay')) return;
   const kept = { ...init };
-  for (const key of ['clientBuild', 'players', 'flags', 'viewableMaps', 'proxies', 'voiceRtcConfig',
+  for (const key of ['clientBuild', 'players', 'flags', 'proxies', 'voiceRtcConfig',
     'udpChannel', 'udpChannelIceServers', 'webTransport', 'listServer']) {
     delete kept[key];
   }
@@ -8388,6 +8416,14 @@ async function loadPracticeWorld(map) {
     const response = await fetch(`/api/practice/${encodeURIComponent(map)}`, { cache: 'no-store' });
     if (response.ok) {
       const world = await response.json();
+      // The map's own settings, from the world this page loads to draw it
+      // anyway (and keeps, by hash, so it is fetched once).
+      // Kept with the base config rather than played into it, so the player's
+      // own settings for this map go in as the map's do (`practiceInit`).
+      const played = await loadWorldFile(world.init.world);
+      if (!played) throw new Error('no world');
+      const { bzdb, teamMode } = practiceConfig(world.init.configBase, played);
+      Object.assign(world.init, { bzdb, teamMode, gameplay: played.gameplay || {} });
       try {
         localStorage.setItem(PRACTICE_WORLD_KEY + map, JSON.stringify({ ...world, format: KEPT_WORLD_FORMAT }));
       } catch {
@@ -8403,6 +8439,30 @@ async function loadPracticeWorld(map) {
   } catch {
     return null;
   }
+}
+
+// How many bots this practice game was started with, for the panel's row.
+let practiceBotCount = 0;
+
+// Whether this page plays practice of its own choosing, whose settings are
+// this player's to change in the Operator panel. Map Viewer is practice with
+// nobody in it, and has nothing to set.
+function isPracticeGame() {
+  return offlinePlay && currentDestination().startsWith('practice:') && !isMapViewLink();
+}
+
+// The config a practice world plays by: this server's base, the map's own
+// game, and over that what this player changed on the map in the Operator
+// panel (practice.mjs). A world kept before the base was kept plays as kept.
+function practiceInit(init) {
+  if (!init?.configBase) return init;
+  const settings = readPracticeMapSettings(init.currentMap);
+  const { config } = practiceConfig(init.configBase, {
+    bzdb: init.bzdb,
+    gameplay: withPracticeMapSettings(init.gameplay, settings),
+    teamMode: init.teamMode,
+  });
+  return { ...init, config };
 }
 
 function shouldPlayOffline() {
@@ -8473,11 +8533,15 @@ function connectToServer() {
   if (practicing) offlinePlay = true;
   if (offlinePlay) {
     const host = new Worker(new URL('./offline-worker.mjs', import.meta.url), { type: 'module' });
+    const practiceBots = /^\d+$/.test(params.get('bots') || '')
+      ? clampPracticeBots(params.get('bots')) : readPracticeChoice().bots;
+    practiceBotCount = practicing && !isMapViewLink() ? practiceBots : 0;
     host.postMessage({
-      world: practicing ? practiceSource : readOfflineWorld(),
+      world: practicing ? { ...practiceSource, init: practiceInit(practiceSource.init) } : readOfflineWorld(),
       level: practicing ? currentDestination().slice('practice:'.length) : 'hard',
-      // `&bots=N`: how many Aces practice against; the worker keeps it in range.
-      ...(practicing && /^\d+$/.test(params.get('bots') || '') ? { bots: Number(params.get('bots')) } : {}),
+      // `&bots=N`, or this browser's last choice: how many Aces practice
+      // against.
+      ...(practicing ? { bots: practiceBots } : {}),
       ...(practicing && isMapViewLink() ? { bots: 0 } : {}),
     });
     ws = createPortTransport(host);
@@ -8854,9 +8918,11 @@ function receiveInit(message) {
   if (serverMotdEl) serverMotdEl.textContent = serverMotdText;
   announceServerTextIfChanged();
   worldTime = message.worldTime;
-  // Every map hashed so far (issue #68's Map Viewer picker) -- a fresh
-  // connection, a fresh list, and no preview staged against the old one.
-  availableViewMaps = Array.isArray(message.viewableMaps) ? message.viewableMaps : [];
+  // A fresh connection, no map list until a player wants one (`getMaps`),
+  // and no preview staged against the old one.
+  availableViewMaps = [];
+  viewMapListRequested = false;
+  currentMapViewable = message.currentMapViewable === true;
   // Which of them the live match is on, so a share link made without ever
   // opening the View dialog still names the world it was made in.
   currentMapFile = message.currentMap || '';
@@ -8997,13 +9063,6 @@ function receiveInit(message) {
     selectedPlayerTeam = PLAYER_TEAM.OBSERVER;
     syncPlayerTeamSelector();
   }
-  // `?viewmap=` (issue #68), the same shape of link: Map Viewer is
-  // Observer on the wire, offered wherever Observer is, so it only means
-  // something if the server offers Observer at all and has actually
-  // hashed the requested file by now.
-  const autoViewingMapAvailable = autoViewMapTarget !== null
-    && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER)
-    && availableViewMaps.some((entry) => entry.file === autoViewMapTarget);
 
   // The rest of this handler decides how to join, which depends on
   // whether Map Viewer staged -- so it wraps in a closure rather than
@@ -9054,14 +9113,12 @@ function receiveInit(message) {
 
   if (viewingOffline) {
     finishInit(false);
-  } else if (autoViewingMapAvailable) {
-    finishInit(true);
   } else if (autoViewMapTarget !== null && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER)) {
-    // Not already hashed -- but a remote import's own name still says
-    // which server to ask (see `parseImportMapFileName` in server.js),
-    // and bzo only keeps that cache for an hour (`IMPORT_REUSE_MS`), so a
-    // shared link outliving it asks the server to fetch it again rather
-    // than silently falling through to an ordinary join.
+    // `?viewmap=` (issue #68): Map Viewer is Observer on the wire, so it
+    // only means something where Observer is offered. The server is asked
+    // for the one map: one of its own is written if it is not yet, and a
+    // remote import's name still says which server to fetch it from again
+    // (see `parseImportMapFileName` in server.js).
     requestMapImportForView(autoViewMapTarget, sequenceId, () => finishInit(true), () => finishInit(false));
   } else {
     // An unknown name that is not a remote import's own, or a server
@@ -10920,15 +10977,13 @@ function handleMapsList(message) {
   // theirs until they commit or cancel.
   if (!operatorStaged) syncOperatorPanelFromServer();
 
-  // The entry dialog's own picker reads `availableViewMaps`, which `init`
-  // seeds once. A map hashed after that -- the background trickle finishing
-  // its pass, or a remote import landing -- arrives as one of these, so the
-  // list has to take it too or it stays stuck on whatever existed the moment
-  // this client connected.
+  // The map rows come only in reply to `getMaps`; a list sent after an
+  // Operator action carries names alone and leaves them as they are.
   if (Array.isArray(message.viewableMaps)) {
     availableViewMaps = message.viewableMaps;
+    populateViewMapTable(message.viewableMaps);
+    syncMapViewerPreview();
   }
-  populateViewMapTable(Array.isArray(message.viewableMaps) ? message.viewableMaps : []);
 }
 
 // The View dialog's own state. Two independent replies (`mapList` and
@@ -11037,6 +11092,18 @@ function populateViewMapTable(viewableMaps) {
       };
       const styleCell = document.createElement('td');
       styleCell.textContent = stats?.style || '';
+      const meta = stats?.metadata || {};
+      // The year it was made, or `≤` the year an archive held it; sorted by
+      // the full date.
+      const dateCell = document.createElement('td');
+      const created = String(meta.created?.[0] || '');
+      const archived = String(meta.archived?.[0] || '');
+      dateCell.textContent = created ? created.slice(0, 4) : archived ? `≤${archived.slice(0, 4)}` : '';
+      dateCell.dataset.value = created || archived;
+      const authorCell = document.createElement('td');
+      authorCell.textContent = (meta.author || []).map((name) => String(name).replace(/<[^>]*>/g, '').trim()).join(', ');
+      // What the filter finds besides the row's own text.
+      row.dataset.search = [...(meta.title || []), ...(meta.description || [])].join(' ');
       // The breakdown rides on the row's own tooltip rather than in columns:
       // it is detail to read about one map, not a number to compare maps by.
       if (stats) row.title = describeMapStats(stats);
@@ -11046,9 +11113,13 @@ function populateViewMapTable(viewableMaps) {
       makeRowActivate(row, () => viewMapFile(entry.file), t('View {map}', { map: entry.file }));
       row.append(
         nameCell,
+        dateCell,
+        authorCell,
         numberCell(stats?.size),
         numberCell(stats?.objects),
         numberCell(stats?.faces),
+        numberCell(entry.views || undefined),
+        numberCell(entry.servers || undefined),
         styleCell,
       );
       tbody.appendChild(row);
@@ -11323,8 +11394,8 @@ function handleImportMapForViewResult(message) {
   const pending = pendingViewMapImport;
   if (!pending || pending.file !== message.file || pending.sequenceId !== activeInitSequence) return;
   pendingViewMapImport = null;
-  if (message.success) {
-    if (Array.isArray(message.viewableMaps)) availableViewMaps = message.viewableMaps;
+  if (message.success && message.entry) {
+    rememberViewableMap(message.entry);
     pending.onSuccess();
   } else {
     setHudAlert(2, t('Could not load that server\'s map: {reason}', { reason: message.reason || t('import failed') }), 6, true);
@@ -11359,6 +11430,11 @@ function attachSortFilter(tableId, filterId) {
           const bn = parseFloat(bcell?.dataset.value ?? bv);
           return ((Number.isNaN(an) ? -Infinity : an) - (Number.isNaN(bn) ? -Infinity : bn)) * dir;
         }
+        // A cell's own sort value where it has one (a map's full date), and a
+        // blank last whichever way the column is sorted.
+        av = acell?.dataset.value ?? av;
+        bv = bcell?.dataset.value ?? bv;
+        if (!av !== !bv) return av ? -1 : 1;
         return av.localeCompare(bv) * dir;
       });
       dir *= -1;
@@ -11370,7 +11446,8 @@ function attachSortFilter(tableId, filterId) {
     filterInput.addEventListener('input', () => {
       const q = filterInput.value.toLowerCase();
       Array.from(tbody.rows).forEach((row) => {
-        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        const text = `${row.textContent} ${row.dataset.search || ''}`.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
       });
     });
   }
@@ -11534,6 +11611,12 @@ function getOperatorServerState() {
     botPilot: serverOperatorConfig.botPilot || DEFAULT_PILOT,
     botModel: serverOperatorConfig.botModel || DEFAULT_TANK_MODEL_ID,
     tankModel: serverOperatorConfig.tankModel || DEFAULT_TANK_MODEL_ID,
+    // Practice's own, read from the game this page is playing.
+    ...(isPracticeGame() ? {
+      jumping: gameConfig?.ALLOW_JUMPING === true,
+      botFill: practiceBotCount,
+      practiceLevel: currentDestination().slice('practice:'.length),
+    } : {}),
   };
 }
 
@@ -11556,6 +11639,7 @@ function getOperatorNumberBounds(key, state) {
   if (key === 'shotMaxActive') return { min: SHOT_MAX_ACTIVE_MIN, max: SHOT_MAX_ACTIVE_MAX };
   if (key === 'timeLimit') return { min: 0, max: OPERATOR_TIME_LIMIT_MAX };
   if (key === 'maxPlayerScore' || key === 'maxTeamScore') return { min: 0, max: OPERATOR_SCORE_LIMIT_MAX };
+  if (key === 'botFill' && isPracticeGame()) return { min: 0, max: PRACTICE_MAX_BOTS };
   if (key === 'botFill') return { min: 0, max: Number(state?.maxPlayers) || OPERATOR_LIMIT_MAX };
   // At least one tank: a server that allows none is one nobody can play on.
   if (key === 'maxPlayers') return { min: 1, max: OPERATOR_LIMIT_MAX };
@@ -11817,6 +11901,8 @@ function paintOperatorRows(state) {
   if (botFillValue && !(state.botFill > 0)) botFillValue.textContent = t('Off');
   const botPilotSelect = document.getElementById('botPilotSelect');
   if (botPilotSelect) botPilotSelect.value = state.botPilot;
+  const practiceLevelSelect = document.getElementById('practiceLevelSelect');
+  if (practiceLevelSelect && state.practiceLevel) practiceLevelSelect.value = state.practiceLevel;
   // The models the tank picker offers, which can change while the server runs
   // (`data/obj/`), so filled each time rather than once.
   const modelOptions = () => TANK_MODELS.map((model) => {
@@ -11878,7 +11964,23 @@ function syncOperatorPanel() {
 function openOperatorPanel() {
   operatorStaged = getOperatorServerState();
   syncOperatorPanel();
-  sendToServer({ type: 'getBans' });
+  if (isPracticeGame()) loadPracticeMapList();
+  else sendToServer({ type: 'getBans' });
+}
+
+// Practice has no connection to this server to ask for its maps over, so the
+// Map row asks over HTTP; with no server either, it offers the map in play.
+async function loadPracticeMapList() {
+  let maps = [];
+  try {
+    const response = await fetch('/api/maps');
+    if (response.ok) maps = (await response.json()).maps || [];
+  } catch {
+    // Offline: only the map in play.
+  }
+  if (currentMapFile && !maps.includes(currentMapFile)) maps.push(currentMapFile);
+  handleMapsList({ maps, currentMap: currentMapFile });
+  if (operatorStaged) syncOperatorPanel();
 }
 
 // Paints the panel from what the server has, for when nothing is staged. The
@@ -11904,6 +12006,10 @@ function discardOperatorPanel() {
 
 function commitOperatorPanel() {
   const changes = getOperatorChanges();
+  if (changes.length > 0 && isPracticeGame()) {
+    commitPracticeSettings(changes);
+    return;
+  }
   if (changes.length === 0 || !ws || ws.readyState !== WebSocket.OPEN) return;
   const payload = { type: 'setOperatorConfig' };
   for (const key of changes) payload[key] = operatorStaged[key];
@@ -11911,6 +12017,20 @@ function commitOperatorPanel() {
   // Thrown away on send rather than on the reply: the reply is a restart for
   // half of these, and there is nothing to stage against afterwards.
   operatorStaged = null;
+}
+
+// Practice's confirm: the choices kept in this browser, and practice started
+// again on them. A map's own settings are kept for the map they were set on.
+function commitPracticeSettings(changes) {
+  const next = { ...getOperatorServerState(), ...operatorStaged };
+  const map = next.mapFile || currentMapFile;
+  const mapSettings = Object.fromEntries(changes
+    .filter((key) => key in PRACTICE_MAP_SETTINGS)
+    .map((key) => [key, next[key]]));
+  if (Object.keys(mapSettings).length > 0) writePracticeMapSettings(map, mapSettings);
+  writePracticeChoice({ level: next.practiceLevel, bots: next.botFill });
+  operatorStaged = null;
+  window.location.href = practiceUrl({ level: next.practiceLevel, map, bots: next.botFill });
 }
 
 // Each row edits the staged copy and nothing else. Called once, and every
@@ -12062,6 +12182,8 @@ function wireOperatorPanel() {
   }
   const botModelSelect = document.getElementById('botModelSelect');
   botModelSelect?.addEventListener('change', () => stageOperatorChange('botModel', botModelSelect.value));
+  const practiceLevelSelect = document.getElementById('practiceLevelSelect');
+  practiceLevelSelect?.addEventListener('change', () => stageOperatorChange('practiceLevel', practiceLevelSelect.value));
   const tankModelSelect = document.getElementById('tankModelSelect');
   tankModelSelect?.addEventListener('change', () => stageOperatorChange('tankModel', tankModelSelect.value));
   const mapList = document.getElementById('mapList');
@@ -18011,7 +18133,8 @@ function setXRSettingsMenuScreen(screen) {
   xrSettingsMenuNavigationDirection = 0;
   xrSettingsMenuNextRepeatAt = 0;
   syncXRPlayerScreenCameraOverride();
-  if (screen === 'operator') {
+  if (screen === 'operator' && isPracticeGame()) loadPracticeMapList();
+  else if (screen === 'operator') {
     sendToServer({ type: 'getMaps', requestId: Math.floor(Math.random() * 1e9) });
   }
 }
@@ -18154,7 +18277,7 @@ function getXROperatorMenuItems() {
     ? ([...mapList.options].find((option) => option.value === staged.mapFile)?.textContent
       || staged.mapFile || 'Loading...')
     : 'Loading...';
-  return [
+  const items = [
     {
       id: 'operatorTitleXR',
       label: 'Title',
@@ -18276,6 +18399,14 @@ function getXROperatorMenuItems() {
     { id: 'operatorDesktopXR', label: 'Upload Map', value: 'Desktop only', disabled: true },
     { id: 'backXR', label: 'Back', value: '' },
   ];
+  if (!isPracticeGame()) return items;
+  // Practice's own rows, as the flat panel shows them, and its level.
+  const practiceRows = new Set(['operatorMapXR', 'operatorShotsXR', 'operatorRicochetXR', 'operatorJumpingXR',
+    'operatorBotFillXR', 'operatorApplyXR', 'operatorCancelXR', 'backXR']);
+  const kept = items.filter((item) => practiceRows.has(item.id));
+  const level = { id: 'operatorPracticeLevelXR', label: 'Level', value: staged.practiceLevel, adjustable: true };
+  kept.splice(kept.findIndex((item) => item.id === 'operatorBotFillXR') + 1, 0, level);
+  return kept;
 }
 
 function getXRSettingsMenuDefinition() {
@@ -18360,6 +18491,9 @@ function adjustXRSettingsMenuItem(item, direction) {
   if (item.id === 'operatorBotFillXR') {
     stageOperatorNumber('botFill', direction);
     return true;
+  }
+  if (item.id === 'operatorPracticeLevelXR') {
+    return cycleSelectElement(document.getElementById('practiceLevelSelect'), direction);
   }
   if (item.id === 'operatorBotPilotXR') {
     if (!operatorStaged) operatorStaged = getOperatorServerState();

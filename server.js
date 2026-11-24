@@ -209,6 +209,7 @@ const {
   dropSpawnPosition: dropSpawnPositionOn,
   getRandomZonePoint,
   pickSpawnPosition,
+  spawnsOnBuildings,
   teamSpawnZones,
 } = require('./public/js/spawn.mjs');
 const { MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, normalizeAngle } = require('./public/js/motion.mjs');
@@ -218,7 +219,6 @@ const { BZDB_DEFAULTS } = require('./public/js/bzdb-defaults.mjs');
 const { varZoneAt } = require('./public/js/zone-vars.mjs');
 const {
   BZDB_CONFIG_VARS,
-  bzdbFromObject,
   bzdbIsTrue,
   worldConfig,
 } = require('./public/js/bzdb.mjs');
@@ -300,6 +300,7 @@ const {
 } = require('./server/list-server.cjs');
 const mapOverview = require('./server/map-overview.cjs');
 const { createBzfsWorldTracker } = require('./server/bzfs-worlds.cjs');
+const { createMapStats } = require('./server/map-stats.cjs');
 const { createMapIndex } = require('./server/map-index.cjs');
 const {
   createLagTracker,
@@ -1693,11 +1694,13 @@ app.get('/api/world/file/:file', async (req, res) => {
 
 // A practice game on any map this server holds, bzfs imports included
 // (docs/practice.md): what offline play needs in place of a server's
-// `init` -- the map, and the config it plays by: bzo's defaults with the map's
-// own `-ms`, options and BZDB laid over, as a server running it would. A
+// `init` -- the map, and the config this server deals its maps by. The
+// client lays the map's own `-ms`, options and BZDB over that from the world
+// it downloads anyway (`practiceConfig`), so the world is never read here. A
 // bzfs server's plugins do not come with it.
 app.get('/api/practice/:file', async (req, res) => {
   const { file } = req.params;
+  noteMapUse(file, 'practice', mapStatsWho(requestAddress(req), req.get('user-agent')));
   if (parseImportMapFileName(file)) {
     try {
       await holdImportedWorld(file);
@@ -1714,25 +1717,13 @@ app.get('/api/practice/:file', async (req, res) => {
     res.status(404).json({ error: 'no such map' });
     return;
   }
-  let map;
-  try {
-    map = JSON.parse(await fs.promises.readFile(path.join(MAP_CACHE_DIR, `${entry.hash}.json`), 'utf8'));
-  } catch {
-    res.status(404).json({ error: 'no such map' });
-    return;
-  }
-  // All but `_disableBots`: practice runs in the player's own browser against
-  // bzo's bots, so a bzfs server's ban on client-side bots is not this game's
-  // to keep, and the autopilot stays on offer.
-  const bzdb = Object.fromEntries(Object.entries(map.bzdb || {})
-    .filter(([name]) => name.toLowerCase() !== '_disablebots'));
   res.set('Cache-Control', 'no-store');
   res.json({
     init: {
       // Jumping as this server's own config has it, or for a bzfs import off
       // unless its `-j` says otherwise, as that server ran it; ricochet off
       // unless the map's `+r` turns it on.
-      config: worldConfig({
+      configBase: {
         ...GAME_CONFIG_DEFAULTS,
         ALLOW_JUMPING: !parseImportMapFileName(file) && serverConfig.jumping === true,
         ALL_SHOTS_RICOCHET: false,
@@ -1740,18 +1731,23 @@ app.get('/api/practice/:file', async (req, res) => {
         // count its `-s` gave, from every flag but those its `-f` took out.
         SUPER_FLAG_COUNT: parseImportMapFileName(file) ? 0 : SUPER_FLAGS.count,
         FLAGS_ON_BUILDINGS: !parseImportMapFileName(file) && FLAGS_ON_BUILDINGS,
+        SPAWN_ON_BUILDINGS: !parseImportMapFileName(file) && SPAWN_ON_BUILDINGS,
         SUPER_FLAG_POOL: parseImportMapFileName(file) ? FLAG_ABBREVIATIONS.filter((type) => !isTeamFlag(type))
           : SUPER_FLAGS.allowed,
-        ...(map.gameplay || {}),
-      }, bzdbFromObject(bzdb)),
-      bzdb,
+      },
       world: { url: entry.url, hash: entry.hash },
-      teamMode: map.teamMode || { enabled: false, teams: ['rogue'] },
       currentMap: entry.fileName || file,
       player: {},
     },
     spawns: [],
   });
+});
+
+// This server's maps by name, for the Operator panel's Map row in practice,
+// which has no connection here to ask over.
+app.get('/api/maps', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=60');
+  res.json({ maps: listLocalMapFiles().filter((fileName) => fileName !== 'random') });
 });
 
 // One obstacle's block in its map file (`obstacleSourceFor`), by world hash
@@ -2558,6 +2554,28 @@ function listFilterInput(filterId, t) {
   return `<input id="${escapeHtml(filterId)}" class="clearable" type="text" placeholder="${escapeHtml(t('Filter…'))}">`;
 }
 
+// A map's date as its row shows it: the year it was made, or `≤` the year an
+// archive held it when nothing says when it was made. `sortKey` is the full
+// date either way, so the column sorts by day.
+function mapDate(metadata) {
+  const created = String(metadata?.created?.[0] || '');
+  const archived = String(metadata?.archived?.[0] || '');
+  if (created) return { label: created.slice(0, 4), sortKey: created };
+  if (archived) return { label: `≤${archived.slice(0, 4)}`, sortKey: archived };
+  return { label: '', sortKey: '' };
+}
+
+// Seconds of play as the pane says them: `3h 20m`, or minutes alone.
+function formatPlayTime(seconds) {
+  const minutes = Math.round(seconds / 60);
+  return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`;
+}
+
+// An author as a column shows one: the name, without an address in `<...>`.
+function authorName(author) {
+  return String(author).replace(/<[^>]*>/g, '').trim();
+}
+
 // The local maps list, given the same shape as the two server lists above: one
 // line per map, a readout pane for the selected one, a sortable header and the
 // filter box. The row carries the three numbers the in-client View picker
@@ -2581,12 +2599,13 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
       bzw: bzwPath ? statSizeBytes(bzwPath) : 0,
       json: registered ? statSizeBytes(path.join(MAP_CACHE_DIR, `${registered.hash}.json`)) : 0,
       brotli: registered ? brotliSizeBytes(`${registered.hash}.json`) : 0,
+      use: mapStats.summary(map.fileName),
     };
   });
 
-  // `a`, `d`, `ow`, `ve` and `hs` are the fields the filter box's own glob
-  // looks at, so on this list typing a word matches a file name, a style or
-  // the map's title, its authors, its version or a hash. The `/` filter
+  // `a`, `d`, `ow`, `ve`, `de` and `hs` are the fields the filter box's own
+  // glob looks at, so on this list typing a word matches a file name, a style
+  // or the map's title, its authors, its version, its description or a hash. The `/` filter
   // language is about servers and is not offered here -- there is no `?`
   // beside this box.
   const data = entries.map((entry) => ({
@@ -2594,6 +2613,10 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
     d: [entry.stats?.style, ...(entry.stats?.metadata?.title || [])].filter(Boolean).join(' '),
     ow: (entry.stats?.metadata?.author || []).join(', '),
     ve: (entry.stats?.metadata?.version || []).join(' '),
+    de: (entry.stats?.metadata?.description || []).join(' '),
+    dt: mapDate(entry.stats?.metadata).sortKey,
+    vw: entry.use.views,
+    sv: Object.keys(entry.use.servers).length,
     n: entry.file.toLowerCase(),
     o: entry.stats ? entry.stats.objects || 0 : 0,
     fa: entry.stats ? entry.stats.faces || 0 : 0,
@@ -2618,7 +2641,11 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
       + `<span class="num col-obj">${stats ? num(stats.objects) : ''}</span>`
       + `<span class="num col-fa">${stats ? num(stats.faces) : ''}</span>`
       + `<span class="num col-sz">${stats ? num(stats.size) : ''}</span>`
+      + `<span class="num col-vw">${entry.use.views || ''}</span>`
+      + `<span class="num col-sv">${Object.keys(entry.use.servers).length || ''}</span>`
       + listHashLetter(entry.hash)
+      + `<span class="col-yr">${escapeHtml(mapDate(stats?.metadata).label)}</span>`
+      + `<span class="col-au">${escapeHtml((stats?.metadata?.author || []).map(authorName).join(', '))}</span>`
       + `<span class="addr">${escapeHtml(entry.file)}</span>`
       + `<span class="desc dim">${escapeHtml(mapStyleLabel(entry))}</span>`
       + `</a></li>`;
@@ -2627,11 +2654,17 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
   const objLabel = t('Obj');
   const facesLabel = t('Faces');
   const sizeLabel = t('Size');
+  const viewsLabel = t('Views');
+  const serversLabel = t('Servers');
   const head = `<div class="shead">`
     + `<button class="num col-obj" data-field="o" title="${escapeHtml(t('Obstacles in the world'))}">${escapeHtml(objLabel)}</button>`
     + `<button class="num col-fa" data-field="fa" title="${escapeHtml(t('Mesh faces in the world'))}">${escapeHtml(facesLabel)}</button>`
     + `<button class="num col-sz" data-field="sz" title="${escapeHtml(t('World size'))}">${escapeHtml(sizeLabel)}</button>`
+    + `<button class="num col-vw" data-field="vw" title="${escapeHtml(t('Times viewed, one a day for each visitor'))}">${escapeHtml(viewsLabel)}</button>`
+    + `<button class="num col-sv" data-field="sv" title="${escapeHtml(t('Servers on the BZFlag list seen running this map'))}">${escapeHtml(serversLabel)}</button>`
     + listHashHeader(t)
+    + `<button class="col-yr" data-field="dt" data-text title="${escapeHtml(t('When the map was made, or ≤ the year an archive held it'))}">${escapeHtml(t('Date'))}</button>`
+    + `<button class="col-au" data-field="ow" data-text title="${escapeHtml(t('Map authors'))}">${escapeHtml(t('Author'))}</button>`
     + `<button class="name" data-field="n" data-text title="${escapeHtml(t('Map file name'))}">${escapeHtml(t('Name'))}</button>`
     + `<button class="name" data-field="d" data-text title="${escapeHtml(t('Game style the map sets'))}">${escapeHtml(t('Style'))}</button>`
     + `</div>`;
@@ -2640,7 +2673,9 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
   // nothing here and the header word is what sets each of these three.
   const widths = `--col-obj:${listColumnWidth(objLabel, data.map((entry) => entry.o || ''))};`
     + `--col-fa:${listColumnWidth(facesLabel, data.map((entry) => entry.fa || ''))};`
-    + `--col-sz:${listColumnWidth(sizeLabel, data.map((entry) => entry.sz || ''))}`;
+    + `--col-sz:${listColumnWidth(sizeLabel, data.map((entry) => entry.sz || ''))};`
+    + `--col-vw:${listColumnWidth(viewsLabel, data.map((entry) => entry.vw || ''))};`
+    + `--col-sv:${listColumnWidth(serversLabel, data.map((entry) => entry.sv || ''))}`;
   return `<div class="listWrap" id="${escapeHtml(listId)}" style="${widths}">`
     + `<div class="panes">${entries
       .map((entry, index) => renderMapReadout(entry, index, index !== 0, t, bzidOf)).join('\n')}</div>`
@@ -2652,7 +2687,7 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
         ? `<a class="action" href="/?viewmap=${encodeURIComponent(entry.file)}">${escapeHtml(t('View map'))}</a>`
           // The map offline, against bots, with its own settings, as a bzfs
           // server's row offers it.
-          + `<a class="action" href="/?practice=normal&amp;map=${encodeURIComponent(entry.file)}">${escapeHtml(t('Practice'))}</a>`
+          + `<a class="action" href="/?practice&amp;map=${encodeURIComponent(entry.file)}">${escapeHtml(t('Practice'))}</a>`
         : `<span class="muted">${escapeHtml(t('Still hashing'))}</span>`)
       + `</div>`).join('')
     + `</div>`
@@ -2905,6 +2940,10 @@ function renderMapReadout(entry, index, hidden, t, bzidOf) {
   // Where the map was published, which its name links to.
   const source = (stats.metadata?.sourceurl || []).find((url) => /^https?:\/\//i.test(url)) || '';
   const count = (value) => (value ? String(value) : '');
+  // A row only where there is something to say: an archive map knows little
+  // of itself, and a pane of empty labels says nothing.
+  const row = (label, value) => (value ? paneRow(label, value) : '');
+  const rawRow = (label, html) => (html ? paneRawRow(label, html) : '');
   const featureNames = { water: t('water'), weather: t('weather'), ground: t('custom ground') };
   const features = ['water', 'weather', 'ground']
     .filter((key) => stats[key])
@@ -2915,28 +2954,42 @@ function renderMapReadout(entry, index, hidden, t, bzidOf) {
     + `<p class="paneTitle">${linkTo(source, meta('title', ' ') || entry.file)}</p>`
     + `<div class="paneCols">`
     + `<div class="paneCol">`
-    + paneRow(t('Objects'), count(stats.objects))
-    + paneRow(t('Faces'), count(stats.faces))
-    + paneRow(t('Boxes'), count(counts.box))
-    + paneRow(t('Pyramids'), count(counts.pyramid))
-    + paneRow(t('Meshes'), count(counts.mesh))
-    + paneRow(t('Bases'), count(stats.bases))
-    + paneRow(t('Teleporters'), count(stats.teleporters))
+    + row(t('Objects'), count(stats.objects))
+    + row(t('Faces'), count(stats.faces))
+    + row(t('Boxes'), count(counts.box))
+    + row(t('Pyramids'), count(counts.pyramid))
+    + row(t('Meshes'), count(counts.mesh))
+    + row(t('Bases'), count(stats.bases))
+    + row(t('Teleporters'), count(stats.teleporters))
     + `</div>`
     + `<div class="paneCol">`
-    + paneRow(t('File'), entry.file)
-    + paneRawRow(t('Author'), describeAuthors(stats.metadata?.author, bzidOf))
-    + paneRow(t('Created'), meta('created', ', '))
-    + paneRow(t('Version'), meta('version', ' '))
-    + paneRow(t('License'), meta('license', ', '))
-    + paneRow(t('Description'), meta('description', ' '))
-    + paneRow(t('Style'), stats.style || '')
-    + paneRow(t('World size'), count(stats.size))
-    + paneRow(t('Has'), features)
-    + paneRow(t('Hashed'), entry.file === 'random' ? t('generated at boot') : (entry.hashed ? t('yes') : t('not yet')))
-    + paneRow(t('Hash'), entry.hash)
-    + paneRow(t('Modified'), entry.modified)
-    + paneRow('bzw/json/br', joinSizes(entry.bzw, entry.json, entry.brotli))
+    + row(t('File'), entry.file)
+    // An archived map's author is a name from years ago, which may belong to
+    // somebody else on the forums today, so it is not linked to a profile.
+    + (stats.metadata?.archived
+      ? row(t('Author'), (stats.metadata?.author || []).map(authorName).join(', '))
+      : rawRow(t('Author'), describeAuthors(stats.metadata?.author, bzidOf)))
+    + row(t('Created'), meta('created', ', '))
+    + row(t('Archived'), meta('archived', ', '))
+    + row(t('Version'), meta('version', ' '))
+    + row(t('License'), meta('license', ', '))
+    + row(t('Description'), meta('description', ' '))
+    + row(t('Note'), meta('note', ' '))
+    + row(t('Views'), entry.use.views ? String(entry.use.views) : '')
+    + row(t('Practice'), entry.use.practice ? String(entry.use.practice) : '')
+    + row(t('Played here'), entry.use.playSeconds
+      ? t('{time} by {players}', { time: formatPlayTime(entry.use.playSeconds), players: entry.use.players })
+      : '')
+    + row(t('Servers'), Object.entries(entry.use.servers)
+      .map(([key, seen]) => (seen.first === seen.last ? `${key} ${seen.last}` : `${key} ${seen.first}–${seen.last}`))
+      .join(', '))
+    + row(t('Style'), stats.style || '')
+    + row(t('World size'), count(stats.size))
+    + row(t('Has'), features)
+    + row(t('Hashed'), entry.file === 'random' ? t('generated at boot') : (entry.hashed ? t('yes') : t('not yet')))
+    + row(t('Hash'), entry.hash)
+    + row(t('Modified'), entry.modified)
+    + row('bzw/json/br', joinSizes(entry.bzw, entry.json, entry.brotli))
     + `</div>`
     + `</div></div>`
     + renderOverview(entry.overviewUrl, entry.file, t)
@@ -3235,6 +3288,7 @@ function renderListTables({
       fileName,
       hashed: MAP_REGISTRY.has(fileName),
     }));
+  if (localMaps.some((map) => mapAwaitsHashing(map.fileName))) hashRemainingMapsInBackground();
 
   // Both lists normalise into one entry shape, so there is one row renderer
   // and one pane renderer rather than a copy of each per table. `extras` are
@@ -3375,7 +3429,7 @@ function renderListTables({
         // The same map offline, against bots, imported first when it is not
         // held here (`holdImportedWorld`): its settings come with it, its
         // plugins do not.
-        + (opens ? action(`/?practice=normal&map=${encodeURIComponent(importFileName)}`, t('Practice'))
+        + (opens ? action(`/?practice&map=${encodeURIComponent(importFileName)}`, t('Practice'))
           + hostPortForm('/list/import', s, importedPath ? t('Re-import') : t('Import'))
           : '')),
     };
@@ -3729,7 +3783,16 @@ ${discoveryHead}
   .col-obj { width: var(--col-obj, 4ch); }
   .col-fa { width: var(--col-fa, 5ch); }
   .col-sz { width: var(--col-sz, 4ch); }
+  .col-vw { width: var(--col-vw, 5ch); }
+  .col-sv { width: var(--col-sv, 7ch); }
   .col-date { width: 19ch; }
+  .col-yr { width: 5ch; flex: none; }
+  .col-au { width: 14ch; flex: none; overflow: hidden; text-overflow: ellipsis; }
+  /* The map list drops columns as the screen narrows, the least telling
+     first; the pane and the filter still have every one of them. */
+  @media (max-width: 60rem) { .listWrap .col-fa { display: none; } }
+  @media (max-width: 48rem) { .listWrap .col-sz, .listWrap .col-au, .listWrap .col-sv { display: none; } }
+  @media (max-width: 36rem) { .listWrap .col-obj, .listWrap .col-vw { display: none; } }
   .col-len { width: 6ch; }
   .col-pl { width: var(--col-pl, 7ch); }
   .srow .dim { color: #999; }
@@ -4496,6 +4559,24 @@ let remoteServerListCache = { at: 0, servers: [] };
 // `/list` to have a picture, and no fresher (`server/bzfs-worlds.cjs`). The
 // callbacks fire on its own timer rather than at construction, which is why it
 // can name things defined much further down this file.
+// How much each local map is used (docs/map-archive-plan.md), beside
+// server.json since, unlike the cache, it cannot be rebuilt.
+const mapStats = createMapStats({
+  statePath: path.join(path.dirname(CONFIG_PATH), 'map-stats.json'),
+  logError,
+});
+
+// Who a use is counted for: a browser, by its address and user agent, hashed
+// so neither is kept. Null for bzo's own headless probes, which count nothing.
+function mapStatsWho(address, userAgent) {
+  if (/HeadlessChrome/.test(userAgent || '')) return null;
+  return crypto.createHash('sha256').update(`${address}|${userAgent || ''}`).digest('hex').slice(0, 16);
+}
+
+function noteMapUse(file, kind, who) {
+  if (who && listLocalMapFiles().includes(file)) mapStats.note(file, kind, who);
+}
+
 const bzfsWorlds = createBzfsWorldTracker({
   statePath: path.join(CACHE_DIR, 'bzfs-worlds.json'),
   queryServerStatus: (host, port) => queryServerStatus(host, port),
@@ -7891,15 +7972,51 @@ function resolveViewMapChoice(requested) {
 // `MAP_REGISTRY`: there is no "hashing in progress" state exposed to clients,
 // so a request that arrives too soon just sees a shorter list, and refreshing
 // sees more once this trickle catches up. `uploadMap` re-triggers this so a
-// map added mid-session becomes viewable without a restart.
+// map added mid-session becomes viewable without a restart, and the map list
+// re-triggers it for a file copied into the directory by hand. One pass runs
+// at a time; a call during one runs another once it ends.
+let mapHashPassRunning = false;
+let mapHashPassAgain = false;
+// Files a pass could not parse, by modification time, so the map list does
+// not start a worker for each of them on every render. An edit retries.
+const mapHashFailures = new Map();
+function mapFileMtimeMs(fileName) {
+  try {
+    return fs.statSync(resolveMapFilePath(fileName)).mtimeMs;
+  } catch {
+    return null;
+  }
+}
+// A registered map whose file has been written since it was read, as one
+// edited in place is. The live map's entry is the game's and stays.
+function registeredMapIsStale(fileName) {
+  const entry = MAP_REGISTRY.get(fileName);
+  if (!entry || entry === LIVE_MAP_ENTRY) return false;
+  const mtimeMs = mapFileMtimeMs(fileName);
+  return mtimeMs !== null && mtimeMs > entry.registeredAt;
+}
+
+// A map in the directory that no pass has registered, or has changed since,
+// and that has not already failed to parse as it stands.
+function mapAwaitsHashing(fileName) {
+  if (fileName === 'random') return false;
+  if (MAP_REGISTRY.has(fileName) && !registeredMapIsStale(fileName)) return false;
+  return mapHashFailures.get(fileName) !== mapFileMtimeMs(fileName);
+}
 function hashRemainingMapsInBackground() {
+  if (mapHashPassRunning) {
+    mapHashPassAgain = true;
+    return;
+  }
+  mapHashPassRunning = true;
   // The proxy targets' imports too, so the sweep at the end of the pass keeps
   // their index entries and worlds: a target still running the same world
   // after a restart is served the copy already held (`confirmImportUnchanged`).
   const available = new Set(listAvailableMapFiles());
   const proxied = [...proxyWorldFiles()].filter((fileName) => available.has(fileName));
   const pending = [...new Set([...listLocalMapFiles(), ...proxied])]
-    .filter((fileName) => fileName !== 'random' && !MAP_REGISTRY.has(fileName));
+    .filter((fileName) => fileName !== 'random'
+      && (!MAP_REGISTRY.has(fileName) || registeredMapIsStale(fileName)));
   const total = pending.length;
   let converted = 0;
   let restored = 0;
@@ -7917,20 +8034,19 @@ function hashRemainingMapsInBackground() {
           + (instancing.groups > 0 ? `; ${formatInstancing(instancing)}` : ''));
       }
       if (restored > 0) log(`Listed ${restored} unchanged map(s) from the map index`);
-      // Everyone already connected is holding whatever list this trickle had
-      // reached when their `init` went out -- which, on a restart that
-      // clients auto-rejoin into (see AGENTS.md), is routinely a short one.
-      // Nothing else ever revisits it, so the picker would stay missing
-      // maps until a reload. One push at the end of the pass fixes that for
-      // every open client at once.
-      if (converted + restored > 0) broadcastMapList();
       sweepMapCache();
       sweepStaleImports();
+      mapStats.prune(listLocalMapFiles());
       // Where the world tracker runs it clears pictures once its own pass is
       // complete, since only then are all of a list's hashes known. Anywhere
       // else the registry is all that names a picture, and it is complete now.
       if (!(BZFS_WORLD_THUMBNAILS && IS_DESIGNATED_LIST_SERVER)) purgeUnreferencedOverviews();
       precompress.start({ log }).catch((error) => logError('[BR] map hashing pass failed:', error));
+      mapHashPassRunning = false;
+      if (mapHashPassAgain) {
+        mapHashPassAgain = false;
+        hashRemainingMapsInBackground();
+      }
       return;
     }
     try {
@@ -7939,7 +8055,7 @@ function hashRemainingMapsInBackground() {
       // has not changed since a previous boot parsed it. Parsed otherwise, for
       // its hash, picture and stats only: nobody is playing it, and its world
       // is written when somebody views it (`prepareMapForView`).
-      if (MAP_REGISTRY.has(fileName)) {
+      if (MAP_REGISTRY.has(fileName) && !registeredMapIsStale(fileName)) {
         // Registered since the pass began, by a view or a proxy join.
       } else if (listFromMapIndex(fileName, filePath)) {
         restored += 1;
@@ -7954,6 +8070,8 @@ function hashRemainingMapsInBackground() {
       }
     } catch (error) {
       logError(`Could not hash map ${fileName}:`, error);
+      const mtimeMs = mapFileMtimeMs(fileName);
+      if (mtimeMs !== null) mapHashFailures.set(fileName, mtimeMs);
     }
     setTimeout(step, 0);
   };
@@ -7968,6 +8086,30 @@ hashRemainingMapsInBackground();
 // completion), and sweep both the map cache and its brotli sidecars for
 // whatever either of those just removed. Same cadence as the session pruner.
 setInterval(() => hashRemainingMapsInBackground(), 15 * 60 * 1000).unref?.();
+
+// A minute of play on the live map for each player in it -- not a bot, an
+// observer or a Map Viewer -- and, each time, the bzfs servers last seen
+// running a local map's world (docs/map-archive-plan.md, "Use counts").
+// This server's own listing is not one of them.
+setInterval(() => {
+  const whos = [...players.values()]
+    .filter((player) => player.joined && !player.serverBot && !isObserverTeam(player.team) && !player.viewMap)
+    .map((player) => player.mapStatsWho ?? mapStatsWho(player.clientIP, player.clientVersion))
+    .filter(Boolean);
+  if (listLocalMapFiles().includes(MAP_SOURCE)) mapStats.addPlay(MAP_SOURCE, 60, whos);
+  const own = new Set(ownOrigins());
+  for (const entry of MAP_REGISTRY.values()) {
+    if (!entry.bzfsHash || parseImportMapFileName(entry.fileName)) continue;
+    const seen = {};
+    for (const key of bzfsWorlds.serversWithWorld(entry.bzfsHash)) {
+      if (own.has(key)) continue;
+      const at = key.lastIndexOf(':');
+      const record = bzfsWorlds.recordFor(key.slice(0, at), Number(key.slice(at + 1)));
+      if (record?.checkedAt) seen[key] = record.checkedAt;
+    }
+    mapStats.noteServers(entry.fileName, seen);
+  }
+}, 60 * 1000).unref?.();
 // The live map's own game settings that are not BZDB -- its `-ms` -- which
 // upstream sends apart from BZDB and bzo lays straight into the config.
 {
@@ -12616,6 +12758,7 @@ function chooseSpawnPosition(player) {
     config: GAME_CONFIG,
     tanks,
     isFoe: (other) => areFoes(other.team, player.team, TEAMS_ALLOWED),
+    onBuildings: spawnsOnBuildings(GAME_CONFIG, mapWaterLevel?.height, player.serverBot === true),
   });
 }
 
@@ -13651,6 +13794,12 @@ if (mapWaterLevel && mapWaterLevel.height > 0 && !(mapServerOptions.flagsOnBuild
   log('Map option waterLevel: enabling flag spawns on buildings, the ground is underwater');
 }
 
+// -sb upstream: tanks may spawn on buildings, not only on the ground. A map's
+// `options` block or `server.json`'s `spawnOnBuildings` turns it on; a water
+// level does too (`spawnsOnBuildings`, public/js/spawn.mjs).
+const SPAWN_ON_BUILDINGS = mapServerOptions.spawnOnBuildings === true
+  || serverConfig.spawnOnBuildings === true;
+
 // -tft upstream. How long a team flag survives once its team has emptied and
 // nobody is carrying it.
 const configuredTeamFlagTimeout = Number(serverConfig.teamFlagTimeout);
@@ -13719,6 +13868,7 @@ const SUPER_FLAGS = normalizeSuperFlagConfig(
 // practice on the last world played has them too.
 GAME_CONFIG.SUPER_FLAG_COUNT = SUPER_FLAGS.count;
 GAME_CONFIG.FLAGS_ON_BUILDINGS = FLAGS_ON_BUILDINGS;
+GAME_CONFIG.SPAWN_ON_BUILDINGS = SPAWN_ON_BUILDINGS;
 GAME_CONFIG.SUPER_FLAG_POOL = SUPER_FLAGS.allowed;
 GAME_CONFIG.REQUIRED_FLAGS = { ...REQUIRED_FLAG_COUNTS };
 GAME_CONFIG.FORBIDDEN_FLAGS = [...MAP_FORBIDDEN_FLAGS];
@@ -14109,7 +14259,7 @@ let bzflagServer = null;
         return { team: index, size: sizes[team] || 0, wins: score.wins, losses: score.losses };
       });
     },
-    getGameSettings: bzflagGameSettings,
+    getGameSettings: () => bzflagGameSettings({ live: true }),
     getWorld: getBzflagWorld,
     getCacheUrl: bzflagCacheUrl,
     // The handshake's id is the player's bzo number, so every id a native
@@ -14226,10 +14376,17 @@ function startBzflagUpnp(localPort) {
 }
 
 // MsgGameSettings, as native clients and recordings are told it.
-function bzflagGameSettings() {
+//
+// A live client in a TeamFFA game is told ClassicCTF: upstream draws a
+// heading marker only for the player's own team flag, and only in CTF
+// (`prepareTheHUD`, playing.cxx:6835), and the team flag bzo shows a BZFlag
+// client at its waypoint is that flag. With no bases nothing else changes
+// for the client -- no base to capture on, none on the radar. The list and
+// pings, and a recording, keep the game's own type.
+function bzflagGameSettings({ live = false } = {}) {
   return {
     worldSize: GAME_CONFIG.MAP_SIZE,
-    style: GAME_TYPE,
+    style: live && GAME_TYPE === 'TeamFFA' ? 'ClassicCTF' : GAME_TYPE,
     gameOptionsBits: computeLocalGameOptionsBits(),
     maxShots: GAME_CONFIG.SHOT_MAX_ACTIVE,
     // One past the world's own: the slot a BZFlag client is shown its
@@ -18053,35 +18210,50 @@ function getAccelerationWindow(arrivalGap, clientSendGap) {
 
 
 
+// A registered map as a client is handed it: the View dialog's rows, and the
+// one entry a `?viewmap=` link or a View press asks for.
+function viewableMapEntry(entry) {
+  return {
+    file: entry.fileName,
+    hash: entry.hash,
+    url: entry.url,
+    stats: entry.stats || null,
+    // Whether its world is on disk to fetch. One that is not is asked for
+    // first (`importMapForView`), which writes it.
+    ready: Boolean(entry.keptAt),
+    ...viewableMapUse(entry.fileName),
+  };
+}
+
+// A local map's use counts, as the View dialog's columns show them.
+function viewableMapUse(fileName) {
+  if (parseImportMapFileName(fileName)) return {};
+  const use = mapStats.summary(fileName);
+  return { views: use.views, servers: Object.keys(use.servers).length };
+}
+
+function getViewableMapEntry(fileName) {
+  const entry = MAP_REGISTRY.get(fileName);
+  return entry ? viewableMapEntry(entry) : null;
+}
+
 function getViewableMapsList() {
   return Array.from(MAP_REGISTRY.values())
-    .map((entry) => ({
-      file: entry.fileName,
-      hash: entry.hash,
-      url: entry.url,
-      stats: entry.stats || null,
-      // Whether its world is on disk to fetch. One that is not is asked for
-      // first (`importMapForView`), which writes it.
-      ready: Boolean(entry.keptAt),
-    }))
+    .map(viewableMapEntry)
     // Sorted here rather than left in registration order. The registry is
     // filled in whatever order maps arrive -- the served map first, because
     // it is registered before anything else, then the background trickle's
     // own alphabetical pass, then any remote import whenever it lands -- and
-    // the entry dialog's picker steps through this list with left/right, so
-    // registration order reads as no order at all once one map has jumped
-    // the queue.
+    // the entry dialog's preview falls back to the first of them, so
+    // registration order would make that an arbitrary map.
     .sort((left, right) => left.file.localeCompare(right.file));
 }
 
-// Every client at once -- see `hashRemainingMapsInBackground`'s own call.
-function broadcastMapList() {
-  for (const player of players.values()) {
-    if (player.ws && player.ws.readyState === 1) sendMapList(player.ws);
-  }
-}
-
-function sendMapList(ws) {
+// The maps this server has, for the Operator panel's chooser, and with
+// `withViewable` the View dialog's rows: only `getMaps` asks for those, when
+// the dialog opens, so a list of hundreds of maps is not sent to a player who
+// never looks at it.
+function sendMapList(ws, { withViewable = false } = {}) {
   ws.send(JSON.stringify({
     type: 'mapList',
     maps: listAvailableMapFiles(),
@@ -18091,7 +18263,7 @@ function sendMapList(ws) {
       replays: uploads.list('replays').filter((name) => fs.existsSync(path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`))),
       plugins: uploads.list('plugins').filter((name) => fs.existsSync(path.join(RUNTIME_PLUGINS_DIR, name))),
     },
-    viewableMaps: getViewableMapsList(),
+    ...(withViewable ? { viewableMaps: getViewableMapsList() } : {}),
     currentMap: MAP_SOURCE,
     shotMaxActive: GAME_CONFIG.SHOT_MAX_ACTIVE,
     ricochet: GAME_CONFIG.ALL_SHOTS_RICOCHET,
@@ -18119,7 +18291,6 @@ bzfsProxy.useServer({
   currentWorldTime,
   getProxyDestinations,
   getRemoteServerList,
-  getViewableMapsList,
   importProxyWorld,
   importReplayWorld,
   isLocalAdminHttp,
@@ -18286,6 +18457,7 @@ function acceptConnection(ws, req) {
   // What `/clientquery` says it runs: bzo's own build for a browser, and the
   // browser; a BZFlag client replaces it with what it sent (`seatNativeClient`).
   player.clientVersion = `${BZO_APP_VERSION} web, ${shortUserAgent(req.headers['user-agent'] || '')}`;
+  player.mapStatsWho = mapStatsWho(player.clientIP || req.socket.remoteAddress, req.headers['user-agent']);
   player.headset = isHeadsetBrowserUA(req.headers['user-agent']);
   player.localAdmin = isLocalAdminRequest(req.socket.remoteAddress, req.headers, {
     enabled: LOCAL_ADMIN,
@@ -18411,17 +18583,14 @@ function acceptConnection(ws, req) {
     // client fetches `url` once; the hash-named, `immutable` response spares
     // a reconnect the re-fetch entirely.
     world: { hash: LIVE_MAP_ENTRY.hash, url: LIVE_MAP_ENTRY.url },
-    // Which of `viewableMaps` the live match is being played on. `mapList`
-    // carries the same field, but only in reply to `getMaps`, which nothing
-    // asks for until somebody opens the View or Operator dialog -- so without
-    // it here a client has no name for the world it is standing in.
+    // Which map the live match is being played on. `mapList` carries the
+    // same field, but only in reply to `getMaps`, which nothing asks for
+    // until somebody opens the View or Operator dialog -- so without it here
+    // a client has no name for the world it is standing in.
     currentMap: MAP_SOURCE,
-    // Every map hashed so far, for the join dialog's Map Viewer picker
-    // (issue #68). A map still hashing in the background is simply absent
-    // until a later `init` -- i.e. until the player reloads -- rather than
-    // arriving as a push update; the View dialog avoids that by asking fresh
-    // instead (`getMaps`/`mapList` carries the same list on demand).
-    viewableMaps: getViewableMapsList(),
+    // Whether that map can be viewed by link, for the share link. The list of
+    // every viewable map is `getMaps`'s, asked for when a player wants it.
+    currentMapViewable: MAP_REGISTRY.has(MAP_SOURCE),
     // The bzfs servers this instance proxies, so a player in the local game
     // can reach one from the entry dialog rather than needing a link
     // (`docs/proxy-plan.md`, "A way in that is not a link"). Empty on an
@@ -18679,6 +18848,7 @@ messagesPlay.useServer({
   requestPause,
   resetTeamFlags,
   resolveJoinName,
+  noteMapUse,
   resolveViewMapChoice,
   restoreConnectTime,
   restoreScore,
@@ -18710,8 +18880,9 @@ messagesOperator.useServer({
   configPath,
   endMatch,
   getRemoteServerList,
-  getViewableMapsList,
+  getViewableMapEntry,
   hashRemainingMapsInBackground,
+  noteMapUse,
   invalidateListTables,
   log,
   logError,

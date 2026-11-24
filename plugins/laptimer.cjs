@@ -154,6 +154,13 @@ const drivenOn = (entry) => (entry.bot ? 'bot' : `${CLIENT_NAMES[entry.client] ?
 const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
 
+// A registered player's callsign links to their forum profile by BZID, which
+// is numeric; anyone else's is plain text.
+const playerCell = (entry) => (/^\d+$/.test(String(entry.bzid ?? ''))
+  ? `<a href="https://forums.bzflag.org/memberlist.php?mode=viewprofile&amp;u=${entry.bzid}">`
+    + `${escapeHtml(entry.callsign)}</a>`
+  : escapeHtml(entry.callsign));
+
 // The records page for a period: each map's boards, the map being played
 // first, and a board with no laps left out. bzo's palette, as `/list` wears.
 function recordsPage(records, current, period, today) {
@@ -167,7 +174,7 @@ function recordsPage(records, current, period, today) {
       // On a board of every client, which one each lap was driven on.
       const mixed = which.id === 'registered' || which.id === 'everyone';
       const rows = list.map((entry, index) => `<tr><td>${index + 1}</td><td>${formatTime(entry.ms)}</td>`
-        + `<td>${escapeHtml(entry.callsign)}</td>${mixed ? `<td>${escapeHtml(drivenOn(entry))}</td>` : ''}`
+        + `<td>${playerCell(entry)}</td>${mixed ? `<td>${escapeHtml(drivenOn(entry))}</td>` : ''}`
         + `<td>${escapeHtml(String(entry.at ?? '').slice(0, 10))}</td></tr>`);
       return `<h3>${which.title}</h3>\n<table><thead><tr><th>#</th><th>Lap</th><th>Player</th>`
         + `${mixed ? '<th>On</th>' : ''}<th>Date</th></tr></thead>\n<tbody>${rows.join('\n')}</tbody>\n</table>`;

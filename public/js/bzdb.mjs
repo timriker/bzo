@@ -411,6 +411,22 @@ export function worldConfig(base, vars) {
   return config;
 }
 
+// What a world plays by in practice (docs/practice.md): `base`, the config a
+// server deals its own maps by, with the world's own `-ms`, options and BZDB
+// laid over, as a server running it would. All its BZDB but `_disableBots`:
+// practice runs in the player's own browser against bzo's bots, so a bzfs
+// server's ban on client-side bots is not this game's to keep, and the
+// autopilot stays on offer.
+export function practiceConfig(base, world) {
+  const bzdb = Object.fromEntries(Object.entries(world.bzdb || {})
+    .filter(([name]) => name.toLowerCase() !== '_disablebots'));
+  return {
+    config: worldConfig({ ...base, ...(world.gameplay || {}) }, bzdbFromObject(bzdb)),
+    bzdb,
+    teamMode: world.teamMode || { enabled: false, teams: ['rogue'] },
+  };
+}
+
 // A BZDB as JSON carries it, names to strings, back into the Map the readers
 // here take.
 export function bzdbFromObject(object) {

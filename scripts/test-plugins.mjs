@@ -869,10 +869,11 @@ ${extra}end
   };
   const page = pageFor(null);
   assert.ok(page.includes('<strong>All time</strong>'), 'all time unless asked');
-  assert.match(pageFor('day'), /<strong>Today<\/strong>[\s\S]*<td>1:01.00<\/td><td>racer<\/td>/, "and today's");
+  // A registered player links to their forum profile.
+  assert.match(pageFor('day'), /<strong>Today<\/strong>[\s\S]*<td>1:01.00<\/td><td><a href="https:\/\/forums\.bzflag\.org\/memberlist\.php\?mode=viewprofile&amp;u=42">racer<\/a><\/td>/, "and today's");
   assert.match(pageFor('week'), /<strong>Last 7 days<\/strong>/);
   const section = (title) => page.split(`<h3>${title}</h3>`)[1]?.split('<h3>')[0] ?? '';
-  assert.match(section('Registered players'), /<td>1:01.00<\/td><td>racer<\/td>/, 'the page lists the record');
+  assert.match(section('Registered players'), /<td>1:01.00<\/td><td><a href="https:\/\/forums\.bzflag\.org\/memberlist\.php\?mode=viewprofile&amp;u=42">racer<\/a><\/td>/, 'the page lists the record');
   assert.ok(!section('Registered players').includes('Ace'), "and a bot's lap is not a registered player's");
   assert.match(section('Everyone, bots included'), /<td>Ace<\/td><td>bot<\/td>/, 'but is on the board of everyone');
   host.unload('laptimer');

@@ -41,6 +41,9 @@ The groups at 12 may all be one operator's servers.
 - **Groups.** Permissions are admin-or-not. Upstream's groups file, which
   would hand them out finer, waits.
 - **The handicap events** wait for handicap (`docs/game-modes-plan.md`).
+- **A map's `-loadplugin`.** A map's `options` block naming a plugin is
+  reported as ignored; upstream loads it. bzo could load one it has
+  installed under that name, as `/loadplugin` does.
 
 ## Behind the proxy, not yet run
 

@@ -9,9 +9,8 @@ is what is still unbuilt.
 
 - **The entry dialog.** Once a world has been played, its Server row offers
   "Practice offline" at easy, normal and hard, on the last map played.
-- **`/list`.** Every map this server holds has a Practice button, at
-  normal, and so does every bzfs server where the operator set
-  `viewOtherServers`.
+- **`/list`.** Every map this server holds has a Practice button, and so
+  does every bzfs server where the operator set `viewOtherServers`.
 - **A link.** The same thing by hand:
 
 ```text
@@ -20,9 +19,9 @@ https://<this bzo>/?practice=<level>&map=<file>&bots=<n>
 
 | Parameter | Values | Otherwise |
 | --- | --- | --- |
-| `practice` | `easy`, `normal`, `hard` | any other value is `normal` |
+| `practice` | `easy`, `normal`, `hard` | this browser's last level, at first `normal` |
 | `map` | a map file this server lists, or `import-<host>_<port>.bzw` | the last world played |
-| `bots` | 0 to 15 | 3 |
+| `bots` | 0 to 15 | this browser's last count, at first 3 |
 
 The chat says where you are and how to leave: "Offline, against bots, in
 hix.bzw, ⚙ Settings → Player Options → Server: This server, joins the game."
@@ -31,6 +30,19 @@ A reload starts the same practice or view over.
 The arena is yours, so `/set` and `/reset` work there as an admin's do on a
 server, for this page only: `/set _syncTime 1795377240` holds the sky at one
 instant. A reload starts from the map's own values again.
+
+## Settings
+
+The Operator panel (O) is anybody's in practice, titled Practice, and sets
+their own game rather than the server's. It shows only what practice plays
+by: Map, Shot Max Active, All shots ricochet, Jumping, Bot Fill (how many
+bots) and Level. Restart starts practice again on the choices, at the link
+that plays them.
+
+The level and the number of bots are kept in this browser for every map;
+shots, ricochet and jumping are kept for the map they were set on, laid over
+the map's own as its options are (`public/js/practice.mjs`). The panel gains
+rows as practice gains what they set.
 
 **Map Viewer** is practice with nobody else in it: `?viewmap=<file>`, with
 its `cam=` and `pos=`, and Map Viewer in the entry dialog, open the map
@@ -65,9 +77,10 @@ Guided Missile and a Super Bullet fly as they do on the server.
 
 ## The map's settings
 
-`/api/practice/<file>` answers with the map and the config it plays by:
-bzo's defaults with the map's own `-ms`, options and BZDB laid over, as a
-server running it would. For a bzfs import that is its server's: jumping only
+`/api/practice/<file>` answers with the map and the config this server deals
+its maps by; the page lays the map's own `-ms`, options and BZDB over that
+from the world it downloads to draw it (`practiceConfig`), as a server
+running it would. For a bzfs import that is its server's: jumping only
 where its `-j` allows it, ricochet where its `+r` does, and its `-s` count of
 flags from every flag its `-f` leaves. For one of this server's maps,
 jumping and flags start from this server's settings, and the map's own

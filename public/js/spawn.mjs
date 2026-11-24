@@ -133,13 +133,15 @@ export function getRandomZonePoint(zone, random = Math.random) {
 // team's own, or every spawn zone for a viewer with no team. findFlagSpawnPosition's
 // own re-roll: a crowded zone is not a reason to leave it after one unlucky
 // point, so this tries several before giving up to the map-wide search.
-function findZoneSpawnPosition(colliders, zones, waterLevel = null) {
+function findZoneSpawnPosition(colliders, zones, waterLevel = null, onBuildings = true) {
   if (!zones || zones.length === 0) return null;
   const zone = zones[Math.floor(Math.random() * zones.length)];
   for (let attempt = 0; attempt < 20; attempt++) {
     const spot = getRandomZonePoint(zone);
     const azimuth = Math.random() * Math.PI * 2;
-    const z = dropSpawnPosition(colliders, spot.x, spot.y, spot.z, azimuth, waterLevel);
+    const z = onBuildings
+      ? dropSpawnPosition(colliders, spot.x, spot.y, spot.z, azimuth, waterLevel)
+      : groundSpawnZ(colliders, spot.x, spot.y, azimuth, waterLevel);
     if (z !== null) return { x: spot.x, y: spot.y, z, azimuth };
   }
   return null;
@@ -161,10 +163,28 @@ function hasFlatTopAbove(colliders, x, y, z) {
   return flatTopsAt(colliders, x, y).some((top) => top > z + 1);
 }
 
+// Ground-only's drop (DropGeometry.cxx's `maxZ <= 0` case): the ground, if a
+// tank fits there, and nowhere else.
+function groundSpawnZ(colliders, x, y, azimuth, waterLevel) {
+  const z = groundLevelOf(waterLevel) + SPAWN_DROP_FUDGE;
+  return isSpawnClear(colliders, x, y, z, azimuth) ? z : null;
+}
+
+// Whether a tank may spawn off the ground: upstream's `-sb`
+// (`SpawnPolicy.cxx:112`), which bzfs turns on itself when a water level puts
+// the ground under water (`bzfs.cxx:1218`). Bots spawn on the ground only
+// (`bzfs.cxx:3251`) -- except over water, where bzo puts them on buildings
+// too rather than on a drowned ground.
+export function spawnsOnBuildings(config, waterLevel, isBot = false) {
+  if (Number.isFinite(waterLevel) && waterLevel > 0) return true;
+  return !isBot && config?.SPAWN_ON_BUILDINGS === true;
+}
+
 // SpawnPolicy::getPosition's random point: anywhere on the map, from a random
 // height up to the tallest thing on it (`bzfrand() * maxHeight`), so a
-// multi-level map is entered at every level rather than only on its roof.
-function findValidSpawnPosition(colliders, mapSize, waterLevel = null, tankRadius = 2) {
+// multi-level map is entered at every level rather than only on its roof --
+// or on the ground alone where `onBuildings` is false.
+function findValidSpawnPosition(colliders, mapSize, waterLevel = null, tankRadius = 2, onBuildings = true) {
   const halfMap = mapSize / 2;
   const groundLevel = groundLevelOf(waterLevel);
   const ceiling = worldMaxHeight(colliders);
@@ -173,7 +193,9 @@ function findValidSpawnPosition(colliders, mapSize, waterLevel = null, tankRadiu
     const x = Math.random() * (mapSize - tankRadius * 4) - (halfMap - tankRadius * 2);
     const y = Math.random() * (mapSize - tankRadius * 4) - (halfMap - tankRadius * 2);
     const azimuth = Math.random() * Math.PI * 2;
-    const z = dropSpawnPosition(colliders, x, y, Math.random() * ceiling, azimuth, waterLevel);
+    const z = onBuildings
+      ? dropSpawnPosition(colliders, x, y, Math.random() * ceiling, azimuth, waterLevel)
+      : groundSpawnZ(colliders, x, y, azimuth, waterLevel);
     if (z === null) continue;
     // The one place bzo refuses what upstream would accept. Starting below the
     // terrain, `dropIt` skips every surface above the start and lands on bare
@@ -261,11 +283,13 @@ function nearestSpawnEnemy(spot, tanks, isFoe) {
 //
 // `tanks` is every other living tank, `{ x, y, z, azimuth, flag }` with the
 // flag's abbreviation; `isFoe` says which of them count for distance.
+// `onBuildings` false keeps the spawn on the ground (`spawnsOnBuildings`).
 export function pickSpawnPosition({
   colliders, mapSize, waterLevel = null, zones = [], config = {}, tanks = [], isFoe = () => true,
+  onBuildings = true,
 }) {
-  const nextCandidate = () => findZoneSpawnPosition(colliders, zones, waterLevel)
-    || findValidSpawnPosition(colliders, mapSize, waterLevel);
+  const nextCandidate = () => findZoneSpawnPosition(colliders, zones, waterLevel, onBuildings)
+    || findValidSpawnPosition(colliders, mapSize, waterLevel, 2, onBuildings);
   const started = Date.now();
   const budgetMs = Number.isFinite(config.SPAWN_MAX_COMP_TIME) ? config.SPAWN_MAX_COMP_TIME : 10;
   let minProximity = mapSize / (config.SPAWN_SAFE_SR_MOD || 3);

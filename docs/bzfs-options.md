@@ -40,7 +40,7 @@ give a number, `-st`, `-sw`, `-time`, `-mps` and `-mts` take the larger and
 | `-st <s>` | `flagShakeTimeout`; map `-st` | yes |
 | `-sw <n>` | `flagShakeWins`; map `-sw` | yes |
 | `-tftimeout <s>` | `teamFlagTimeout` | yes |
-| `-sb` | -- | not yet: [game-modes-plan.md](game-modes-plan.md), "Adjacent switches" |
+| `-sb` | `spawnOnBuildings`; map `-sb` | yes; on by itself over water |
 | `-noTeamKills` | `noTeamKills`; map `-noTeamKills` | yes |
 | `-tk` | `teamKillerDies: false`; map `-tk` | yes |
 | `-tkkr`, `-tkannounce` | -- | not yet: [game-modes-plan.md](game-modes-plan.md), "Adjacent switches" |

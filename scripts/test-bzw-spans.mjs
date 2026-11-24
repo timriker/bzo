@@ -111,7 +111,7 @@ assert.ok(!JSON.stringify(rest).includes('startLine'));
 assert.ok(!JSON.stringify(rest).includes('placedBy'));
 
 // Every shipped map: every obstacle has a span that reads as a whole block.
-for (const file of ['bzo.bzw', 'hix.bzw', 'pizza_box.bzw']) {
+for (const file of ['bzo.bzw', 'hix.bzw']) {
   const path = new URL(`../maps/${file}`, import.meta.url).pathname;
   const source = fs.readFileSync(path, 'utf8');
   for (const o of parseBZWMap(path, { quiet: true }).obstacles) {

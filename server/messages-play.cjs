@@ -132,6 +132,7 @@ let requestPause;
 let resetTeamFlags;
 let resolveJoinName;
 let resolveViewMapChoice;
+let noteMapUse;
 let restoreConnectTime;
 let restoreScore;
 let retireTeamFlags;
@@ -240,6 +241,7 @@ function useServer(deps, live) {
     resetTeamFlags,
     resolveJoinName,
     resolveViewMapChoice,
+    noteMapUse,
     restoreConnectTime,
     restoreScore,
     retireTeamFlags,
@@ -1144,11 +1146,11 @@ function handleJoinGame(player, ws, message) {
   // asked to look at instead of the live match. Validated against
   // `MAP_REGISTRY` the same way an operator's own map picks are; a
   // stale or invalid request is simply not a Map Viewer, since the
-  // client already validated its own choice against `init.viewableMaps`
-  // before ever asking. Nothing else about the join reads this -- the
+  // client chose it from the server's own list or link before asking. Nothing else about the join reads this -- the
   // world it names is the client's business entirely, not the
   // server's.
   player.viewMap = joinAsObserver ? resolveViewMapChoice(message.viewMap) : null;
+  if (player.viewMap) noteMapUse(player.viewMap, 'views', player.mapStatsWho);
   const spawnPos = getSpawnPosition(player);
   player.x = spawnPos.x;
   player.y = spawnPos.y;

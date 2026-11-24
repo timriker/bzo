@@ -840,6 +840,7 @@ understands:
 | `-j` | tanks may jump |
 | `+r` | every shot ricochets |
 | `-fb` | superflags may spawn on and come to rest on buildings |
+| `-sb` | tanks may spawn on buildings; without it they spawn on the ground, as upstream's do. A water level turns it on, and bots spawn on the ground either way unless there is water |
 | `-st <seconds>` | how long a bad flag sticks before it shakes off |
 | `-sw <kills>` | how many kills shake a bad flag off |
 | `-sa` | put an antidote flag in the world for whoever carries a bad one |
@@ -883,14 +884,22 @@ Every field is a list, and saying a key again adds to it -- two `author`
 lines are two authors, two `description` lines two lines of one description.
 Any key is kept, so a map may carry a field of its own; the proposal suggests
 an `x-` prefix for one. `license` is an
-[SPDX expression](https://spdx.org/licenses/) where one fits. `created` and
-`sourceurl` are bzo's, not the proposal's: the date the map was made,
-`YYYY-MM-DD`, and where it was published, such as its forum thread.
+[SPDX expression](https://spdx.org/licenses/) where one fits. `created`,
+`archived`, `note`, `sourceurl` and `downloadurl` are bzo's, not the
+proposal's: the date the map was made, `YYYY-MM-DD` or as much of it as is
+known (`YYYY-MM`, `YYYY`); the date an archive held it, which says only that
+it existed by then; what was changed from the file as found, such as
+rotations converted from radians; where it was published, such as its forum
+thread; and the file itself where that page is about it, `#name` for one
+taken out of an archive.
 
 bzo shows the title in the map list's pane on the `/list` page, linked to
-`sourceurl`, with the authors, date, version, licence and description beside
-it, and lets the filter box find a map by title, author or version. The
-in-client map picker shows title, authors and date in a row's tooltip. A
+`sourceurl`, with the authors, dates, version, licence, description and note
+beside it, and lets the filter box find a map by title, author, version or
+description. The map list and the in-client View dialog have sortable Date
+and Author columns: Date is the year `created` gives, or `≤` the year
+`archived` gives. An archived map's authors are not linked to forum profiles,
+since an old name may belong to somebody else today. A
 client gets the block in the world it downloads, as `metadata`; a BZFlag
 client gets nothing, since its world has no room for it.
 
@@ -1691,6 +1700,11 @@ these faces reach the screen, the `face` list reaches the collision module.
 written that way -- vertices, normals, texcoords and a `drawInfo`, with no
 `face` at all -- which makes it decoration a tank drives straight through,
 and which is why such a mesh used to draw as nothing here.
+
+**`decorative`**, stated on a mesh that has a `drawInfo`, makes the mesh and
+every face of it passable to tanks and shots, a thing only to look at
+(`CustomMesh.cxx:204`); a map that had not said so is told on load. On a mesh
+without a `drawInfo` it does nothing, as upstream.
 
 What is read:
 

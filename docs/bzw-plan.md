@@ -265,6 +265,19 @@ What's left:
       own renderer), the same shelved-feature shape as `combineMode: decal`
       under "Materials" above.
 
+## World weapons and bases
+
+`weapon` fires on its timer and nothing else. See "World weapons" in
+`docs/bzw.md`. What is left:
+
+- [ ] `trigger` and `eventteam` -- a weapon fired by a game event rather
+      than its timer (`CustomWeapon.cxx`). bzo has no event hooks to hang one
+      on, so a map naming either is reported on load and the weapon fires on
+      its timer. Two local maps use them.
+- [ ] A `base`'s `oncap <flag>` -- a world weapon fired from that base when
+      its flag is captured (`CustomBase.cxx:45`). Not read. One local map
+      uses it.
+
 ## Zones and occluders
 
 - [ ] `occluder` -- a mesh marked as blocking what is behind it, upstream's

@@ -112,9 +112,11 @@ it could have.
    shot ([practice.md](practice.md)). Left: a shell through a teleporter.
 4. **Practice host.** Done: `offline-worker.mjs` on `bot-game.mjs`. Those
    rules are the game's own until step 2's slices replace them.
-5. **The entry.** Done for the level, the map and the bot count. Left:
+5. **The entry.** Done for the level, the map and the bot count, in a link
+   and in the Operator panel ([practice.md](practice.md), "Settings"). Left:
    choosing the pilot, and teams or not, with the settings named as
-   `server.json`'s.
+   `server.json`'s -- each a panel row once practice plays it, as the match
+   clock, score limits and rabbit will be.
 6. **Offline.** The service worker precaches the core, the pilots and the route
    graph; the client remembers the worlds it has played (the `worldRef`s from
    `init`); an installed client with no server offers Practice on those.

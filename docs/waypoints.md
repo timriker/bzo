@@ -43,8 +43,12 @@ sent to that player alone:
   in a flag slot the game settings count past the world's own. It hovers 0.3
   over the point: a client grabs a flag only within 0.1 of its tank's height
   (`playing.cxx:4141`), so it is never grabbed. It is a dot on the radar, and
-  in a game with team flags a heading marker too, as upstream marks only the
-  player's own team flag there (`prepareTheHUD`).
+  a marker on the heading tape with an arrow in the world over it: upstream
+  marks a player's own team flag that way, but only in CTF (`prepareTheHUD`),
+  so a BZFlag client in a TeamFFA game is told the game is ClassicCTF. With
+  no bases there is nothing else for it to do differently; the list, pings
+  and recordings keep TeamFFA. A rogue gets no marker: there is no rogue
+  team flag.
 - **A server Phantom Zone shot straight up** every half second, starting 10
   over the point, clear of a tank on it, since a client judges its own hits.
   A zoned shot passes through a sign or a bridge over the point rather than
