@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.21] - 2026-11-24
+
 ### Changed
 - Bots spawn as players do, on buildings where `-sb` allows it, where
   upstream keeps its robots on the ground.
