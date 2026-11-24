@@ -6,6 +6,37 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.20] - 2026-11-24
+
+### Added
+- `scripts/import-map-archive.mjs` imports old maps from bzexcess and
+  SourceForge with a `metadata` block: title, author, dates, source and
+  download links. See [docs/map-archive.md](docs/map-archive.md).
+- Map lists gain sortable Date, Author, Views and Servers columns, and
+  search a map's description. Narrow screens drop columns.
+- Use counts per map: views, practice starts, play time, and servers on
+  the BZFlag list running it.
+- Metadata keys `archived`, `note` and `downloadurl`.
+- The Operator panel works in practice for anyone: map, shots, ricochet,
+  jumping, bots and level, kept in the browser.
+- `-sb` and `spawnOnBuildings`: tanks may spawn on buildings.
+- The lap timer's records link registered players to their forum profile.
+
+### Changed
+- Tanks spawn on the ground unless `-sb` or a water level allows
+  buildings, as upstream. Bots stay on the ground.
+- A BZFlag client in a team game sees a heading marker for its waypoint.
+- The full map list is sent only when a player opens it, not on join.
+- Practice reads the map's settings in the browser.
+- pizza_box, tricolor, fountains, eroah, eroah2 and hix2 are no longer
+  bundled.
+
+### Fixed
+- A map copied into the maps directory is listed without a restart, and a
+  map edited in place is read again.
+- A `decorative` mesh with `drawInfo` is passable, as upstream.
+- Map details show only the rows that have a value.
+
 ## [1.4.19] - 2026-11-23
 
 ### Added
