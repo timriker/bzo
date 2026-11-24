@@ -172,12 +172,13 @@ function groundSpawnZ(colliders, x, y, azimuth, waterLevel) {
 
 // Whether a tank may spawn off the ground: upstream's `-sb`
 // (`SpawnPolicy.cxx:112`), which bzfs turns on itself when a water level puts
-// the ground under water (`bzfs.cxx:1218`). Bots spawn on the ground only
-// (`bzfs.cxx:3251`) -- except over water, where bzo puts them on buildings
-// too rather than on a drowned ground.
-export function spawnsOnBuildings(config, waterLevel, isBot = false) {
+// the ground under water (`bzfs.cxx:1218`). Bots spawn as players do. Upstream
+// keeps its robots on the ground whatever `-sb` says (`bzfs.cxx:3251`); bzo's
+// bots are players on the server, and a map that starts players on a raised
+// track starts them there too.
+export function spawnsOnBuildings(config, waterLevel) {
   if (Number.isFinite(waterLevel) && waterLevel > 0) return true;
-  return !isBot && config?.SPAWN_ON_BUILDINGS === true;
+  return config?.SPAWN_ON_BUILDINGS === true;
 }
 
 // SpawnPolicy::getPosition's random point: anywhere on the map, from a random

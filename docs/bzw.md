@@ -840,7 +840,7 @@ understands:
 | `-j` | tanks may jump |
 | `+r` | every shot ricochets |
 | `-fb` | superflags may spawn on and come to rest on buildings |
-| `-sb` | tanks may spawn on buildings; without it they spawn on the ground, as upstream's do. A water level turns it on, and bots spawn on the ground either way unless there is water |
+| `-sb` | tanks may spawn on buildings; without it they spawn on the ground, as upstream's do. A water level turns it on. bzo's bots spawn as players do, where upstream keeps its robots on the ground |
 | `-st <seconds>` | how long a bad flag sticks before it shakes off |
 | `-sw <kills>` | how many kills shake a bad flag off |
 | `-sa` | put an antidote flag in the world for whoever carries a bad one |

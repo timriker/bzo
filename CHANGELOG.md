@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- Bots spawn as players do, on buildings where `-sb` allows it, where
+  upstream keeps its robots on the ground.
+
+### Fixed
+- TimeTrial sets `-sb`, so tanks start on the track.
+
 ## [1.4.20] - 2026-11-24
 
 ### Added

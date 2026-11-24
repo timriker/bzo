@@ -28,8 +28,6 @@ assert.ok(heights(true).some((z) => z > 1), 'with -sb, on buildings too');
 
 assert.equal(spawnsOnBuildings({}, null), false, 'upstream default: the ground');
 assert.equal(spawnsOnBuildings({ SPAWN_ON_BUILDINGS: true }, null), true, '-sb');
-assert.equal(spawnsOnBuildings({ SPAWN_ON_BUILDINGS: true }, null, true), false, 'bots stay on the ground');
 assert.equal(spawnsOnBuildings({}, 2), true, 'a water level turns it on');
-assert.equal(spawnsOnBuildings({}, 2, true), true, 'for bots too, over water');
 
 console.log('spawn tests passed');

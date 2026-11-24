@@ -35,8 +35,8 @@ options
 	-f bad
 	# Flags may sit on buildings: the track is one.
 	-fb
-	# Flags may sit on buildings: the track is one.
-	-fb
+	# Tanks spawn on it too, in the start zone above the ground.
+	-sb
 	-sl US 3
 	-sl GM 3
 	-sl L 3

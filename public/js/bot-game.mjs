@@ -247,7 +247,7 @@ export function createBotGame({
       config,
       tanks,
       isFoe: (other) => areFoes(other.team, team, teamsAllowed),
-      onBuildings: spawnsOnBuildings(config, world.waterLevel, bots.has(id)),
+      onBuildings: spawnsOnBuildings(config, world.waterLevel),
     });
     return { x: spot.x, y: spot.y, z: spot.z, azimuth: spot.azimuth };
   }

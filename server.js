@@ -12758,7 +12758,7 @@ function chooseSpawnPosition(player) {
     config: GAME_CONFIG,
     tanks,
     isFoe: (other) => areFoes(other.team, player.team, TEAMS_ALLOWED),
-    onBuildings: spawnsOnBuildings(GAME_CONFIG, mapWaterLevel?.height, player.serverBot === true),
+    onBuildings: spawnsOnBuildings(GAME_CONFIG, mapWaterLevel?.height),
   });
 }
 
