@@ -362,7 +362,10 @@ star of shots, none where a roof or a sign is in the way; an admin's
 themselves or a player named or numbered. A lap that makes a board is
 announced to everyone, and so to a chat bridge; any other lap to the racer
 alone. Today's fastest registered player follows the server's title on both
-lists. Each
+lists. And upgrade, which tells a BZFlag client older than `minVersion`
+(2.4.32) that the map draws what it cannot, and where to see it -- a newer
+BZFlag, or the server on the web -- after it joins and every `interval`
+minutes, on the `maps` listed or every map. Each
 is off until `server.json` names it, and when on does what its upstream does
 by default.
 

@@ -186,10 +186,11 @@ own. Browsers rejoin by themselves; a BZFlag client does not.
   browser's is and shows in `/lagstats`.
 - **Admin addresses.** A BZFlag client an admin is on gets every player's
   address (`MsgAdminInfo`), each as it arrives, for its scoreboard -- IPv4
-  only, as upstream packs it, so an IPv6 player is left out. `/clientquery`
-  (an operator's, as bzfs's needs `clientQuery`) lists every playing tank's
-  client: a BZFlag client's own version from `MsgEnter`, a browser's as bzo's
-  build and the browser, a bot's as bzo's build and its pilot.
+  only, as upstream packs it, so an IPv6 player is left out. `/clientquery`,
+  which anyone may run as on bzfs, lists every player's client, observers
+  included. A BZFlag client's is its own version from
+  `MsgEnter`, a browser's is bzo's build and the browser, a bot's is bzo's
+  build and its pilot.
 - **Player scores.** bzo's browsers tally scores themselves from `killed`
   with the server's own rule (`public/js/scoring.mjs`, which both
   load). A BZFlag client tallies nothing, so the translator

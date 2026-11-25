@@ -234,7 +234,6 @@ Two things it has to decide:
 | `/handicap` | the Handicap game style in `docs/game-modes-plan.md` |
 | `/lagwarn`, `/lagdrop`, `/jitterwarn`, `/jitterdrop`, `/packetlosswarn`, `/packetlossdrop` | the warn/kick machinery `docs/lag-plan.md` calls step 6: `lagwarn`/`lagdrop` and `jitterwarn`/`jitterdrop` thresholds in `server.json` and on the Operator panel, with these commands as their front end. A packet-loss threshold still waits on a transport that can lose more than a pong |
 | `/idlestats`, `/idletime` | last-input time per player, which the anti-cheat code nearly keeps already |
-| `/clientquery` | a client version reply; `init` carries the build id, so this is a round trip bzo could answer without asking the client |
 | `/showgroup`, `/showperms`, `/grouplist`, `/groupperms` | read-only against what bzflag.org returned for the session. Useful, and honest, as long as nobody expects to *set* anything |
 
 ### Needs a whole subsystem

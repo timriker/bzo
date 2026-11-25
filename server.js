@@ -10728,17 +10728,17 @@ function tickPoll() {
 }
 setInterval(tickPoll, 250).unref?.();
 
-// ClientQueryCommand (commands.cxx:3539): every playing tank's client
-// version, or one player's. Upstream's needs `clientQuery`, an admin's right.
-// A BZFlag client's version is what it sent with MsgEnter; a browser's is
-// this server's own build and the browser it runs in.
-defineCommand('/clientquery', COMMAND_TIER.OPERATOR,
+// ClientQueryCommand (commands.cxx:3539): every joined player's client
+// version, observers included (`isPlaying()`), or one player's. Anyone may
+// ask, as upstream's default group holds `clientQuery`. A BZFlag client's
+// version is what it sent with MsgEnter; a browser's is this server's own
+// build and the browser it runs in.
+defineCommand('/clientquery', COMMAND_TIER.OPEN,
   '[#slot|PlayerName|"Player Name"] - show client versions',
   (player, args) => {
+    // One line a player, where upstream sends a name line and a version line.
     const report = (other) => {
-      replyToPlayer(player, "{player}'s client version:", { player: other.name });
-      if (other.clientVersion) replyToPlayer(player, '  {version}', { version: other.clientVersion });
-      else replyToPlayer(player, '  unknown');
+      replyToPlayer(player, '{player} ver: {version}', { player: other.name, version: other.clientVersion || 'unknown' });
     };
     if (args.trim()) {
       const target = resolveCommandTarget(args);
@@ -10752,7 +10752,7 @@ defineCommand('/clientquery', COMMAND_TIER.OPERATOR,
     }
     replyToPlayer(player, 'BZFS Version: {version}', { version: BZO_APP_VERSION });
     for (const other of players.values()) {
-      if (other.joined && !isObserverTeam(other.team)) report(other);
+      if (other.joined) report(other);
     }
   });
 
