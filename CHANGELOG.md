@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.22] - 2026-11-25
+
+### Added
+- The upgrade plugin tells a BZFlag client older than 2.4.32 that the map
+  draws what it cannot, and where to see it: a newer BZFlag, or the server
+  on the web. See [docs/plugins.md](docs/plugins.md).
+- `scripts/gen-hix-ad.mjs` builds HiX After Dark: hix's layout in glowing
+  lines under a night sky, after KTL's Delirious City.
+
+### Changed
+- `/clientquery` is open to every player, as upstream, lists observers too,
+  and gives each player on one line: `<name> ver: <version>`.
+
 ## [1.4.21] - 2026-11-24
 
 ### Changed
