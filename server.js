@@ -2935,12 +2935,20 @@ function listMapMeta(meta) {
   const list = (value, keep = () => true) => (Array.isArray(value) ? value : [])
     .filter((item) => typeof item === 'string' && item.trim() && keep(item))
     .slice(0, 4).map((item) => item.trim().slice(0, 120));
+  const url = (value) => /^https:\/\/\S+$/i.test(value.trim()) && value.length <= 120;
   return {
     title: list(meta?.title),
     author: list(meta?.author),
-    created: list(meta?.created, (date) => /^\d{4}-\d{2}-\d{2}$/.test(date.trim())),
-    sourceurl: list(meta?.sourceurl, (url) => /^https:\/\/\S+$/i.test(url.trim()) && url.length <= 120),
+    created: list(meta?.created, (date) => /^\d{4}(-\d{2}){0,2}$/.test(date.trim())),
+    license: list(meta?.license),
+    sourceurl: list(meta?.sourceurl, url),
+    downloadurl: list(meta?.downloadurl, url),
   };
+}
+
+// Where a map's title links: the file itself, else the page it was published on.
+function mapTitleUrl(meta) {
+  return meta.downloadurl[0] || meta.sourceurl[0] || '';
 }
 
 // Text as a link to `url`, or as text where there is none.
@@ -2991,8 +2999,10 @@ function renderMapReadout(entry, index, hidden, t, bzidOf) {
   const counts = stats.counts || {};
   // The map's `metadata` block, each field a list (docs/bzw.md, "Metadata").
   const meta = (key, separator) => (stats.metadata?.[key] || []).join(separator);
-  // Where the map was published, which its name links to.
-  const source = (stats.metadata?.sourceurl || []).find((url) => /^https?:\/\//i.test(url)) || '';
+  // The file itself, else where the map was published, which its name links to.
+  const source = ['downloadurl', 'sourceurl']
+    .map((key) => (stats.metadata?.[key] || []).find((url) => /^https?:\/\//i.test(url)))
+    .find(Boolean) || '';
   const count = (value) => (value ? String(value) : '');
   // A row only where there is something to say: an archive map knows little
   // of itself, and a pane of empty labels says nothing.
@@ -3594,10 +3604,11 @@ function renderListTables({
             : describeImportedWorld(...splitHostPort(proxy.target), t)),
         ]
         : [
-          [t('Map'), linkTo(listMapMeta(s.mapMeta).sourceurl[0] || '',
+          [t('Map'), linkTo(mapTitleUrl(listMapMeta(s.mapMeta)),
             listMapMeta(s.mapMeta).title.join(' ') || String(s.map || '').replace(/\.bzw$/, ''))],
           [t('Author'), describeAuthors(listMapMeta(s.mapMeta).author, ownerBzid)],
           [t('Created'), escapeHtml(listMapMeta(s.mapMeta).created.join(', '))],
+          [t('License'), escapeHtml(listMapMeta(s.mapMeta).license.join(', '))],
           [t('Version'), escapeHtml(s.version || '')],
           // Only a bzo row can have this: a bzfs server holds no key and sends
           // no report, and the public BZFlag list carries no uptime.

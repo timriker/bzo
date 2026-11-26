@@ -882,8 +882,7 @@ endmetadata
 One field a line: the first word is its key, the rest of the line its value.
 Every field is a list, and saying a key again adds to it -- two `author`
 lines are two authors, two `description` lines two lines of one description.
-Any key is kept, so a map may carry a field of its own; the proposal suggests
-an `x-` prefix for one. `license` is an
+Any key is kept, so a map may carry a field of its own. `license` is an
 [SPDX expression](https://spdx.org/licenses/) where one fits. `created`,
 `archived`, `note`, `sourceurl` and `downloadurl` are bzo's, not the
 proposal's: the date the map was made, `YYYY-MM-DD` or as much of it as is
@@ -894,7 +893,7 @@ thread; and the file itself where that page is about it, `#name` for one
 taken out of an archive.
 
 bzo shows the title in the map list's pane on the `/list` page, linked to
-`sourceurl`, with the authors, dates, version, licence, description and note
+`downloadurl`, or `sourceurl` where there is none, with the authors, dates, version, licence, description and note
 beside it, and lets the filter box find a map by title, author, version or
 description. The map list and the in-client View dialog have sortable Date
 and Author columns: Date is the year `created` gives, or `≤` the year

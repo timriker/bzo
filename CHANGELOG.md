@@ -13,8 +13,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   the address and Referer.
 - A practice world that fails to load no longer claims bots.
 
+- A map's `created` date of just a year, or a year and month, now reaches
+  `/list` instead of being dropped.
+
 ### Changed
 - A server that keeps bzo out "excludes bzo" in messages and logs.
+- A bzo server's row on `/list` and `/api/list-server/list` carry the map's
+  `license` and `downloadurl`; the map's title links to `downloadurl`, or
+  `sourceurl` where there is none.
 
 ## [1.4.22] - 2026-11-25
 
