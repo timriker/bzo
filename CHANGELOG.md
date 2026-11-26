@@ -6,13 +6,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.23] - 2026-11-26
+
 ### Fixed
 - A practice link to a BZFlag server's map this server cannot open shows an
   error page saying why, with a link to the game here, instead of dropping
   the player into another world. The log gets one `[PRACTICE]` line with
   the address and Referer.
 - A practice world that fails to load no longer claims bots.
-
 - A map's `created` date of just a year, or a year and month, now reaches
   `/list` instead of being dropped.
 

@@ -893,13 +893,13 @@ thread; and the file itself where that page is about it, `#name` for one
 taken out of an archive.
 
 bzo shows the title in the map list's pane on the `/list` page, linked to
-`downloadurl`, or `sourceurl` where there is none, with the authors, dates, version, licence, description and note
-beside it, and lets the filter box find a map by title, author, version or
-description. The map list and the in-client View dialog have sortable Date
-and Author columns: Date is the year `created` gives, or `≤` the year
-`archived` gives. An archived map's authors are not linked to forum profiles,
-since an old name may belong to somebody else today. A
-client gets the block in the world it downloads, as `metadata`; a BZFlag
+`downloadurl`, or `sourceurl` where there is none, with the authors, dates,
+version, licence, description and note beside it, and lets the filter box
+find a map by title, author, version or description. The map list and the
+in-client View dialog have sortable Date and Author columns: Date is the year
+`created` gives, or `≤` the year `archived` gives. An archived map's authors
+are not linked to forum profiles, since an old name may belong to somebody
+else today. A client gets the block in the world it downloads, as `metadata`; a BZFlag
 client gets nothing, since its world has no room for it.
 
 Write a description as repeated `description` lines rather than the
