@@ -4645,8 +4645,8 @@ function noteMapUse(file, kind, who) {
 const bzfsWorlds = createBzfsWorldTracker({
   statePath: path.join(CACHE_DIR, 'bzfs-worlds.json'),
   queryServerStatus: (host, port) => queryServerStatus(host, port),
-  importWorld: (host, port, guest) =>
-    performRemoteMapImport(host, port, IMPORT_WORLD_BACKGROUND_TIMEOUT_MS, guest, IMPORT_CALLSIGN),
+  importWorld: (host, port, guest, enter) =>
+    performRemoteMapImport(host, port, IMPORT_WORLD_BACKGROUND_TIMEOUT_MS, guest, IMPORT_CALLSIGN, enter),
   probeGuestAccess: (host, port, { spawn }) =>
     probeGuestAccess(host, port, { spawn, motto: serverCheckMotto() }),
   // A world with a BZFlag hash has a picture once one is saved under that
@@ -5592,7 +5592,8 @@ function serverCheckMotto() {
 const SERVER_CHECK_DOC_URL = 'https://github.com/timriker/bzo/blob/main/docs/server-check.md';
 app.get('/bzo-list', (req, res) => res.redirect(302, SERVER_CHECK_DOC_URL));
 
-async function performRemoteMapImport(host, port, timeout, guest = null, callsign = VIEW_CALLSIGN) {
+async function performRemoteMapImport(host, port, timeout, guest = null, callsign = VIEW_CALLSIGN,
+  enter = undefined) {
   let publicServers;
   try {
     publicServers = await getRemoteServerList();
@@ -5611,7 +5612,7 @@ async function performRemoteMapImport(host, port, timeout, guest = null, callsig
   const safeMapName = remoteMapFileName(listedServer.host, listedServer.port);
   const existing = inFlightRemoteImports.get(safeMapName);
   if (existing) return existing;
-  const promise = performRemoteMapImportNow(listedServer, safeMapName, timeout, guest, callsign)
+  const promise = performRemoteMapImportNow(listedServer, safeMapName, timeout, guest, callsign, enter)
     .finally(() => inFlightRemoteImports.delete(safeMapName));
   inFlightRemoteImports.set(safeMapName, promise);
   return promise;
@@ -5622,12 +5623,22 @@ async function performRemoteMapImport(host, port, timeout, guest = null, callsig
 // header records. They are the same address for an import off the public list,
 // and different for a proxied target, where the name a player sees is public
 // and the address bzo reaches it on is private (`docs/proxy.md`).
+//
+// `enter` is `fetchWorldFromServer`'s `enterForVariables`. Left out, the
+// import uses the variables the world tracker already holds for this server
+// and joins only for one it holds none for, and then only while nobody is on
+// it: a join shows in everybody's chat.
 async function performRemoteMapImportNow(listedServer, safeMapName, timeout, guestQuestions = null,
-  callsign = VIEW_CALLSIGN) {
+  callsign = VIEW_CALLSIGN, enter = undefined) {
   const { host, port, dialHost = host, dialPort = port } = listedServer;
+  const stored = bzfsWorlds.storedVariables(host, port);
   const { worldDatabase, gameSettings, queryGame, variables, worldHash, guest, serverVersion } =
-    await fetchWorldFromServer(dialHost, dialPort, timeout || IMPORT_WORLD_TIMEOUT_MS,
-      { guest: guestQuestions, callsign, motto: serverCheckMotto() });
+    await fetchWorldFromServer(dialHost, dialPort, timeout || IMPORT_WORLD_TIMEOUT_MS, {
+      guest: guestQuestions,
+      callsign,
+      motto: serverCheckMotto(),
+      enterForVariables: enter ?? (stored ? false : 'ifEmpty'),
+    });
   const tree = parseWorldDatabase(worldDatabase);
   // Whatever caused this import -- the tracker's own schedule, an operator, or
   // somebody following a `?viewmap=` link -- the world tracker learns the hash
@@ -5640,9 +5651,9 @@ async function performRemoteMapImportNow(listedServer, safeMapName, timeout, gue
     uncompressedSize: tree.uncompressedSize,
   }, variables ? collectNonDefaultVariables(variables) : null, guest, serverVersion);
   // The server's own world variables, for the `-set` lines in the exported
-  // map. Null when the momentary observer join that carries them was refused
-  // or timed out (see `fetchWorldFromServer`); the map imports either way.
-  tree.variables = variables || null;
+  // map: this join's, else the ones held from an earlier one. Null when there
+  // are neither; the map imports either way.
+  tree.variables = variables || (stored ? new Map(stored) : null);
   if (gameSettings && gameSettings.length >= 30) tree.gameSettings = decodeGameSettings(gameSettings);
   if (queryGame && queryGame.length >= 44) tree.queryGame = decodeQueryGame(queryGame);
   if (tree.gameSettings) tree.worldSize = tree.gameSettings.worldSize;

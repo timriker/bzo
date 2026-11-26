@@ -51,6 +51,19 @@ function recheckMs(worldHash) {
   return /^t/i.test(worldHash || '') ? TEMP_RECHECK_MS : RECHECK_MS;
 }
 
+// Every join waits for a server with nobody on it, player or observer: a join
+// and a part show in everybody's chat. A server that has somebody on it when
+// a join is due owes one, and is dialled again this soon to see whether it has
+// emptied; the dial itself joins nothing.
+const JOIN_RETRY_MS = 20 * 60 * 1000;
+
+// A server's world variables, read on a join (bzfs sends them to no one else),
+// are trusted for a month. A new generated world (`t`) is no reason to read
+// them again, since a restart rolls one without touching `-set`; a new world
+// from a file (`p`) usually comes with its own. A join that brought none back
+// is tried again after a week.
+const VARIABLES_RECHECK_MS = 30 * 24 * 60 * 60 * 1000;
+
 // What an unregistered player may do there -- watch, chat, spawn -- is asked during
 // the one join a server costs (`enterAndProbe` in remote-world-import.cjs) and
 // trusted for a month: an operator changes a groups file rarely, and a changed
@@ -67,6 +80,22 @@ const GUEST_VISIT_GAP_MS = 10 * 60 * 1000;
 // A server's build changes when its operator upgrades, and one that never
 // answers `/serverquery` is asked again only this often.
 const VERSION_RECHECK_MS = GUEST_RETRY_MS;
+
+// Whether a server's variables are worth a join: never read, read a month
+// ago, or a join that brought none back a week ago. A record from before the
+// read was dated counts from its last version check, made on the same join.
+function variablesDue(record, now) {
+  const at = record.variablesAt || (record.variables?.length ? record.serverVersionAskedAt : 0) || 0;
+  if (record.variablesAskedAt > at) return now - record.variablesAskedAt > GUEST_RETRY_MS;
+  if (at) return now - at > VARIABLES_RECHECK_MS;
+  return true;
+}
+
+// How long after its last check a server is due again.
+function recheckWait(record) {
+  const wait = recheckMs(record?.worldHash);
+  return record?.joinOwed ? Math.min(JOIN_RETRY_MS, wait) : wait;
+}
 
 function isGuestAnswer(value) {
   return value === 'yes' || value === 'no';
@@ -331,7 +360,7 @@ function createBzfsWorldTracker(deps) {
       if (!record) age = Infinity;
       else if (record.dueNow || !hasPicture(server.host, server.port, record.worldHash)) age = Infinity;
       else age = now - (record.checkedAt || 0);
-      if (age < recheckMs(record?.worldHash)) continue;
+      if (age < recheckWait(record)) continue;
       if (age > bestAge) { bestAge = age; best = server; }
     }
     return best;
@@ -393,33 +422,33 @@ function createBzfsWorldTracker(deps) {
       return;
     }
 
-    // The guest questions this visit should ask, if it makes one. Spawning is
-    // only ever tried on a server with nobody on it -- player or observer --
-    // so no one sees a tank come and go; a busy server waits for an empty
-    // moment, or for an admin's real visit to answer it (`noteGuest`).
+    // What a join here would be for: the guest questions, the server's build
+    // (`/serverquery`), and its world variables. Each waits for a server with
+    // nobody on it, so nobody sees bzo-list come and go; a busy one owes the
+    // join and is asked again in `JOIN_RETRY_MS`.
     const listChanged = Boolean(record.fingerprint) && record.fingerprint !== fingerprint;
-    const empty = status.players === 0 && status.observers === 0 && !status.full;
+    // Robots see nothing, so a server with only robots on it counts as empty.
+    const people = Number.isInteger(status.humans) ? status.humans : status.players + status.observers;
+    const empty = people === 0 && !status.full;
     // Watching is answered by the join the chat question already makes.
     const wantChat = guestFactDue(record.guest, 'chat', now, listChanged)
       || guestFactDue(record.guest, 'watch', now, listChanged);
-    const wantSpawn = empty && guestFactDue(record.guest, 'spawn', now, listChanged);
-    // A server whose build bzo has not read yet (`/serverquery`, asked on the
-    // same join) is worth the visit too.
+    const wantSpawn = guestFactDue(record.guest, 'spawn', now, listChanged);
     const wantVersion = !(now - (record.serverVersionAskedAt || 0) < VERSION_RECHECK_MS);
-    const guestQuestions = wantChat || wantSpawn || wantVersion
-      ? { chat: true, spawn: wantSpawn } : null;
+    const newFileWorld = Boolean(status.worldHash && record.worldHash && status.worldHash !== record.worldHash
+      && !/^t/i.test(status.worldHash));
+    const wantVariables = newFileWorld || variablesDue(record, now);
+    const wantJoin = wantChat || wantSpawn || wantVersion || wantVariables;
+    const join = empty && wantJoin;
+    const guestQuestions = { chat: true, spawn: wantSpawn };
 
     // The whole point of the dial: a world that has not changed needs no
     // download, however long ago the picture was drawn.
-    // A record from before variables were kept has none to show, which only
-    // a download can fix; `noteImport` stores `[]` where the join was refused,
-    // so this costs each server one download, not one per check.
     if (status.worldHash && status.worldHash === record.worldHash
-      && hasPicture(server.host, server.port, record.worldHash)
-      && Array.isArray(record.variables)) {
-      let guest = record.guest;
-      let { serverVersion, serverVersionAskedAt } = record;
-      if (guestQuestions && probeGuestAccess && now - lastGuestVisitAt >= GUEST_VISIT_GAP_MS) {
+      && hasPicture(server.host, server.port, record.worldHash)) {
+      let { guest, serverVersion, serverVersionAskedAt, variables, variablesAt, variablesAskedAt } = record;
+      let joinOwed = wantJoin;
+      if (join && probeGuestAccess && now - lastGuestVisitAt >= GUEST_VISIT_GAP_MS) {
         // A join is a join, so it is spaced like an import is too.
         if (now - lastImportAt < IMPORT_GAP_MS) {
           records.set(key, { ...record, dueNow: true });
@@ -427,10 +456,16 @@ function createBzfsWorldTracker(deps) {
         }
         lastImportAt = now;
         lastGuestVisitAt = now;
+        joinOwed = false;
+        variablesAskedAt = now;
         try {
-          const { serverVersion: visitedVersion, ...answers } =
+          const { serverVersion: visitedVersion, variables: visitedVariables, ...answers } =
             await probeGuestAccess(server.host, server.port, guestQuestions);
           if (visitedVersion) serverVersion = visitedVersion;
+          if (Array.isArray(visitedVariables)) {
+            variables = visitedVariables;
+            variablesAt = now;
+          }
           serverVersionAskedAt = now;
           guest = mergeGuest(guest, answers, now);
         } catch (error) {
@@ -442,11 +477,11 @@ function createBzfsWorldTracker(deps) {
             watchDetail: error.message,
             chat: 'unknown',
             chatDetail: error.message,
-            ...(guestQuestions.spawn ? { spawn: 'unknown', spawnDetail: error.message } : {}),
+            ...(wantSpawn ? { spawn: 'unknown', spawnDetail: error.message } : {}),
           }, now);
         }
         log(`[WORLDS] ${key} guests: watch ${guest.watch || '?'}, chat ${guest.chat || '?'}`
-          + `${guestQuestions.spawn ? `, spawn ${guest.spawn || '?'}` : ''}`
+          + `${wantSpawn ? `, spawn ${guest.spawn || '?'}` : ''}`
           + `${serverVersion ? `; ${serverVersion}` : ''}`);
       }
       records.set(key, {
@@ -454,6 +489,10 @@ function createBzfsWorldTracker(deps) {
         guest,
         serverVersion,
         serverVersionAskedAt,
+        variables,
+        variablesAt,
+        variablesAskedAt,
+        joinOwed,
         fingerprint,
         checkedAt: now,
         error: null,
@@ -473,9 +512,12 @@ function createBzfsWorldTracker(deps) {
     }
     lastImportAt = now;
     try {
+      // Without a join the import keeps the variables already held, and the
+      // join is owed. With one it is made only if the server is still empty
+      // when the world has come down.
       const {
         safeMapName, byteLength, compressedSize, uncompressedSize,
-      } = await importWorld(server.host, server.port, guestQuestions);
+      } = await importWorld(server.host, server.port, join ? guestQuestions : null, join ? 'ifEmpty' : false);
       // Downloaded but not registered is a failure however well the transfer
       // went -- a world bzo cannot parse has no picture, and treating it as
       // done would leave it permanently due and re-fetched every tick.
@@ -495,6 +537,9 @@ function createBzfsWorldTracker(deps) {
         worldUncompressed: Number.isFinite(uncompressedSize) ? uncompressedSize : 0,
         // Recorded by `noteImport` during the import just made.
         variables: records.get(key)?.variables || record.variables || [],
+        variablesAt: records.get(key)?.variablesAt || record.variablesAt,
+        variablesAskedAt: join ? now : record.variablesAskedAt,
+        joinOwed: wantJoin && !join,
         guest: records.get(key)?.guest || record.guest,
         serverVersion: records.get(key)?.serverVersion || record.serverVersion,
         serverVersionAskedAt: records.get(key)?.serverVersionAskedAt || record.serverVersionAskedAt,
@@ -507,8 +552,8 @@ function createBzfsWorldTracker(deps) {
       });
       const guest = records.get(key)?.guest;
       log(`[WORLDS] ${key} world ${status.worldHash || '(unhashed)'} imported as ${safeMapName}`
-        + (guestQuestions ? `; guests: watch ${guest?.watch || '?'}, chat ${guest?.chat || '?'}`
-          + `${guestQuestions.spawn ? `, spawn ${guest?.spawn || '?'}` : ''}` : ''));
+        + (join ? `; guests: watch ${guest?.watch || '?'}, chat ${guest?.chat || '?'}`
+          + `${wantSpawn ? `, spawn ${guest?.spawn || '?'}` : ''}` : (wantJoin ? '; join waits for an empty server' : '')));
     } catch (error) {
       records.set(key, {
         ...record,
@@ -566,7 +611,7 @@ function createBzfsWorldTracker(deps) {
         return { at: (record.errorAt || 0) + failureCooldown(record.failCount) };
       }
       if (!record || record.dueNow || !hasPicture(host, port, record.worldHash)) return { at: 0 };
-      return { at: (record.checkedAt || 0) + recheckMs(record.worldHash) };
+      return { at: (record.checkedAt || 0) + recheckWait(record) };
     },
     // A server that excludes bzo, asked again now rather than at its month or
     // the next list refresh: an admin's Import on `/list`. A ban is asked with
@@ -616,6 +661,7 @@ function createBzfsWorldTracker(deps) {
         worldCompressed: sizes?.compressedSize || record.worldCompressed || 0,
         worldUncompressed: sizes?.uncompressedSize || record.worldUncompressed || 0,
         variables: Array.isArray(variables) ? variables : (record.variables || []),
+        variablesAt: Array.isArray(variables) ? Date.now() : record.variablesAt,
         guest: guest ? mergeGuest(record.guest, guest, Date.now()) : record.guest,
         serverVersion: serverVersion || record.serverVersion,
         // Asked whenever the join was made, answered or not.
@@ -626,6 +672,14 @@ function createBzfsWorldTracker(deps) {
         dueNow: false,
       });
       save();
+    },
+    // The world variables a join here last read, as `[name, value]` pairs of
+    // those away from upstream's defaults, or null where none has.
+    storedVariables(host, port) {
+      load();
+      const record = records.get(serverKey(host, port));
+      if (!Array.isArray(record?.variables)) return null;
+      return record.variablesAt || record.variables.length ? record.variables : null;
     },
     // What a real visit learned: a proxied admin who spawned, or was refused.
     // As good an answer as a probe's, and it cost nobody anything extra.

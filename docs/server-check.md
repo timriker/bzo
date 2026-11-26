@@ -45,19 +45,22 @@ operator configures for servers they run.
 
 - **A connection that never joins.** Most visits only ask your world's hash
   (`MsgWantWHash`), on a socket that never enters the game. Nobody sees it.
-- **`bzo-list` joining as an observer, then leaving.** This happens when
-  your world is new to bzo or its hash changed. bzo fetches the world, then
-  joins for a moment to read your BZDB variables, which bzfs sends only to a
-  player who has joined. Its motto is `see: <url>/list about:
-  <url>/bzo-list`: the page where what it learned is shown, and a link to
-  this page.
+- **`bzo-list` joining as an observer, then leaving.** It joins for a
+  moment to read your BZDB variables, which bzfs sends only to a player who
+  has joined, and only while nobody, player or observer, is on your server.
+  Robots don't count.
+  If somebody is, it fetches the world without joining, keeps the variables
+  it read before, and looks again in 20 minutes. Its motto is `see:
+  <url>/list about: <url>/bzo-list`: the page where what it learned is
+  shown, and a link to this page.
 - **`bzo-view` doing the same, with the same motto.** A player on a bzo
   server asked to see or practise on your map, and that bzo server had no
-  current copy. It asks no guest questions.
-- **The same visitor checking what a guest may do.** About once a month it
-  asks whether an unregistered player may watch, chat and spawn. Chat is one
-  private message to itself, never public chat. It spawns only when nobody is
-  on your server, and leaves at once.
+  current copy. It joins only if it has never read your variables, and only
+  while nobody is on. It asks no guest questions.
+- **The same visitor checking what a guest may do.** About once a month,
+  on the same join, it asks whether an unregistered player may watch, chat
+  and spawn. Chat is one private message to itself, never public chat. It
+  leaves at once.
 - **`bzo-view-…` observers, and players from a bzo server.** These are
   people watching or playing through bzo, not checks.
 
@@ -82,8 +85,8 @@ its operator set `viewOtherServers`; bz.rikers.org does.
 | What | When |
 |---|---|
 | world hash check | once a day; hourly for a world bzfs generates, which usually changes on restart; sooner when your list entry changes |
-| world fetch and `bzo-list` join | only when the hash changed, or bzo has no picture of the world |
-| guest check | a month after the last answer, a week after one that got none |
+| world fetch | only when the hash changed, or bzo has no picture of the world |
+| `bzo-list` join, for variables and guest access | only with nobody but robots on your server; a month after the last, a week after one that got nothing, or when a world from a file changes; 20 minutes later while somebody is on |
 | any of the above, failing | retried after 6 hours, doubling each time, up to a week |
 | a server that excludes bzo | one join a month, asking whether it still does |
 | a server that does not answer | nothing until a list refresh finds it answering |

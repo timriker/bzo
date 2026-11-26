@@ -7,9 +7,11 @@
  */
 
 // When the world tracker asks a bzfs what an unregistered player may do
-// (`server/bzfs-worlds.cjs`): watching and chat on any visit that is due, spawning only with
-// nobody on the server, a month's trust in an answer, a week before an
-// unanswered one is tried again, and a silence never over an answer.
+// (`server/bzfs-worlds.cjs`): watching, chat and spawning on a visit made only
+// with nobody on the server, a busy server asked again twenty minutes on, a
+// month's trust in an answer, a week before an unanswered one is tried again,
+// and a silence never over an answer. The world variables ride on the same
+// join, and an import of a busy server's new world joins for nothing.
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -35,7 +37,12 @@ const tracker = createBzfsWorldTracker({
   importWorld: async () => { throw new Error('no import expected'); },
   probeGuestAccess: async (host, port, questions) => {
     probes.push(questions);
-    return { watch: answer.watch, chat: answer.chat, ...(questions.spawn ? { spawn: answer.spawn, spawnDetail: answer.spawnDetail } : {}) };
+    return {
+      watch: answer.watch,
+      chat: answer.chat,
+      ...(questions.spawn ? { spawn: answer.spawn ?? 'unknown', spawnDetail: answer.spawnDetail } : {}),
+      ...(answer.watch === 'yes' ? { variables: [['_gravity', '-20']] } : {}),
+    };
   },
   hasPicture: () => true,
   log: () => {},
@@ -53,15 +60,29 @@ let guest = tracker.recordFor(server.host, server.port).guest;
 assert.equal(guest.watch, 'yes', 'the join itself answers watching');
 assert.equal(guest.chat, 'yes');
 assert.equal(guest.spawn, 'no');
+assert.deepEqual(tracker.storedVariables(server.host, server.port), [['_gravity', '-20']],
+  'the variables come back on the same join');
 
 // The next day: nothing is due, so no visit.
 await check(25 * 60 * 60 * 1000);
 assert.equal(probes.length, 1, 'answers are trusted');
 
-// A month on, with players on: chat is asked, spawning is not.
+// A month on, with players on: no join at all. The server owes one and is
+// dialled again in twenty minutes, and joined once it has emptied.
 status = { ...status, players: 3 };
+const before = probes.length;
 await check(GUEST_RECHECK_MS + 3600000);
-assert.deepEqual(probes.at(-1), { chat: true, spawn: false });
+assert.equal(probes.length, before, 'no join while anybody is on');
+assert.equal(tracker.recordFor(server.host, server.port).joinOwed, true);
+await check(21 * 60 * 1000);
+assert.equal(probes.length, before, 'still busy, still no join');
+status = { ...status, players: 0, observers: 1 };
+await check(21 * 60 * 1000);
+assert.equal(probes.length, before, 'an observer counts as somebody');
+status = { ...status, observers: 0 };
+await check(21 * 60 * 1000);
+assert.deepEqual(probes.at(-1), { chat: true, spawn: true });
+assert.equal(tracker.recordFor(server.host, server.port).joinOwed, false);
 
 // A silence keeps the answer it had, and waits its week.
 answer = { watch: 'unknown', chat: 'unknown' };
@@ -143,6 +164,66 @@ assert.equal(tracker.recordFor(server.host, server.port).guest.banned, false);
   await wary.tick();
   assert.equal(wary.recordFor(banning.host, banning.port).guest.banned, false, 'a lifted ban is noticed');
   assert.equal(wary.recordFor(banning.host, banning.port).dueNow, true, 'and the server is due again at once');
+}
+
+// A busy server's new world comes down without a join, keeping the variables
+// already held; the join waits until the server is empty.
+{
+  const busy = { host: 'busy.example.org', port: 5157, title: 'n', info: {} };
+  const imports = [];
+  let pictured = false;
+  let hash = 'p'.padEnd(33, '1');
+  status = { worldHash: hash, players: 2, observers: 0, full: false };
+  const joins = [];
+  const busyTracker = createBzfsWorldTracker({
+    statePath: path.join(dir, 'busy.json'),
+    queryServerStatus: async () => ({ ...status, worldHash: hash }),
+    importWorld: async (host, port, guest, enter) => {
+      imports.push({ guest, enter });
+      pictured = true;
+      return { safeMapName: 'import-busy.bzw' };
+    },
+    probeGuestAccess: async () => { joins.push('join'); return { watch: 'yes', chat: 'yes', spawn: 'no', variables: [] }; },
+    hasPicture: () => pictured,
+    log: () => {},
+    logError: () => {},
+  });
+  busyTracker.observe([busy]);
+  await busyTracker.tick();
+  assert.deepEqual(imports, [{ guest: null, enter: false }], 'a busy server\'s world, no join');
+  assert.equal(busyTracker.recordFor(busy.host, busy.port).joinOwed, true);
+  status = { ...status, players: 0 };
+  clock += 21 * 60 * 1000;
+  await busyTracker.tick();
+  assert.deepEqual(joins, ['join'], 'joined once empty');
+  assert.deepEqual(busyTracker.storedVariables(busy.host, busy.port), []);
+  // A generated world rolled by a restart is no reason to read them again.
+  hash = 't'.padEnd(33, '2');
+  pictured = false;
+  status = { ...status, players: 0 };
+  clock += 2 * 60 * 60 * 1000;
+  await busyTracker.tick();
+  assert.equal(imports.at(-1).enter, false, 'a new generated world joins for nothing');
+}
+
+// Robots see nothing: a server with only robots on it is joined.
+{
+  const bots = { host: 'bots.example.org', port: 5158, title: 'r', info: {} };
+  const joins = [];
+  const botTracker = createBzfsWorldTracker({
+    statePath: path.join(dir, 'bots.json'),
+    queryServerStatus: async () => ({ worldHash: 'p'.padEnd(33, '3'), players: 4, observers: 0, humans: 0, full: false }),
+    importWorld: async () => { throw new Error('no import expected'); },
+    probeGuestAccess: async () => { joins.push('join'); return { watch: 'yes', chat: 'yes', spawn: 'no', variables: [] }; },
+    hasPicture: () => true,
+    log: () => {},
+    logError: () => {},
+  });
+  botTracker.observe([bots]);
+  botTracker.noteImport(bots.host, bots.port, 'p'.padEnd(33, '3'), null, null);
+  clock += 25 * 60 * 60 * 1000;
+  await botTracker.tick();
+  assert.deepEqual(joins, ['join'], 'a server with only robots on it is joined');
 }
 
 Date.now = realNow;

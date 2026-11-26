@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- bzo joins a BZFlag server, to read its variables and what a guest may do,
+  only while nobody but robots is on it, counted with MsgQueryPlayers. A busy server's new world is fetched without
+  a join, keeping the variables read before, and is looked at again in 20
+  minutes. Variables are read again monthly, or when a world from a file
+  changes, not on every restart of a generated one. Viewing a map uses the
+  variables already held. See [docs/server-check.md](docs/server-check.md).
+
 ## [1.4.23] - 2026-11-26
 
 ### Fixed

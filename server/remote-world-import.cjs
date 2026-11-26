@@ -25,8 +25,9 @@
 // price of knowing what a map is really played at, and an import that skips
 // it silently writes a map that plays by bzo's defaults instead of the
 // server's -- so it is done by default, as a momentary observer that leaves
-// again the instant the variables arrive, and `enterForVariables: false`
-// turns it off for a caller that would rather stay invisible.
+// again the instant the variables arrive. `enterForVariables: false` turns it
+// off, and `'ifEmpty'` makes it only where nobody is on the server, player or
+// observer, robots aside (`countHumans`), so nobody sees the join.
 
 const crypto = require('node:crypto');
 const dgram = require('node:dgram');
@@ -702,9 +703,15 @@ function probeGuestAccess(host, port, { spawn = false, motto, timeout = 20000 } 
           throw new Error(`protocol ${version} (bzo speaks ${PROTOCOL_VERSION})`);
         }
         if (playerId === 0xff) throw new Error('rejected (full, banned, or closed)');
-        const { guest, serverVersion } = await enterAndProbe(socket, readFrame, playerId, { chat: true, spawn }, { motto });
-        // The version rides on the answers; the tracker takes it off.
-        done(null, { ...(guest || {}), ...(serverVersion ? { serverVersion } : {}) });
+        const { guest, serverVersion, variables } =
+          await enterAndProbe(socket, readFrame, playerId, { chat: true, spawn }, { motto });
+        // The version and the variables ride on the answers; the tracker takes
+        // them off.
+        done(null, {
+          ...(guest || {}),
+          ...(serverVersion ? { serverVersion } : {}),
+          ...(variables ? { variables: collectNonDefaultVariables(variables) } : {}),
+        });
       } catch (err) {
         done(err);
       }
@@ -896,7 +903,10 @@ function fetchWorldFromServer(host, port, timeout, options = {}) {
         let variables = null;
         let guest = null;
         let serverVersion = null;
-        if (options.enterForVariables !== false) {
+        const enter = options.enterForVariables === 'ifEmpty'
+          ? await countHumans(socket, readFrame) === 0
+          : options.enterForVariables !== false;
+        if (enter) {
           try {
             const joined = await enterAndProbe(socket, readFrame, playerId, options.guest,
               { callsign: options.callsign, motto: options.motto });
@@ -1013,6 +1023,7 @@ function queryServerStatus(host, port, timeout = 8000) {
           if (code === 'sk' || code === 'rj') throw new Error(`server sent ${code} requesting world hash`);
         }
 
+        const humans = await countHumans(socket, readFrame);
         const game = decodeQueryGame(queryGame);
         const settings = gameSettings.length >= 30 ? decodeGameSettings(gameSettings) : null;
         succeed({
@@ -1024,6 +1035,9 @@ function queryServerStatus(host, port, timeout = 8000) {
           // same line `maxPlayers` draws (CmdLineOptions.cxx:458).
           players: game.teamSizes.slice(0, 5).reduce((sum, size) => sum + size, 0),
           observers: game.teamSizes[5],
+          // Players and observers who are people, robots left out: whether a
+          // join would be seen. Null where the server did not say.
+          humans,
           maxPlayers: game.maxPlayers,
           maxShots: settings ? settings.maxShots : game.maxShots,
           // `GAME_STYLES` by index either way: `MsgGameSettings` names the
@@ -1228,6 +1242,24 @@ function decodeGameSettings(buf) {
     worldSize, gameType, gameOptionsBits, maxShots, numFlags,
     linearAcceleration, angularAcceleration, shakeTimeout, shakeWins,
   };
+}
+
+// How many people are on a server, observers included and robots not, on a
+// connection that has not entered. MsgQueryPlayers is answered with a
+// MsgAddPlayer for each player who is playing (`sendQueryPlayers`,
+// bzfs.cxx:3147), whose second field is its type, and the MsgQueryGame sent
+// after it marks the end, since the count in its header includes players
+// still joining, which get no MsgAddPlayer. Null when the answer is not read.
+async function countHumans(socket, readFrame) {
+  sendFrame(socket, 'qp');
+  sendFrame(socket, 'qg');
+  let humans = 0;
+  for (;;) {
+    const { code, payload } = await readFrame();
+    if (code === 'qg') return humans;
+    if (code === 'sk' || code === 'rj') return null;
+    if (code === 'ap' && payload.length >= 3 && payload.readUInt16BE(1) !== COMPUTER_PLAYER) humans += 1;
+  }
 }
 
 function decodeQueryGame(buf) {
