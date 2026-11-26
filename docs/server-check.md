@@ -5,7 +5,7 @@ every server on the public BZFlag list with a picture of its world, lets a
 browser view that world, and lets a browser watch or play there through a
 proxy. To do that, a bzo server sometimes connects to yours. This page says
 what it does, when, and how to be left out of its checks. A server that is
-left out, or that blocks bzo, is listed as excluded, with only its address,
+left out, or that excludes bzo, is listed as excluded, with only its address,
 description and owner.
 
 ## What bzo reads

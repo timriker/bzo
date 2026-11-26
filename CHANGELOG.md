@@ -6,6 +6,16 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Fixed
+- A practice link to a BZFlag server's map this server cannot open shows an
+  error page saying why, with a link to the game here, instead of dropping
+  the player into another world. The log gets one `[PRACTICE]` line with
+  the address and Referer.
+- A practice world that fails to load no longer claims bots.
+
+### Changed
+- A server that keeps bzo out "excludes bzo" in messages and logs.
+
 ## [1.4.22] - 2026-11-25
 
 ### Added

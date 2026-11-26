@@ -337,6 +337,7 @@ self.onmessage = ({ data }) => {
       setInterval(tick, TICK_SECONDS * 1000);
     }).catch((error) => {
       console.error('offline world did not load', error);
+      botCount = 0;
       serverMessage('The map did not load, so there are no bots: free drive only.');
     });
     return;

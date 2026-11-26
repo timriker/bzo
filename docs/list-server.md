@@ -433,7 +433,7 @@ own: `b`/`bots`, from a server's `_disableBots`, and `gw`/`guestWatch`,
 `gu`/`guests` and `gc`/`guestChat`, from what bzo has learned about guest
 access (docs/proxy.md, "Guest access"). A server bzo has not found out about
 matches neither `+` nor `-`. `x`/`excluded` is a server bzo leaves out,
-because it blocks bzo or its operator asked (docs/server-check.md).
+because it excludes bzo or its operator asked (docs/server-check.md).
 And a pattern, `ve`/`ver`/`version`, over the server's version -- `bzo-*`
 for bzo, bzfs's own build for the rest (see **A server's build**) -- which
 plain text searches too, so `bzo-` alone lists bzo servers.

@@ -108,7 +108,7 @@ assert.equal(tracker.recordFor(server.host, server.port).guest.banned, false);
   assert.deepEqual(dials, [], 'an excluded server is never dialled');
 }
 
-// A server that bans bzo is not dialled at all for a month -- no hash check,
+// A server that excludes bzo is not dialled at all for a month -- no hash check,
 // no world -- then asked only whether the ban still stands, with one join.
 {
   const banning = { host: 'ban.example.org', port: 5156, title: 'b', info: {} };

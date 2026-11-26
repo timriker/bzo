@@ -279,7 +279,7 @@ function createBzfsWorldTracker(deps) {
         save();
       } else if (server.pingAnswered === false && trustSilence && !record?.silent) {
         records.set(key, { ...record, silent: true, silentAt: now });
-        log(`[WORLDS] ${key} does not answer, so blocks bzo`);
+        log(`[WORLDS] ${key} does not answer, so excludes bzo`);
         save();
       }
     }
@@ -313,7 +313,7 @@ function createBzfsWorldTracker(deps) {
       // One that does not answer at all is not dialled either: the ping that
       // finds it answering again (`observe`) is what makes it due.
       if (record?.silent) continue;
-      // A server that bans bzo is not dialled at all, hash checks included,
+      // A server that excludes bzo is not dialled at all, hash checks included,
       // until its ban is a month old; then it is only asked whether the ban
       // still stands (`checkBan`).
       if (record?.guest?.banned === true) {
@@ -337,7 +337,7 @@ function createBzfsWorldTracker(deps) {
     return best;
   }
 
-  // Whether a server that banned bzo still does: one join, the guest check's,
+  // Whether a server that excluded bzo still does: one join, the guest check's,
   // and nothing else. A lifted ban leaves the server due at once, so its world
   // and the rest are learned again on the next tick.
   // `force` is an admin asking now (`recheckBan`), who waits on no gap.
@@ -364,7 +364,7 @@ function createBzfsWorldTracker(deps) {
       checkedAt: now,
       dueNow: lifted,
     });
-    log(`[WORLDS] ${key} ${lifted ? 'no longer bans bzo' : 'still bans bzo'}`);
+    log(`[WORLDS] ${key} ${lifted ? 'no longer excludes bzo' : 'still excludes bzo'}`);
     save();
     return lifted;
   }
@@ -568,7 +568,7 @@ function createBzfsWorldTracker(deps) {
       if (!record || record.dueNow || !hasPicture(host, port, record.worldHash)) return { at: 0 };
       return { at: (record.checkedAt || 0) + recheckMs(record.worldHash) };
     },
-    // A server that blocks bzo, asked again now rather than at its month or
+    // A server that excludes bzo, asked again now rather than at its month or
     // the next list refresh: an admin's Import on `/list`. A ban is asked with
     // a join (`checkBan`); a server that does not answer (`silent`), with one
     // status query. Resolves to whether it lets bzo in now, or null for a

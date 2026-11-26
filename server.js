@@ -962,10 +962,64 @@ function requestHost(req) {
   return sanitizeHost(req.get('host'));
 }
 
-app.get(['/', '/index.html'], (req, res) => {
+// A practice game on a bzfs server's map that could not be had, one line:
+// such a link is usually another site's, so who followed it and from where.
+function logPracticeRefused(req, file, error) {
+  const referer = req.get('referer');
+  log(`[PRACTICE] ${file} refused (${error.message}) ${requestAddress(req)}${referer ? ` from ${referer}` : ''}`);
+}
+
+// A `?practice&map=` link to a bzfs server's map this server cannot open
+// (`holdImportedWorld`): a page that says why, with a link to the game here,
+// rather than a game on some other world.
+async function refusedPracticePage(req) {
+  const file = req.query.map;
+  if (req.query.practice === undefined || !parseImportMapFileName(file)) return null;
+  try {
+    await holdImportedWorld(file);
+    return null;
+  } catch (error) {
+    logPracticeRefused(req, file, error);
+    const locale = l10n.negotiateLocale(req);
+    const t = l10n.translator(locale);
+    const { host, port } = parseImportMapFileName(file);
+    return `<!doctype html>
+<html lang="${escapeHtml(l10n.languageTag(locale))}" dir="${l10n.textDirection(locale)}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(t('Error {code}', { code: 404 }))}</title>
+<link rel="icon" sizes="16x16 32x32 48x48" href="/favicon.ico">
+<style>
+  body { font: 16px/1.4 Arial, sans-serif; margin: 2rem; color: #fff; background: #000; }
+  h1 { font-size: 1.3rem; color: #4CAF50; }
+  a { color: #66bb6a; }
+  code { color: #ccc; }
+</style>
+</head>
+<body>
+<h1>${escapeHtml(t('Error {code}', { code: 404 }))}</h1>
+<p>${l10n.html(t('Practice on {server} is not available: {error}.'), {
+    server: `<code>${escapeHtml(`${host}:${port}`)}</code>`,
+    error: escapeHtml(error.message),
+  })}</p>
+<p><a href="/">${escapeHtml(t('Play on {server}', { server: requestHost(req) }))}</a></p>
+</body>
+</html>
+`;
+  }
+}
+
+app.get(['/', '/index.html'], async (req, res) => {
   const host = requestHost(req);
   if (!host) {
     res.status(400).type('text/plain').send('Malformed Host header');
+    return;
+  }
+  const refused = await refusedPracticePage(req);
+  if (refused) {
+    res.set('Cache-Control', 'no-store');
+    res.status(404).type('html').send(refused);
     return;
   }
   // res.send generates an ETag for this body, so an unchanged page still costs
@@ -1705,7 +1759,7 @@ app.get('/api/practice/:file', async (req, res) => {
     try {
       await holdImportedWorld(file);
     } catch (error) {
-      logError(`Practice on ${file} could not import it:`, error);
+      logPracticeRefused(req, file, error);
       res.status(404).json({ error: error.message });
       return;
     }
@@ -1972,7 +2026,7 @@ function recheckedBanRows(server, t) {
 
 function publishWorldFacts(host, port) {
   const record = bzfsWorlds.recordFor(host, port);
-  // A server that bans bzo shows only that: whatever bzo learned before the
+  // A server that excludes bzo shows only that: whatever bzo learned before the
   // ban -- its variables, version, guest answers -- may be wrong now, and
   // nothing new is learned until the ban is lifted (`bansBzo`).
   if (bzfsWorlds.blocksBzo(record)) {
@@ -2000,7 +2054,7 @@ function publishWorldFacts(host, port) {
     guestWatch: guestAnswer(record?.guest?.watch),
     guestChat: guestAnswer(record?.guest?.chat),
     guestSpawn: guestAnswer(record?.guest?.spawn),
-    // Why this server has no picture on purpose: it bans bzo, or its operator
+    // Why this server has no picture on purpose: it excludes bzo, or its operator
     // asked to be left out (`excludeServers`, docs/server-check.md).
     banned: bzfsWorlds.blocksBzo(record) || undefined,
     excluded: isExcludedServer(host, port) || undefined,
@@ -3171,7 +3225,7 @@ function renderServerList(listId, filterId, unsorted, t) {
   const rows = entries.map((entry, index) => {
     const mark = listGameMark(entry);
     const players = typeof entry.players === 'number' ? entry.players : 0;
-    // A server that blocks bzo, or asked to be left out, shows its address and
+    // A server that excludes bzo, or asked to be left out, shows its address and
     // title and nothing else: whatever else bzo knows of it is old or never
     // was. The cells stay, empty, so the address still lines up.
     const cells = entry.note
@@ -3307,7 +3361,7 @@ function renderListTables({
   const bzfsEntries = servers.map((s, index) => {
     const importFileName = remoteMapFileName(s.host, s.port);
     const listedWorld = s.world || publishWorldFacts(s.host, s.port) || {};
-    // An excluded server -- one that blocks bzo, or one left out of its
+    // An excluded server -- one that excludes bzo, or one left out of its
     // checks -- shows no picture and says why, and sorts last
     // (`sortListEntries`).
     const left = listedWorld.excluded === true || isExcludedServer(s.host, s.port)
@@ -3415,7 +3469,7 @@ function renderListTables({
       // search for the address instead of showing it.
       // Hands the address to an installed BZFlag client, so it is offered to
       // everyone: nothing on this server is involved.
-      // For this server's admins, Import asks a server that bans bzo again
+      // For this server's admins, Import asks a server that excludes bzo again
       // first (`/list/import`).
       actions: blocked ? (admin && bans ? hostPortForm('/list/import', s, t('Import')) : '')
         : (opens ? action(`bzflag://${s.host}:${s.port}`, t('Launch')) : '')
@@ -3625,10 +3679,10 @@ function renderListPage({
     ? `<p class="flash success">${l10n.html(t('Imported {file} -- it is in the local maps table below.'), { file: code(imported) })}</p>`
     : importError
       ? `<p class="flash error">${escapeHtml(t('Import failed: {error}', { error: importError }))}</p>`
-      // An admin's Import on a server that still blocks bzo, with why, as the
+      // An admin's Import on a server that still excludes bzo, with why, as the
       // row's pane has it.
       : rechecked
-        ? `<p class="flash error">${[escapeHtml(t('{server} still blocks bzo.', { server: rechecked })),
+        ? `<p class="flash error">${[escapeHtml(t('{server} still excludes bzo.', { server: rechecked })),
           recheckedBanRows(rechecked, t).map(([label, value]) => `${escapeHtml(label)}: ${value}`).join(' \u00b7 '),
         ].filter(Boolean).join(' ')}</p>`
         : '';
@@ -3832,7 +3886,7 @@ ${discoveryHead}
     place-items: center; border: 1px solid #333; border-radius: 4px;
     background: #12140f; }
   .overviewWaiting img { width: 64px; height: 64px; border: 0; opacity: 0.35; }
-  /* No picture on purpose -- a server that bans bzo, or one left out of its
+  /* No picture on purpose -- a server that excludes bzo, or one left out of its
      checks -- and why, in the same empty box. */
   .overviewNote { width: 256px; aspect-ratio: 1; display: grid;
     place-items: center; border: 1px solid #333; border-radius: 4px;
@@ -4044,14 +4098,14 @@ app.post('/list/import', importRateLimit, (req, res) => {
   }
   const { host, port } = target;
   const file = remoteMapFileName(host, port);
-  // A server that blocks bzo -- a ban, or no answer at all -- is asked again
+  // A server that excludes bzo -- a ban, or no answer at all -- is asked again
   // first, for an admin alone, rather than at its month or the next list
   // refresh (`recheckBan`): still blocked, the page says why; let in, the
   // import goes ahead, and with it the world, its picture and what bzo knows
   // of it.
   const banned = bansBzo(host, port);
   if (banned && !isListAdmin(req)) {
-    res.redirect(302, `/list?${new URLSearchParams({ error: 'that server bans bzo' })}`);
+    res.redirect(302, `/list?${new URLSearchParams({ error: 'that server excludes bzo' })}`);
     return;
   }
   (banned ? bzfsWorlds.recheckBan(host, port) : Promise.resolve(true)).then((allowed) => {
@@ -4897,7 +4951,7 @@ async function registerFreshImportFromDisk(fileName) {
 // public list with no copy here, or one that will not send its world.
 async function holdImportedWorld(file) {
   const { host, port } = parseImportMapFileName(file);
-  if (bansBzo(host, port)) throw new Error('that server bans bzo');
+  if (bansBzo(host, port)) throw new Error('that server excludes bzo');
   const existing = MAP_REGISTRY.get(file);
   if (existing && Date.now() - existing.registeredAt < IMPORT_REUSE_MS && importIsCurrent(file)) {
     return { how: 'held' };
@@ -5536,7 +5590,7 @@ async function performRemoteMapImport(host, port, timeout, guest = null, callsig
     if (publicServers.length === 0) throw error;
   }
   const listedServer = findPublicServer(publicServers, host, port);
-  if (bansBzo(listedServer?.host ?? host, listedServer?.port ?? port)) throw new Error('that server bans bzo');
+  if (bansBzo(listedServer?.host ?? host, listedServer?.port ?? port)) throw new Error('that server excludes bzo');
   if (!listedServer) {
     const cached = reuseCachedImport(host, port);
     if (cached) return cached;
@@ -6837,7 +6891,7 @@ app.get('/api/list-server/list', async (req, res) => {
 });
 
 // One bzfs row as the list server hands it on. An excluded server -- one
-// that blocks bzo, or one left out at its operator's request -- goes as its
+// that excludes bzo, or one left out at its operator's request -- goes as its
 // address, title and owner alone, which is all `/list` shows of it, and not
 // why: a row with no `info` is excluded (`isRelayedExcludedRow`).
 function listServerBzfsRow(server) {

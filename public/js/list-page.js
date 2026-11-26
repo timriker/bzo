@@ -487,7 +487,7 @@ window.attachList = function attachList(listId, filterId, hashKey, defaultSort =
       const text = button.dataset.text !== undefined;
       directions[field] = factor;
       Array.from(list.children).sort((a, b) => {
-        // A server that bans bzo, or asked to be left out of its checks, stays
+        // A server that excludes bzo, or asked to be left out of its checks, stays
         // at the bottom whatever the column.
         const pinned = (entryFor(a.firstElementChild).nt || 0) - (entryFor(b.firstElementChild).nt || 0);
         if (pinned) return pinned;
