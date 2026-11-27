@@ -6,6 +6,30 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- `Y` enters and leaves VR. `T` shows and hides the scoreboard and chat
+  together, like the chevron, which upstream does with `S` and `W`.
+- Every VR session starts centred: over the turret, facing down the barrel.
+  Leaving and entering again is the recentre.
+
+### Changed
+- The VR HUD fits the headset's own field of view, so display glasses such
+  as the Viture show every panel, and uses the desktop's layout: radar lower
+  left, chat beside it, shot slots on the right, flag help below the
+  targeting box. The radar is half again as large.
+- Entering VR keeps third person and roaming; only overview becomes first
+  person.
+- On a PC driving display glasses, Shift+M steers with the mouse in VR, held
+  in the targeting box, and a click fires. A headset's own browser still has
+  no mouse steering.
+- The VR flag help keeps clear of the radar, wrapping beside it when centred
+  would run over it.
+
+### Fixed
+- `Q` and the chevron hide the radar, scoreboard and chat in VR too.
+- With the radar off, or on a `-noradar` server, chat takes its corner, as
+  upstream's message area does.
+
 ## [1.4.25] - 2026-11-27
 
 ### Fixed

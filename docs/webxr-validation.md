@@ -55,32 +55,50 @@ or deployment configuration.
   view without moving the tank.
 - Confirm that the tank remains centered at the XR origin while the world moves
   relative to the player.
+- Turn away from the runtime's forward, leave VR and enter again. Confirm the
+  view is back over the turret looking down the barrel: every session takes its
+  first pose as the origin, and `server.log` records `recentred: moved …m,
+  turned … deg`.
+- Enter VR in third person, leave, and confirm third person is kept both ways.
+  Enter from overview and confirm it becomes first person.
 
 ## HUD panels
 
 The DOM HUD keeps every panel one `--hud-edge` from the edge of the viewport. A
-session has no viewport edge, so `XR_HUD_ANGLE_X`, `XR_HUD_ANGLE_UP` and
-`XR_HUD_ANGLE_DOWN` bound the panels in degrees off the gaze axis instead, and
-`placeXRHudPanel` holds every panel inside that box. Those three numbers are the
-only thing to change if the HUD sits wrong; nothing else encodes a position.
+session has no viewport edge, so the panels sit in a box measured in degrees
+off the gaze axis. `XR_HUD_ANGLE_X`, `XR_HUD_ANGLE_UP` and `XR_HUD_ANGLE_DOWN`
+are its ceiling; `measureXRHudBox` narrows it to the headset's own views, less
+`XR_HUD_FOV_MARGIN` (`XR_HUD_FOV_MARGIN_LEFT` on the left), and shrinks the
+whole layout by its tightest side. `server.log` records each eye's size and
+field of view, the eyes' distance apart and the `hudScale` that came of it.
+
+The layout is the desktop's landscape one: the radar in the lower left, chat
+beside it along the bottom, the scoreboard top left, the shot slots against the
+right edge and the flag help below the targeting box.
 
 - Look straight ahead without moving your head and confirm that the radar, the
   scoreboard, the shot slots, the notices and the chat are all readable -- no
   panel should need a glance down or out to the side to reach.
 - Confirm no panel is clipped by the edge of the display or lost in the blur at
-  the edge of the lens.
-- Confirm the chat panel sits above the bottom edge of the box with its caption
-  and all six message lines visible.
+  the edge of the lens, and that the side margins look about the same as the
+  top and bottom ones.
+- On display glasses with a narrow view, such as the Viture, confirm the same:
+  the panels shrink together rather than overlap.
+- Confirm the chat panel sits on the bottom edge of the box beside the radar,
+  with its caption and all six message lines visible. Hide the radar with `Q`
+  and confirm chat takes its corner.
+- Press `T`, or the chevron, and confirm the scoreboard and chat go and come
+  back together.
 - Send chat of each kind and confirm each line is the colour the desktop window
   gives it: server yellow, misc blue, action peach, direct messages cyan and
   purple, ordinary chat white.
 - With a keyboard attached, switch tabs with the digit keys and confirm the
   caption follows. Let a message arrive on another tab and confirm the caption
   row reports it as unread on the right.
-- Pick up a flag and confirm the help for it appears just below the gaze axis,
-  clear of the gaze axis above and the chat panel below, and that it goes on its
-  own after a minute. Pick up Phantom Zone, the longest help in the table, and
-  confirm every line of it is on the panel.
+- Pick up a flag and confirm the help for it appears below the targeting box,
+  where the desktop shows it, and that it goes on its own after a minute.
+  Pick up Phantom Zone, the longest help in the table, and confirm every line
+  of it is on the panel.
 - Drop the flag and confirm the help goes with it rather than serving out its
   minute.
 - With the help showing, confirm the render level's `hud` figure is what it was
@@ -132,10 +150,22 @@ session at all. This is the part that cannot be answered without the hardware.
 
 - With a hardware keyboard paired, confirm whether the drive keys reach the tank
   during a session, and record the answer either way -- bzo gates nothing on it.
-- Confirm `Mouse Steering` in the XR Settings menu reads `Unavailable` and that
-  the thumbstick walks past it rather than landing on it.
-- With a mouse paired, confirm that moving it and clicking it do nothing to the
-  tank: there is no cursor to aim, so the trigger is the only fire control.
+  On display glasses driven by a PC (Viture Liquid) they do.
+- On the same setup, connect a controller to the PC and record whether it
+  reaches the tank in a session, and whether it rumbles. With none connected
+  the WebXR controllers report no sticks. A session reads only WebXR
+  controllers (`syncVirtualInput` in input.js), so a controller the browser
+  sees only as a gamepad does nothing in VR.
+- Press `Y` and confirm it enters VR, and again that it leaves.
+- In a headset's own browser, confirm `Mouse Steering` in the XR Settings menu
+  reads `Unavailable` and that the thumbstick walks past it rather than landing
+  on it.
+- On a PC driving display glasses, the cursor is on the monitor and the player
+  may steer with it: press Shift+M, click the game window and confirm the
+  cursor is held in the targeting box, steers, and fires on a click.
+- With a mouse paired to a headset, confirm that moving it and clicking it do
+  nothing to the tank: there is no cursor to aim, so the trigger is the only
+  fire control.
 - Leave VR and confirm mouse steering is offered again, and that the tank does
   not start driving on its own from wherever the cursor was left before entering.
 

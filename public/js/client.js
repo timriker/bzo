@@ -197,6 +197,9 @@ import {
   returnChat,
   borrowScoreboard,
   returnScoreboard,
+  isScoreboardCollapsed,
+  toggleHudCollapsed,
+  isChatCollapsed,
   SCOREBOARD_WATCHING_LABEL,
 } from './hud.js';
 import {
@@ -733,21 +736,50 @@ const XR_HUD_PLANE_Z = -0.85;
 // why it gets no more room than up even though a neck bends that way more
 // easily. These are the three numbers to tune if the HUD sits wrong in a
 // headset; nothing else encodes a position.
+//
+// They are a ceiling, not a promise: a headset whose lenses show less than
+// this -- display glasses such as the Viture show about 45 by 28 degrees --
+// shrinks the whole HUD to what both eyes can see, less XR_HUD_FOV_MARGIN, so a
+// panel in a corner is not half off the display (measureXRHudBox).
 const XR_HUD_ANGLE_X = 28;
 const XR_HUD_ANGLE_UP = 24;
 const XR_HUD_ANGLE_DOWN = 24;
+const XR_HUD_FOV_MARGIN = 2;
+// The left side's, which reads wider than the right at the same angle.
+const XR_HUD_FOV_MARGIN_LEFT = 1;
 // How far off centre a given angle lands on the HUD plane.
 function xrHudEdge(degrees) {
   return Math.abs(XR_HUD_PLANE_Z) * Math.tan((degrees * Math.PI) / 180);
 }
+// The box's edges, in layout units: the units every panel's size and place
+// are written in, which are metres on the HUD plane at the ceiling. A headset
+// that shows less draws the layout smaller by `scale` rather than squeezing it
+// into less room, so the panels keep clear of one another; the edges grow by
+// the same factor, so a panel against one still lands against it.
+const xrHudBox = {
+  left: -xrHudEdge(XR_HUD_ANGLE_X),
+  right: xrHudEdge(XR_HUD_ANGLE_X),
+  top: xrHudEdge(XR_HUD_ANGLE_UP),
+  bottom: -xrHudEdge(XR_HUD_ANGLE_DOWN),
+  scale: 1,
+  measured: false,
+};
+// Upstream sizes its HUD off one scale, a 256 by 192 screen fitted to the
+// window (--motion-unit in styles.css); this is that scale fitted to the box,
+// so a panel placed from it lands where the desktop's does.
+function xrHudMotionUnit() {
+  return Math.min((xrHudBox.right - xrHudBox.left) / 256, (xrHudBox.top - xrHudBox.bottom) / 192);
+}
+// Half of upstream's motion box (--motion-box), in those units.
+const XR_HUD_MOTION_HALF = 37;
+// The space between neighbouring panels (--hud-edge-gap).
+const XR_HUD_GAP = 0.02;
 // messageColor. The roaming status line wears it, as #roamStatus does in the
 // DOM column, and so does the flag help -- upstream draws both in it.
 const XR_MESSAGE_COLOR = '#cfd8e6';
-// The radar's side on the HUD plane. It takes the box's top-right corner, and
-// this is the size that keeps the corner nearest the gunsight where it has
-// always been while the far corner comes inside the box -- a radar large enough
-// to reach both would have its inner edge on the gunsight.
-const XR_RADAR_PLANE_SIZE = 0.3;
+// The radar's side on the HUD plane. It takes the box's lower-left corner, and
+// chat takes the rest of the bottom edge beside it.
+const XR_RADAR_PLANE_SIZE = 0.45;
 const XR_CHAT_PLANE_WIDTH = 0.9;
 // The chat canvas is laid out in pixels and the plane takes its aspect, so these
 // decide both what fits and how large it reads. A line is 22px on a canvas 1024
@@ -769,19 +801,17 @@ const XR_CHAT_ROWS_PER_LINE = 3;
 // The canvas is a fixed size and the text is painted from the top of it, so the
 // plane never changes shape and the texture is allocated once: a two-line help
 // leaves the bottom of the canvas transparent rather than making a shorter
-// panel. Five lines is the room, and the longest string in the flag table
-// (Phantom Zone, at 185 characters) wraps to three.
+// panel. Eight lines is the room: the longest string in the flag table
+// (Phantom Zone, at 185 characters) wraps to three at full width and to about
+// six beside the radar. The canvas narrows with the panel (resizeXRHudCanvas).
 const XR_FLAG_HELP_CANVAS_WIDTH = 1024;
 const XR_FLAG_HELP_LINE_PX = 26;
 const XR_FLAG_HELP_LINE_HEIGHT_PX = 32;
 const XR_FLAG_HELP_MARGIN_PX = 32;
-const XR_FLAG_HELP_MAX_LINES = 5;
-const XR_FLAG_HELP_CANVAS_HEIGHT = 168;
+const XR_FLAG_HELP_MAX_LINES = 8;
+const XR_FLAG_HELP_CANVAS_HEIGHT = XR_FLAG_HELP_LINE_PX
+  + ((XR_FLAG_HELP_MAX_LINES - 1) * XR_FLAG_HELP_LINE_HEIGHT_PX) + 14;
 const XR_FLAG_HELP_PLANE_WIDTH = 0.8;
-// How far below the gaze axis the first line starts. Clear of the gaze axis
-// itself, and far enough above the chat panel that a five-line help still
-// does not reach it.
-const XR_FLAG_HELP_TOP = -0.05;
 // BZFlag fires with Enter or the left mouse button and keeps the space bar for
 // dropping a flag (ActionBinding.cxx:92-95).
 // `?bot` joins as a robot tank, upstream's `ComputerPlayer` rather than its
@@ -5377,12 +5407,13 @@ if (pointerLockSupported) {
 
 // Whether a click on the battlefield is a shot. The on-screen controls own the
 // whole screen while they are up -- a tap that misses the fire button is a miss,
-// not a shot -- and in VR there is no cursor to aim, so a paired mouse's buttons
-// are not a trigger either. Not gated on having a fine pointer: a touch that
-// lands on the canvas with the overlay off arrives here as a click, and firing
-// is the only thing it could mean.
+// not a shot. In VR a click fires only while the mouse steers: a headset's own
+// browser has no cursor to aim, and a PC driving display glasses shows its
+// cursor on the monitor, which a player may choose to steer with. Not gated on
+// having a fine pointer: a touch that lands on the canvas with the overlay off
+// arrives here as a click, and firing is the only thing it could mean.
 function mouseGameplayClickActive() {
-  return !virtualControlsEnabled && !isXREnabled();
+  return !virtualControlsEnabled && (!isXREnabled() || mouseSteeringActive());
 }
 
 const DEFAULT_TANK_MODEL_ID = 'bzflag';
@@ -6930,6 +6961,17 @@ function handleGameplayKeydown(event) {
     slowKeyboard = !slowKeyboard;
     return true;
   }
+  // The VR button, for a headset with a keyboard: display glasses on a PC.
+  // Entering again is also the recentre (webxr.js).
+  if (event.code === 'KeyY' && plain && !event.repeat) {
+    document.getElementById('xrBtn')?.click();
+    return true;
+  }
+  // The chevron: upstream's `S` and `W` together, whose letters drive here.
+  if (event.code === 'KeyT' && plain && !event.repeat) {
+    toggleHudCollapsed();
+    return true;
+  }
   if (event.code === 'KeyQ' && plain && !event.repeat) {
     toggleRadarDisplay();
     return true;
@@ -7446,8 +7488,11 @@ window.addEventListener('DOMContentLoaded', () => {
         if (result || isXREnabled()) {
           setXRButtonState(true);
           closeSettingsDialog();
-          // Force first-person camera when entering VR
-          cameraMode = 'first-person';
+          // The view carries into VR, and back out with it. Overview is the one
+          // a session cannot show -- the headset owns the camera, and the world
+          // is left where it stands (render.js) -- so that alone becomes first
+          // person.
+          if (cameraMode === 'overview') cameraMode = 'first-person';
           // Whatever the 2D dialog was asking for, ask for it on the XR panel.
           if (isEntryDialogOpen()) openXRJoinMenu();
           showMessage(t('✓ WebXR VR Mode: ON'));
@@ -17404,6 +17449,19 @@ function ensureXRHudPanel(panel, { canvas = null, canvasWidth = 0, canvasHeight 
   return panel.mesh;
 }
 
+// A panel whose canvas follows its plane's width, so its text stays one size
+// and the panel shows more or less of it. A texture keeps the size it was first
+// uploaded at, so a new size needs a new texture. True when it was resized,
+// which leaves the canvas blank.
+function resizeXRHudCanvas(panel, width) {
+  if (panel.canvas.width === width) return false;
+  panel.canvas.width = width;
+  panel.texture.dispose();
+  panel.texture = new THREE.CanvasTexture(panel.canvas);
+  panel.mesh.material.map = panel.texture;
+  return true;
+}
+
 // Resize the plane to the panel's current size and place it on the HUD plane.
 // The settings menu covers the view, so nothing else shows while it is open.
 //
@@ -17414,17 +17472,16 @@ function ensureXRHudPanel(panel, { canvas = null, canvasWidth = 0, canvasHeight 
 // thing --hud-edge is for the DOM panels, which position themselves and only
 // promise to stop short of the screen.
 function placeXRHudPanel(panel, { width: requestedWidth, height: requestedHeight, x: requestedX, y: requestedY }) {
-  const left = -xrHudEdge(XR_HUD_ANGLE_X);
-  const right = xrHudEdge(XR_HUD_ANGLE_X);
-  const top = xrHudEdge(XR_HUD_ANGLE_UP);
-  const bottom = -xrHudEdge(XR_HUD_ANGLE_DOWN);
+  const { left, right, top, bottom, scale } = xrHudBox;
   // Scale rather than crop: the canvas behind a panel is laid out for its own
   // aspect, so squeezing one dimension would letter-box the painting.
   const fit = Math.min(1, (right - left) / requestedWidth, (top - bottom) / requestedHeight);
-  const width = requestedWidth * fit;
-  const height = requestedHeight * fit;
-  const x = Math.min(right - (width / 2), Math.max(left + (width / 2), requestedX));
-  const y = Math.min(top - (height / 2), Math.max(bottom + (height / 2), requestedY));
+  const fitWidth = requestedWidth * fit;
+  const fitHeight = requestedHeight * fit;
+  const x = scale * Math.min(right - (fitWidth / 2), Math.max(left + (fitWidth / 2), requestedX));
+  const y = scale * Math.min(top - (fitHeight / 2), Math.max(bottom + (fitHeight / 2), requestedY));
+  const width = fitWidth * scale;
+  const height = fitHeight * scale;
 
   if (panel.planeWidth !== width || panel.planeHeight !== height) {
     panel.mesh.geometry.dispose();
@@ -17436,6 +17493,62 @@ function placeXRHudPanel(panel, { width: requestedWidth, height: requestedHeight
   panel.mesh.position.set(x, y, XR_HUD_PLANE_Z);
   panel.mesh.rotation.set(0, 0, 0);
   panel.mesh.visible = isXREnabled() && !xrSettingsMenuOpen;
+}
+
+// Fits the HUD box to the session's own eyes. Each view's projection gives the
+// tangents of its four frustum edges. A side edge is the outer one of the two
+// eyes': display glasses aim each eye's view a little outward, so the field the
+// player sees runs to the left eye's left edge and the right eye's right one,
+// and a box held to the part both eyes share leaves the sides twice the margin
+// of the top and bottom. The angles are taken from between the eyes, where
+// binocular vision judges direction from, not from each eye: placed from the
+// eyes, the sides lose the margin the top and bottom keep. Those edges, pulled
+// in by the margin, set how far the layout shrinks -- by its tightest side, so every side fits -- and the
+// box's other sides take up the room left over. The views exist from the
+// session's first frame, so until then the box keeps the ceiling and this tries
+// again next frame.
+function measureXRHudBox() {
+  const eyes = renderManager.getRenderer()?.xr.getCamera().cameras || [];
+  if (eyes.length === 0) return;
+  const distance = Math.abs(XR_HUD_PLANE_Z);
+  const degrees = (tan) => Math.atan(Math.abs(tan)) * 180 / Math.PI;
+  const inset = (tan, margin = XR_HUD_FOV_MARGIN) => distance * Math.tan(((degrees(tan) - margin) * Math.PI) / 180);
+  const ipd = eyes.length > 1 ? eyes[0].position.distanceTo(eyes[1].position) : 0;
+  let left = 0;
+  let right = 0;
+  let top = xrHudEdge(XR_HUD_ANGLE_UP);
+  let bottom = xrHudEdge(XR_HUD_ANGLE_DOWN);
+  const fov = [];
+  eyes.forEach((eye) => {
+    const e = eye.projectionMatrix.elements;
+    const tanLeft = (e[8] - 1) / e[0];
+    const tanRight = (e[8] + 1) / e[0];
+    const tanBottom = (e[9] - 1) / e[5];
+    const tanTop = (e[9] + 1) / e[5];
+    left = Math.max(left, inset(tanLeft, XR_HUD_FOV_MARGIN_LEFT));
+    right = Math.max(right, inset(tanRight));
+    top = Math.min(top, inset(tanTop));
+    bottom = Math.min(bottom, inset(tanBottom));
+    fov.push([tanLeft, tanRight, tanTop, tanBottom].map((tan) => degrees(tan).toFixed(1)).join('/'));
+  });
+  left = Math.min(left, xrHudEdge(XR_HUD_ANGLE_X));
+  right = Math.min(right, xrHudEdge(XR_HUD_ANGLE_X));
+  const scale = Math.min(
+    left / xrHudEdge(XR_HUD_ANGLE_X),
+    right / xrHudEdge(XR_HUD_ANGLE_X),
+    top / xrHudEdge(XR_HUD_ANGLE_UP),
+    bottom / xrHudEdge(XR_HUD_ANGLE_DOWN),
+  );
+  xrHudBox.left = -left / scale;
+  xrHudBox.right = right / scale;
+  xrHudBox.top = top / scale;
+  xrHudBox.bottom = -bottom / scale;
+  xrHudBox.scale = scale;
+  xrHudBox.measured = true;
+  const view = eyes[0].viewport;
+  debugLog(`[WebXR] views=${eyes.length} eye=${view.z}x${view.w}`
+    + ` fov(l/r/u/d)=${fov.join(' ')} ipd=${(ipd * 100).toFixed(1)}cm`
+    + ` hudScale=${scale.toFixed(2)}`);
 }
 
 // Every overlay repaints its canvas and re-uploads it as a texture, and none of
@@ -17450,10 +17563,12 @@ function updateXRHudOverlays() {
       if (panel.mesh) panel.mesh.visible = false;
     });
     xrSettingsMenuRenderer?.hide();
+    xrHudBox.measured = false;
     return;
   }
 
   xrHudOverlaysActive = true;
+  if (!xrHudBox.measured) measureXRHudBox();
   ensureXRRadarTexture();
   ensureXRShotStatusOverlay();
   ensureXRChatOverlay();
@@ -17561,6 +17676,15 @@ function ensureXRFlagHelpOverlay() {
     canvasHeight: XR_FLAG_HELP_CANVAS_HEIGHT,
   })) return;
 
+  // Centred, as #flagHelp is, unless that would run over the radar: then from
+  // the radar's edge, wrapped to the room between it and the box's right edge.
+  const half = XR_FLAG_HELP_PLANE_WIDTH / 2;
+  const clearOf = isRadarShown() ? xrHudBox.left + XR_RADAR_PLANE_SIZE + XR_HUD_GAP : -half;
+  const left = Math.max(-half, clearOf);
+  const width = Math.min(XR_FLAG_HELP_PLANE_WIDTH, xrHudBox.right - left);
+  const canvasWidth = Math.round(XR_FLAG_HELP_CANVAS_WIDTH * (width / XR_FLAG_HELP_PLANE_WIDTH));
+  if (resizeXRHudCanvas(xrFlagHelpPanel, canvasWidth)) xrFlagHelpPanel.paintedText = null;
+
   if (text !== xrFlagHelpPanel.paintedText) {
     const canvas = xrFlagHelpPanel.canvas;
     const ctx = canvas.getContext('2d');
@@ -17603,28 +17727,34 @@ function ensureXRFlagHelpOverlay() {
   const height = XR_FLAG_HELP_PLANE_WIDTH
     * (XR_FLAG_HELP_CANVAS_HEIGHT / XR_FLAG_HELP_CANVAS_WIDTH);
   placeXRHudPanel(xrFlagHelpPanel, {
-    width: XR_FLAG_HELP_PLANE_WIDTH,
+    width,
     height,
-    x: 0,
-    // Placed by its top edge: the first line has to land the same distance
-    // below the gaze axis whatever the help says, and the canvas is painted
-    // from the top for the same reason.
-    y: XR_FLAG_HELP_TOP - (height / 2),
+    x: left + (width / 2),
+    // Placed by its top edge, where #flagHelp is: at the bottom of the
+    // targeting box. The first line lands there whatever the help says, and the
+    // canvas is painted from the top for the same reason.
+    y: -(XR_HUD_MOTION_HALF * xrHudMotionUnit()) - XR_HUD_GAP - (height / 2),
   });
 }
 
 function ensureXRRadarTexture() {
   if (!radarCanvas) return;
   if (!ensureXRHudPanel(xrRadarPanel, { canvas: radarCanvas })) return;
-  xrRadarPanel.mesh.visible = isRadarShown();
 
+  // Upstream's corner, as the desktop's landscape layout has it: lower left,
+  // with chat beside it along the bottom.
   const size = XR_RADAR_PLANE_SIZE;
   placeXRHudPanel(xrRadarPanel, {
     width: size,
     height: size,
-    x: xrHudEdge(XR_HUD_ANGLE_X) - (size / 2),
-    y: xrHudEdge(XR_HUD_ANGLE_UP) - (size / 2),
+    x: xrHudBox.left + (size / 2),
+    y: xrHudBox.bottom + (size / 2),
   });
+  // After placing, which shows every panel: `Q` puts the radar away here too.
+  if (!isRadarShown()) {
+    xrRadarPanel.mesh.visible = false;
+    return;
+  }
 
   if (isXREnabled()) xrRadarPanel.texture.needsUpdate = true;
 }
@@ -17634,16 +17764,29 @@ function ensureXRChatOverlay() {
     canvasWidth: XR_CHAT_CANVAS_WIDTH,
     canvasHeight: XR_CHAT_CANVAS_HEIGHT,
   })) return;
+  // Beside the radar and out to the box's right edge, along the bottom, as
+  // #chatWindow is in the desktop's landscape layout; across the whole bottom
+  // with the radar off, as upstream's message area is (ControlPanel.cxx:692). The canvas widens or
+  // narrows with the panel, so a line stays the size XR_CHAT_LINE_PX gives it
+  // and the panel shows more or less of each line rather than shrinking it.
+  const chatLeft = xrHudBox.left + (isRadarShown() ? XR_RADAR_PLANE_SIZE + XR_HUD_GAP : 0);
+  const chatWidth = xrHudBox.right - chatLeft;
+  const canvasWidth = Math.max(256, Math.round(XR_CHAT_CANVAS_WIDTH * (chatWidth / XR_CHAT_PLANE_WIDTH)));
+  if (resizeXRHudCanvas(xrChatPanel, canvasWidth)) xrChatPanel.signature = null;
+  // The plane takes the canvas's own aspect, so a line of text is the shape it
+  // was painted rather than stretched to whatever height the plane was given.
+  const chatHeight = XR_CHAT_PLANE_WIDTH * (XR_CHAT_CANVAS_HEIGHT / XR_CHAT_CANVAS_WIDTH);
   placeXRHudPanel(xrChatPanel, {
-    width: XR_CHAT_PLANE_WIDTH,
-    // The plane takes the canvas's own aspect, so a line of text is the shape it
-    // was painted rather than stretched to whatever height the plane was given.
-    height: XR_CHAT_PLANE_WIDTH * (XR_CHAT_CANVAS_HEIGHT / XR_CHAT_CANVAS_WIDTH),
-    x: 0,
-    // Against the bottom of the HUD box. It sat at 34 degrees below the gaze
-    // axis, which on a headset is under the lens rather than in front of it.
-    y: -xrHudEdge(XR_HUD_ANGLE_DOWN),
+    width: chatWidth,
+    height: chatHeight,
+    x: chatLeft + (chatWidth / 2),
+    y: xrHudBox.bottom + (chatHeight / 2),
   });
+  // Put away by the chevron, as #chatWindow is.
+  if (isChatCollapsed()) {
+    xrChatPanel.mesh.visible = false;
+    return;
+  }
 
   // Painted and uploaded only when what it shows has changed: the tab, the
   // unread count, or a line arriving or leaving. Every entry carries its own
@@ -17817,21 +17960,17 @@ function ensureXRShotStatusOverlay() {
   xrShotStatusPanel.texture.needsUpdate = true;
 
   const shotWidth = 0.08;
-  const radarMesh = xrRadarPanel.mesh;
-  const radarPlaneWidth = radarMesh?.geometry ? radarMesh.geometry.parameters.width : XR_RADAR_PLANE_SIZE;
-  const radarRightEdge = radarMesh
-    ? radarMesh.position.x + (radarPlaneWidth / 2)
-    : xrHudEdge(XR_HUD_ANGLE_X);
   // The bars keep their place when the line widens and lengthens the panel:
   // its left edge stays, and it grows upward by the line's height.
   const barsHeight = Math.min(0.18, 0.02 + maxSlots * 0.015);
   const panelWidth = shotWidth * (canvas.width / barWidth);
   const panelHeight = barsHeight * (canvas.height / Math.max(32, totalHeight));
+  // Against the box's right edge, the bars centred on the gaze axis.
   placeXRHudPanel(xrShotStatusPanel, {
     width: panelWidth,
     height: panelHeight,
-    x: radarRightEdge - shotWidth + (panelWidth / 2),
-    y: 0.02 + (barsHeight / 2) - (panelHeight / 2) + (panelHeight * (countHeight / canvas.height)),
+    x: xrHudBox.right - (panelWidth / 2),
+    y: (panelHeight * (countHeight / canvas.height)) - (panelHeight / 2),
   });
 }
 
@@ -17849,6 +17988,10 @@ function ensureXRScoreboardOverlay() {
   // flags: one model, two surfaces. This runs every frame of a session, so an
   // unchanged model is drawn by leaving the canvas alone and only placing the
   // panel again -- the roster is repainted when it changes, not at frame rate.
+  if (isScoreboardCollapsed()) {
+    xrScoreboardPanel.mesh.visible = false;
+    return;
+  }
   const model = getScoreboardModel();
   if (model.version === xrScoreboardPanel.paintedVersion) {
     placeXRScoreboardPanel();
@@ -18078,9 +18221,9 @@ function placeXRScoreboardPanel() {
   placeXRHudPanel(xrScoreboardPanel, {
     width: baseWidth,
     height: baseHeight,
-    // Left-aligned with the chat panel below it, against the top of the box.
-    x: -(XR_CHAT_PLANE_WIDTH / 2) + (baseWidth / 2),
-    y: xrHudEdge(XR_HUD_ANGLE_UP) - (baseHeight / 2),
+    // In the box's top-left corner, opposite the radar.
+    x: xrHudBox.left + (baseWidth / 2),
+    y: xrHudBox.top - (baseHeight / 2),
   });
 }
 

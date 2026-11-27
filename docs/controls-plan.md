@@ -50,10 +50,13 @@ digit.
 | `Q` | claimed, unbound | radar on or off | same |
 | `K` | -- | silence cursor on the scoreboard | silence a player |
 | `X` | slow keyboard | unchanged | `A` |
+| `Y` | -- | enter or leave VR; entering recentres | -- |
+| `T` | -- | scoreboard and chat on or off | `S`, `W` |
 
 Upstream's `S` and `W` show and hide the scoreboard and chat. They have no
 key here: WASD takes the letters, and Shift with W and S already tilts an
-observer's view. The ▲ button beside the gear does it.
+observer's view. `T` and the ▲ button beside the gear do it, both panels
+at once.
 
 `[` and `]` keep cycling the chat tabs. `N`, `,`, `.`, `Page Up`, `Page Down`
 and `End` already match upstream.

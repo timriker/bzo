@@ -9,6 +9,7 @@
 // Exports: setupInputHandlers, virtualInput, keys
 
 import { getXRControllerInput, pulseXRControllers, xrState } from './webxr.js';
+import { isHeadsetBrowserUA } from './headset.mjs';
 import { focusDialogCloseControl, focusFirstDialogControl, getMenuClickDirection, getMenuClickZone, getVisibleDialogRoot, handleDialogControllerInput, handleDialogKeydown, hideDialog, showDialog } from './menus.js';
 import { initSettingsMenu, settingsRowText } from './settings.js';
 import { ensureHelpLoaded } from './help.js';
@@ -940,8 +941,9 @@ const GAMEPLAY_OWNED_KEYS = new Set([
   'PageUp', 'PageDown', 'End',
   // Radar: on and off, and the digits' ranges and zoom
   'KeyQ', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5',
-  // View, HUD, voice, help, and `X` for upstream's slow keyboard.
-  'KeyC', 'KeyX', 'KeyF', 'Backquote', 'KeyB', 'KeyV', 'KeyI',
+  // View, HUD, voice, help, `X` for upstream's slow keyboard, `Y` for VR,
+  // `T` for the scoreboard and chat.
+  'KeyC', 'KeyX', 'KeyY', 'KeyT', 'KeyF', 'Backquote', 'KeyB', 'KeyV', 'KeyI',
   // Hunting: `U` is upstream's `hunt` and `7` its `addhunt`.
   'KeyU', 'Digit7',
   // Autopilot
@@ -1007,15 +1009,20 @@ function watchForMousePointer() {
 // Whether the mouse can steer here at all, which is a different question from
 // whether the player has asked it to. The stored preference survives a context
 // that cannot honour it and comes back when the context does.
+//
+// A headset's own browser has no cursor in a session. A PC driving display
+// glasses still has one, on the monitor, and the player may steer with it.
 export function isMouseSteeringAvailable() {
-  if (xrState.enabled) return false;
+  if (xrState.enabled && isHeadsetBrowserUA(navigator.userAgent)) return false;
   if (hudContext.getVirtualControlsEnabled()) return false;
   return hasFinePointer();
 }
 
 // Why the row is dead, for the title and for the player who presses M anyway.
 export function mouseSteeringUnavailableReason() {
-  if (xrState.enabled) return t('Mouse steering is unavailable in VR: there is no cursor to read');
+  if (xrState.enabled && isHeadsetBrowserUA(navigator.userAgent)) {
+    return t('Mouse steering is unavailable in VR: there is no cursor to read');
+  }
   if (hudContext.getVirtualControlsEnabled()) return t('Virtual controls steer instead of the mouse');
   return t('Mouse steering needs a mouse attached');
 }

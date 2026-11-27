@@ -260,6 +260,33 @@ export function chooseTargetFrameRate(supported, preferred = XR_PREFERRED_FRAME_
 // How long to wait for the runtime to answer before saying it did not.
 const XR_FRAME_RATE_REPORT_MS = 3000;
 
+// Every session starts centred on the player: the first pose is made the
+// origin, facing forward, so the view sits over the tank and looks down its
+// barrel whichever way the runtime last left its own origin. Display glasses
+// keep one origin across sessions and give no way to reset it from the page,
+// so entering VR again is the recentre. Height is the runtime's own, so a
+// standing player's floor stays where it is.
+function recenterOnFirstPose(renderer, animationCallback) {
+  let base = null;
+  return (time, frame) => {
+    if (frame && base !== false) {
+      base ||= renderer.xr.getReferenceSpace();
+      const pose = base && frame.getViewerPose(base);
+      if (pose) {
+        const { position: p, orientation: o } = pose.transform;
+        const yaw = Math.atan2(2 * ((o.w * o.y) + (o.x * o.z)), 1 - (2 * ((o.x * o.x) + (o.y * o.y))));
+        renderer.xr.setReferenceSpace(base.getOffsetReferenceSpace(new window.XRRigidTransform(
+          { x: p.x, y: 0, z: p.z },
+          { x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) },
+        )));
+        debugLog(`recentred: moved ${Math.hypot(p.x, p.z).toFixed(2)}m, turned ${(yaw * 180 / Math.PI).toFixed(0)} deg`);
+        base = false;
+      }
+    }
+    animationCallback(time, frame);
+  };
+}
+
 // Ask for a cadence and say what came back.
 //
 // **Never awaited, and never on the way in.** On a Quest, asked before the
@@ -338,7 +365,7 @@ async function startXRSession(renderer, animationCallback) {
     // Set up the XR animation loop
     if (animationCallback) {
       debugLog('Setting XR animation loop...');
-      renderer.xr.setAnimationLoop(animationCallback);
+      renderer.xr.setAnimationLoop(recenterOnFirstPose(renderer, animationCallback));
     }
 
     debugLog('XR session started successfully');

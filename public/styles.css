@@ -2890,6 +2890,10 @@ body.mouse-confined #mouseCursor {
     transform: none;
   }
 
+  body.radar-off:not(.virtual-controls-active) #chatWindow {
+    left: var(--hud-edge);
+  }
+
   body:not(.virtual-controls-active) #debugHud {
     top: var(--hud-edge);
     bottom: auto;

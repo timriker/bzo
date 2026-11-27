@@ -361,6 +361,14 @@ export function setHudCollapsed(collapsed) {
   applyHudCollapse();
 }
 
+export function isScoreboardCollapsed() {
+  return scoreboardCollapsed;
+}
+
+export function isChatCollapsed() {
+  return consoleCollapsed;
+}
+
 export function toggleHudCollapsed() {
   setHudCollapsed(!isHudCollapsed());
 }

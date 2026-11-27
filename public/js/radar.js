@@ -110,6 +110,9 @@ export function cycleRadarZoomLevel(direction = 1) {
 // kept as upstream keeps `displayRadar`. A world with no radar has none either
 // way (`isRadarShown`).
 let radarDisplayed = true;
+// Whether the radar was last left hidden, so the page is touched only when it
+// changes.
+let radarOff = false;
 try {
   radarDisplayed = localStorage.getItem('radarDisplayed') !== 'false';
 } catch {
@@ -763,7 +766,13 @@ export function updateRadar() {
   // `-noradar` -- has no radar for anyone (RadarRenderer.cxx:377).
   const radarLimit = worldRadarLimit();
   const shown = radarDisplayed && radarLimit > 0;
-  client.radarCanvas.style.visibility = shown ? '' : 'hidden';
+  if (radarOff !== !shown) {
+    radarOff = !shown;
+    client.radarCanvas.style.visibility = shown ? '' : 'hidden';
+    // ControlPanel::resize: with no radar the message area takes its corner
+    // (ControlPanel.cxx:692). styles.css widens #chatWindow on this class.
+    document.body.classList.toggle('radar-off', radarOff);
+  }
   if (!shown) return;
 
   // `bzfrand() > decay` is upstream's roll, and the decay it leaves behind is

@@ -480,10 +480,10 @@ PULSES.forEach(([name, speed], i) => {
   block(`textureMatrix\n  name ${name}\n  shift ${fmt(speed)} 0\n  fixedshift ${fmt(i / PULSES.length)} 0\nend\n`);
   lineMaterial(name, `  texture ${GRADIENT}\n  texmat ${name}`);
 });
+// Cyan, not white: a white dot on the floor reads as a flag at a distance.
 block(`dynamicColor
   name via
-  red limits 0.2 1
-  red clampup 0.8 0 0.12
+  red limits 0 0
   green limits 0.6 1
   green clampup 0.8 0 0.12
   blue limits 1 1
