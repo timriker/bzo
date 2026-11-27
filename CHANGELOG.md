@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.25] - 2026-11-27
+
 ### Fixed
 - A BZFlag server this one proxies, or whose map is viewed often, is joined
   again when its version, variables or guest answers are due. Its world
