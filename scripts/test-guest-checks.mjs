@@ -226,6 +226,37 @@ assert.equal(tracker.recordFor(server.host, server.port).guest.banned, false);
   assert.deepEqual(joins, ['join'], 'a server with only robots on it is joined');
 }
 
+// A world confirmed every fifteen minutes by something else -- a proxy's
+// pass -- dates the check but does not put off a join that is due.
+{
+  const proxied = { host: 'proxied.example.org', port: 5159, title: 'p', info: {} };
+  const hash = 'p'.padEnd(33, '4');
+  const joins = [];
+  const proxiedTracker = createBzfsWorldTracker({
+    statePath: path.join(dir, 'proxied.json'),
+    queryServerStatus: async () => ({ worldHash: hash, players: 0, observers: 0, humans: 0, full: false }),
+    importWorld: async () => { throw new Error('no import expected'); },
+    probeGuestAccess: async () => {
+      joins.push('join');
+      return { watch: 'yes', chat: 'yes', spawn: 'no', serverVersion: '2.4.33', variables: [] };
+    },
+    hasPicture: () => true,
+    log: () => {},
+    logError: () => {},
+  });
+  proxiedTracker.observe([proxied]);
+  // Joined once, long ago: its build is now a month old.
+  proxiedTracker.noteImport(proxied.host, proxied.port, hash, null, [], { watch: 'yes', chat: 'yes', spawn: 'no' }, '2.4.30');
+  clock += 31 * 24 * 60 * 60 * 1000;
+  for (let i = 0; i < 4; i++) {
+    proxiedTracker.noteImport(proxied.host, proxied.port, hash);
+    clock += 15 * 60 * 1000;
+    await proxiedTracker.tick();
+  }
+  assert.ok(joins.length >= 1, 'a due join is made however often the world is confirmed');
+  assert.equal(proxiedTracker.recordFor(proxied.host, proxied.port).serverVersion, '2.4.33');
+}
+
 Date.now = realNow;
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('guest check tests passed');

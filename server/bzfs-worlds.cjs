@@ -91,10 +91,29 @@ function variablesDue(record, now) {
   return true;
 }
 
-// How long after its last check a server is due again.
-function recheckWait(record) {
+// Whether a server's record alone says a join is due: a guest answer gone
+// stale, its build not asked for a week, or its variables due. Read off the
+// record rather than the last check, because something else can confirm its
+// world -- a proxy's pass every fifteen minutes, a view -- and date the
+// check without making the join.
+function joinDue(record, now) {
+  if (!record) return false;
+  return ['chat', 'watch', 'spawn'].some((field) => guestFactDue(record.guest, field, now, false))
+    || !(now - (record.serverVersionAskedAt || 0) < VERSION_RECHECK_MS)
+    || variablesDue(record, now);
+}
+
+// When a server is next due, and how overdue it is: where it owes a join
+// and one could be made now (`joinGapOpen`), `JOIN_RETRY_MS` after this
+// tracker last dialled it (`dialedAt`), which a confirmation from elsewhere
+// does not move; otherwise its world's recheck after its last check.
+function nextDue(record, now, joinGapOpen) {
+  if (joinGapOpen && (record?.joinOwed || joinDue(record, now))) {
+    const at = (record.dialedAt || 0) + JOIN_RETRY_MS;
+    return { at, age: now - (record.dialedAt || 0), wait: JOIN_RETRY_MS };
+  }
   const wait = recheckMs(record?.worldHash);
-  return record?.joinOwed ? Math.min(JOIN_RETRY_MS, wait) : wait;
+  return { at: (record?.checkedAt || 0) + wait, age: now - (record?.checkedAt || 0), wait };
 }
 
 function isGuestAnswer(value) {
@@ -359,8 +378,11 @@ function createBzfsWorldTracker(deps) {
       let age;
       if (!record) age = Infinity;
       else if (record.dueNow || !hasPicture(server.host, server.port, record.worldHash)) age = Infinity;
-      else age = now - (record.checkedAt || 0);
-      if (age < recheckWait(record)) continue;
+      else {
+        const due = nextDue(record, now, now - lastGuestVisitAt >= GUEST_VISIT_GAP_MS);
+        if (due.age < due.wait) continue;
+        age = due.age;
+      }
       if (age > bestAge) { bestAge = age; best = server; }
     }
     return best;
@@ -574,7 +596,19 @@ function createBzfsWorldTracker(deps) {
     try {
       const now = Date.now();
       const server = pickDue(now);
-      if (server) { await check(server, now); return; }
+      if (server) {
+        try {
+          await check(server, now);
+        } finally {
+          // This tracker's own dial, which `nextDue` times a join's retry by.
+          const record = records.get(serverKey(server.host, server.port));
+          if (record) {
+            record.dialedAt = now;
+            save();
+          }
+        }
+        return;
+      }
       // Nothing left to ask about: every listed server has a current answer,
       // or a failure still inside its cooldown. That is as complete as the
       // list gets, and the moment it is safe to throw away what nothing
@@ -611,7 +645,7 @@ function createBzfsWorldTracker(deps) {
         return { at: (record.errorAt || 0) + failureCooldown(record.failCount) };
       }
       if (!record || record.dueNow || !hasPicture(host, port, record.worldHash)) return { at: 0 };
-      return { at: (record.checkedAt || 0) + recheckWait(record) };
+      return { at: nextDue(record, Date.now(), true).at };
     },
     // A server that excludes bzo, asked again now rather than at its month or
     // the next list refresh: an admin's Import on `/list`. A ban is asked with
