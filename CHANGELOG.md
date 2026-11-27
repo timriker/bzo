@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.26] - 2026-11-27
+
 ### Added
 - `Y` enters and leaves VR. `T` shows and hides the scoreboard and chat
   together, like the chevron, which upstream does with `S` and `W`.
@@ -24,6 +26,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   no mouse steering.
 - The VR flag help keeps clear of the radar, wrapping beside it when centred
   would run over it.
+- hix_ad's circuit vias are cyan rather than white, so they are not taken
+  for flags at a distance.
 
 ### Fixed
 - `Q` and the chevron hide the radar, scoreboard and chat in VR too.
