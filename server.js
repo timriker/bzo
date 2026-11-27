@@ -5908,6 +5908,11 @@ const BZFS_WORLD_THUMBNAILS = serverConfig.bzfsWorldThumbnails !== false;
 // `/import` already holds, are this server's own either way.
 const VIEW_OTHER_SERVERS = serverConfig.viewOtherServers === true;
 
+// `bzflagAutoSpawn` in server.json: spawn a BZFlag client's tank by itself,
+// as a browser's is, rather than wait for its MsgAlive as bzfs does. Off by
+// default; handy for testing, since nobody has to press a key.
+const BZFLAG_AUTO_SPAWN = serverConfig.bzflagAutoSpawn === true;
+
 // `adminGroups` in `server.json`: the global groups this server would grant
 // admin to. The list server answers about no group it was not asked about, so
 // this list is both the question and the whole permission model -- a member of
@@ -8426,7 +8431,8 @@ function startMatch() {
     // Whoever the previous match's game-over held dead gets back in: nothing
     // else was going to lift that hold, since the respawn timeout that would
     // have revived them already saw `matchClock.gameOver` and gave up.
-    if (!isObserverTeam(candidate.team) && !candidate.alive) bringBack(candidate);
+    // A BZFlag client asks for itself, with MsgAlive.
+    if (!isObserverTeam(candidate.team) && !candidate.alive && !candidate.spawnsOnAsk) bringBack(candidate);
   });
   matchClock.paused = false;
   matchClock.gameOver = false;
@@ -8655,6 +8661,8 @@ function spawnAllowed(player) {
     removeFromServer(player);
     return 'kicked';
   }
+  // A BZFlag client is refused and asks again itself, as on bzfs.
+  if (player.spawnsOnAsk) return false;
   player.spawnRetryTimer = setTimeout(() => {
     if (players.get(player.id) !== player || !player.joined || player.alive) return;
     if (matchClock.gameOver || isObserverTeam(player.team)) return;
@@ -8668,6 +8676,33 @@ function bringBack(player) {
   if (spawnAllowed(player) !== true) return;
   player.respawn();
   broadcastPlayerRecord('alive', player);
+}
+
+// A BZFlag client's MsgAlive. bzfs spawns a tank only when its client asks
+// (`playerAlive`, bzfs.cxx:3180), so a BZFlag client's waits for the ask
+// here too, where a browser's is spawned by bzo itself. As bzfs queues the
+// ask (`queueSpawn`, `doSpawns`), one made before the tank may spawn is
+// kept and spawns it when the time comes: `_explodeTime` after a death, or
+// the end of the rejoin wait, which is announced in bzfs's words
+// (bzfs.cxx:4851).
+function requestNativeSpawn(player) {
+  if (!player.joined || player.alive || isObserverTeam(player.team) || matchClock.gameOver) return;
+  const now = Date.now();
+  const rejoin = rejoinWaitMs(player.name, now);
+  if (rejoin > 0) {
+    replyToPlayer(player, 'You are unable to begin playing for {seconds} seconds.', { seconds: (rejoin / 1000).toFixed(1) });
+  }
+  const at = Math.max(player.nextSpawnAt || 0, now + rejoin);
+  clearTimeout(player.spawnQueueTimer);
+  if (at <= now) {
+    bringBack(player);
+    return;
+  }
+  player.spawnQueueTimer = setTimeout(() => {
+    if (players.get(player.id) !== player || !player.joined || player.alive) return;
+    if (matchClock.gameOver || isObserverTeam(player.team)) return;
+    bringBack(player);
+  }, at - now);
 }
 
 // bzfs.cxx:3287. Spawning closes the window in which a deposed rabbit's shots
@@ -14938,11 +14973,15 @@ async function seatNativeClient(link, payload) {
       translator.clientDead = true;
       if (seated?.joined && seated.alive) applyNativeDeath(seated, body, translator);
     } else if (code === 'al') {
-      // MsgAlive from the client asks to spawn. bzo spawns players by itself,
-      // as its browsers expect, so a request is answered only where the
-      // client died on its own screen and bzo still has it alive -- told
-      // where it is, it plays on. Otherwise bzo's own MsgAlive is coming.
-      if (translator.clientDead && seated?.joined && seated.alive) translator.alive(seated.getState(false));
+      // MsgAlive from the client asks to spawn (`requestNativeSpawn`). One
+      // from a client that died on its own screen while bzo still has it
+      // alive is told where it is, and plays on.
+      if (!seated?.joined) return;
+      if (seated.alive) {
+        if (translator.clientDead) translator.alive(seated.getState(false));
+        return;
+      }
+      requestNativeSpawn(seated);
     }
   };
   acceptConnection(socket, {
@@ -14957,6 +14996,9 @@ async function seatNativeClient(link, payload) {
   // Its moves are its own client's physics, which bzo cannot correct and
   // does not yet match: a finding is logged, not refused (`reportCheat`).
   player.native = true;
+  // Its tank waits for its MsgAlive (`requestNativeSpawn`) unless the
+  // operator turned `bzflagAutoSpawn` on.
+  player.spawnsOnAsk = !BZFLAG_AUTO_SPAWN;
   player.nativeLink = link;
   // What a browser's session gives it at `acceptConnection`, from the token
   // instead of a cookie. A session record, as `/login` makes, because
@@ -17249,6 +17291,9 @@ function noteBotKill(victimId, killerId, hit) {
 // team loss is the whole penalty".
 function applyDeath(victim, killerId, hit) {
   victim.alive = false;
+  // The soonest it may spawn again: `_explodeTime` on (`setSpawnDelay`,
+  // bzfs.cxx:3371). A BZFlag client asking sooner waits for it.
+  victim.nextSpawnAt = Date.now() + GAME_CONFIG.RESPAWN_DELAY;
   noteBotKill(victim.id, killerId, hit);
   const heldFlag = getPlayerFlag(victim.id);
   // playing.cxx:3827. A dead tank has nothing locked, so the marker goes with
@@ -17297,6 +17342,8 @@ function applyDeath(victim, killerId, hit) {
     if (matchClock.gameOver) return;
     // Gone to observer, or back in through a join, since it died.
     if (isObserverTeam(victim.team) || victim.alive) return;
+    // A BZFlag client asks for itself, with MsgAlive (`requestNativeSpawn`).
+    if (victim.spawnsOnAsk) return;
     bringBack(victim);
   }, GAME_CONFIG.RESPAWN_DELAY);
 }
@@ -18730,6 +18777,7 @@ function acceptConnection(ws, req) {
       pollArbiter?.retractVote(player.name);
     }
     clearTimeout(player.rejoinTimer);
+    clearTimeout(player.spawnQueueTimer);
     dropPlayerFlag(player.id);
     if (wasJoined) {
       pluginEvent('bz_ePlayerPartEvent', () => ({

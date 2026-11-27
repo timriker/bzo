@@ -607,8 +607,8 @@ class NativeTranslator {
     // arriving admin.
     this.adminInfo([...this.players.keys()]);
     this.accepting = false;
-    // bzo spawns a player as it joins; the client starts its tank where
-    // MsgAlive says (playing.cxx:2370), asked for or not.
+    // A tank already alive here, as an `/mv` or a re-sync leaves one: the
+    // client starts it where MsgAlive says (playing.cxx:2370).
     if (self.alive) this.alive(self);
     // `sendTeamUpdate` to an arrival (bzfs.cxx:2385).
     if (Array.isArray(init.teamScores) && init.teamScores.length > 0) this.teamUpdate(init.teamScores);

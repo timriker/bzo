@@ -33,6 +33,7 @@
     "_wingsJumpCount": "1",
     "_wingsSlideTime": "0"
   },
+  "bzflagAutoSpawn": false,
   "daySpeed": 72,
   "flagShakeTimeout": 0,
   "flagShakeWins": 0,

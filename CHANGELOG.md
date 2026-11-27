@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Fixed
+- A BZFlag server this one proxies, or whose map is viewed often, is joined
+  again when its version, variables or guest answers are due. Its world
+  being confirmed every 15 minutes had kept that join from ever coming, so
+  `/list` showed an old version.
+
+### Changed
+- A BZFlag client's tank spawns when the client asks, on joining and after
+  each death, as on bzfs, rather than by itself. Browsers still spawn by
+  themselves. `"bzflagAutoSpawn": true` in server.json brings back the old
+  way, for testing.
+
 ## [1.4.24] - 2026-11-26
 
 ### Changed

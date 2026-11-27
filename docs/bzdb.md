@@ -35,7 +35,7 @@ bzo reads.
 | `_muzzleFront`, `_muzzleHeight` | `_tankRadius + 0.1`, 1.57 | where a shot leaves the tank |
 | `_tankExplosionSize` | `3.5 * _tankLength` | how big a tank's explosion is |
 | `_explodeTime` | 5 | how long a dead tank waits to spawn again, and how long its pieces tumble; 0 is no wait |
-| `_rejoinTime` | `_explodeTime` | how long a player who left after playing waits to spawn on coming back; the tank spawns by itself once the wait is up. server.json's `rejoinTime` sets it too |
+| `_rejoinTime` | `_explodeTime` | how long a player who left after playing waits to spawn on coming back; a browser's tank spawns by itself once the wait is up, and a BZFlag client asking sooner is told how long is left. server.json's `rejoinTime` sets it too |
 | `_squishFactor`, `_squishTime` | 1, 1 | how far a hard landing flattens a tank (0 is not at all), and how long it takes to stand back up |
 | `_flagEffectTime` | 0.64 | how long a tank takes to change size, grow in on spawning, or fade; may be 0 |
 | `_pauseDropTime` | 15 | how long a paused tank keeps its flag; may be 0 |

@@ -1127,7 +1127,9 @@ function handleJoinGame(player, ws, message) {
   // non-combatant state an observer gets -- a spectator on the standing
   // result rather than a fresh spawn -- until the next /countdown.
   const joinAsObserver = isObserverTeam(assignedTeam);
-  player.alive = !(joinAsObserver || matchClock.gameOver);
+  // A BZFlag client's tank waits for its own MsgAlive, as on bzfs
+  // (`requestNativeSpawn`), unless `bzflagAutoSpawn` is on.
+  player.alive = !(joinAsObserver || matchClock.gameOver || player.spawnsOnAsk);
   // MsgAlive from a callsign on the rejoin list (bzfs.cxx:4851).
   const rejoinWait = player.alive && !bots.has(player.id) ? rejoinWaitMs(joinName) : 0;
   if (rejoinWait > 0) player.alive = false;

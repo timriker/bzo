@@ -94,8 +94,14 @@ has to rejoin: bzfs does the same, and the client has no reconnect of its
 own. Browsers rejoin by themselves; a BZFlag client does not.
 
 - **Driving.** A client joins on the team it asks for, bzo's to assign where it
-  asks for automatic, the rabbit or a hunter. bzo spawns it as it joins and
-  after each death, and the client starts its tank where `MsgAlive` says. Its
+  asks for automatic, the rabbit or a hunter. As on bzfs, its tank spawns
+  only when the client asks with `MsgAlive`, on joining and after each death;
+  bzo spawns a browser's by itself. An ask before the tank may spawn, within
+  `_explodeTime` of its death or during the rejoin wait, is kept and spawns
+  it when the time comes, as bzfs queues it. `"bzflagAutoSpawn": true` in server.json
+  spawns a BZFlag client's by itself too, which saves a key press when
+  testing; bzfs has no such setting. The client starts its tank where bzo's
+  `MsgAlive` says. Its
   `MsgPlayerUpdate`s become bzo moves (`moveFromBzfs`), so every other player
   sees it drive. Its physics are its own client's, which bzo cannot correct and
   does not yet match, so a movement finding about it is logged and not refused,
