@@ -6,6 +6,28 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.27] - 2026-11-28
+
+### Added
+- The map archive takes maps from the BZFlag wiki's Map Index and the forum's
+  Map releases, each with its author, thread, dates and first post.
+- `/list`'s map filter has a `?` and searches each field: `/au)name`,
+  `/y<2005`, `/so)*forums*`, `/mi>0` for maps missing images, and more.
+- A map's pane lists the texture images it is missing.
+- `msize` and `fsize` columns: the map's size and its file's.
+- BZFlag's message of the day, shown once as you join.
+
+### Changed
+- Map textures load from images.bzflag.org's copies where it has them, and
+  from this server's own copy otherwise, so headsets can load them too.
+
+### Fixed
+- The radar's world edge is dashed on the ground, 20 units a dash, so the
+  dashes hold still as you move and turn and show the radar's scale.
+- Bent and non-convex mesh faces are split as BZFlag splits them, rather
+  than kept whole with the wrong collision.
+- A map with a long run of lines bzo does not read no longer stalls loading.
+
 ## [1.4.26] - 2026-11-27
 
 ### Added
