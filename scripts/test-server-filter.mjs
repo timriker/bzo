@@ -202,4 +202,32 @@ assert.equal(matches('/version]^2\\.4', bzfsRow), true);
 assert.equal(matches('bzo-', bzoRow), true, 'plain text searches the version');
 assert.equal(matches('bzo-', bzfsRow), false);
 
+// The maps list: the same language over a map's own fields.
+const map = (overrides = {}) => ({
+  a: 'hix.bzw', d: 'CTF', title: 'HiX', ow: 'Tim Riker', dt: '2025-06-01', created: '2025-06-01',
+  o: 400, fa: 2000, sz: 800, fs: 26000, vw: 3, sv: 0, source: 'https://github.com/timriker/bzo', ...overrides,
+});
+assert.equal(matches('/au)tim*', map()), true, 'author is a pattern');
+assert.equal(matches('/Au)tim*', map()), false, 'a capital asks for case');
+assert.equal(matches('/ti)hix', map()), true);
+assert.equal(matches('/f)hix.bzw', map()), true);
+assert.equal(matches('/y<2005', map()), false);
+assert.equal(matches('/y<2005', map({ dt: '2004-03-01' })), true);
+assert.equal(matches('/y<2005', map({ dt: undefined })), false, 'no date, no year');
+assert.equal(matches('/fa>1000,ob>500', map()), false);
+assert.equal(matches('/fa>1000/ob>500', map()), true, 'either set');
+assert.equal(matches('/sv>0', map({ sv: 2 })), true);
+assert.equal(matches('/msize>=800,fsize<30000', map()), true);
+assert.equal(matches('/ms>800', map()), false);
+assert.equal(matches('/mi>0', map({ mi: 3 })), true);
+assert.equal(matches('/mi>0', map({ mi: 0 })), false);
+assert.equal(matches('/d)ctf', map()), true, 'desc reads the style');
+assert.equal(matches('/d)*pyramids*', map({ de: 'Lots of pyramids.' })), true, 'and the description');
+assert.equal(matches('/so)*forums.bzflag.org*', map()), false);
+assert.equal(matches('/li].', map()), false, 'no licence stated');
+assert.equal(matches('/li].', map({ license: 'CC0-1.0' })), true);
+assert.equal(matches('/po)2008*,no)*terms*', map({ posted: '2008-01-22T03:24:05Z', note: 'posted under the forums\' map terms' })), true);
+assert.equal(matches('HiX', map({ a: 'x.bzw' })), true, 'plain text searches the title');
+assert.equal(errorsFor('/cr)2005*,ar)2011*,vw>0').length, 0);
+
 console.log('server list filter tests passed');

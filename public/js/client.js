@@ -3075,6 +3075,19 @@ function announceWorldMessages(world) {
   }
 }
 
+// BZFlag's message of the day (`server/bzflag-motd.cjs`), said once a page
+// on the first join, as a BZFlag client says it once when it starts
+// (`MessageOfTheDay::finalization`, motd.cxx).
+let bzflagMotd = [];
+let bzflagMotdSaid = false;
+function announceBzflagMotd() {
+  if (bzflagMotdSaid || bzflagMotd.length === 0) return;
+  bzflagMotdSaid = true;
+  for (const text of [t('Message of the day:'), ...bzflagMotd.map((line) => `* ${line}`)]) {
+    handleServerMessage({ type: 'message', src: -1, dst: myPlayerId, msgType: 'server', text, ts: Date.now() });
+  }
+}
+
 // Obstacles, teleporters, clouds and world size -- everything a fetched world
 // file carries. Whatever else `init` sends (roster, scores, config) is live
 // match state and does not come from here.
@@ -8941,6 +8954,7 @@ function receiveInit(message) {
   if (!message.udpChannel && !message.webTransport) udpChannel.close();
   else if (!udpChannel.isOpen()) void udpChannel.start(message);
   const operatorPanelTitleEl = document.getElementById('operatorPanelTitle');
+  if (Array.isArray(message.bzflagMotd)) bzflagMotd = message.bzflagMotd;
   if (operatorPanelTitleEl && typeof message.serverVersion === 'string') {
     operatorPanelTitleEl.textContent = t('Operator Panel (v{version})', { version: message.serverVersion });
   }
@@ -9191,6 +9205,7 @@ function receivePlayerJoined(message) {
     // what this join is actually for, so its message says exactly once,
     // never once per map cycled through while still choosing.
     announceWorldMessages(currentWorldData);
+    announceBzflagMotd();
     playerTeam = normalizePlayerTeam(message.player.team);
     // A reconnect is a new player to the server, but the same pilot here;
     // a reload finds it in storage, and is not a fresh enable. An observer
@@ -11135,6 +11150,14 @@ function populateViewMapTable(viewableMaps) {
         }
         return td;
       };
+      // Bytes as `26k`, sorted by the bytes.
+      const fileSizeCell = document.createElement('td');
+      if (entry.fileSize > 0) {
+        const bytes = entry.fileSize;
+        fileSizeCell.textContent = bytes < 1024 ? `${bytes}b`
+          : bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)}k` : `${(bytes / (1024 * 1024)).toFixed(1)}M`;
+        fileSizeCell.dataset.value = String(bytes);
+      }
       const styleCell = document.createElement('td');
       styleCell.textContent = stats?.style || '';
       const meta = stats?.metadata || {};
@@ -11161,6 +11184,7 @@ function populateViewMapTable(viewableMaps) {
         dateCell,
         authorCell,
         numberCell(stats?.size),
+        fileSizeCell,
         numberCell(stats?.objects),
         numberCell(stats?.faces),
         numberCell(entry.views || undefined),

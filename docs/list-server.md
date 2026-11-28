@@ -486,13 +486,15 @@ one entry per row, so sorting and filtering never refetch anything.
 
 The local maps list below the two has the same shape, and shares the same
 code: a row carries the three numbers the in-client View picker shows in
-columns -- obstacles, mesh faces and world size -- and its pane carries the
-rest, being the style the map sets, its boxes, pyramids, meshes, bases and
+columns -- map size, obstacles and mesh faces -- plus the file's size as
+this server has it, metadata and corrections included, and its pane carries
+the rest, being the style the map sets, its boxes, pyramids, meshes, bases and
 teleporters, whether it has water, weather or custom ground, and then the
 hash, the mtime and the two file sizes. Those stats are `MAP_REGISTRY`'s own
 (`entry.stats`, the same ones `getViewableMapsList` sends the client), so the
-page computes nothing to show them. Only the glob half of the filter language
-means anything on that list, which is why it has no `?` beside its box.
+page computes nothing to show them. Its filter is the same language with a
+map's own names -- title, author, dates, licence, source, note, year and the
+counts -- and its `?` lists those rather than the server ones.
 `random` is a world generated at boot rather than a file, so it has no counts,
 hash or sizes and says so.
 

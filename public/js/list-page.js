@@ -67,7 +67,7 @@ window.attachTable = function attachTable(tableId, filterId) {
 // ---------------------------------------------------------------------------
 // The filter language, which is upstream's (`src/bzflag/ServerListFilter.cxx`).
 // Text with no leading slash is a glob over address, description, version,
-// hash, owner and a map's own description. After a slash comes a
+// hash, owner and a map's own title and description. After a slash comes a
 // comma-separated set of filters, combined with AND; a second slash starts
 // another set, and a server matching any set is shown (OR). A
 // filter is `+name`/`-name` for a boolean, `name<value` (`<`, `<=`, `>`, `>=`,
@@ -133,6 +133,15 @@ const RANGE_LABELS = {
   bf: 'blueFree', blueFree: 'blueFree',
   pf: 'purpleFree', purpleFree: 'purpleFree',
   of: 'observerFree', observerFree: 'observerFree',
+  // A map's own numbers.
+  ob: 'objects', objects: 'objects',
+  fa: 'faces', faces: 'faces',
+  ms: 'msize', msize: 'msize',
+  fs: 'fsize', fsize: 'fsize',
+  mi: 'missing', missing: 'missing',
+  vw: 'views', views: 'views',
+  sv: 'servers', servers: 'servers',
+  y: 'year', year: 'year',
 };
 
 const PATTERN_LABELS = {
@@ -144,6 +153,17 @@ const PATTERN_LABELS = {
   ve: 'version', ver: 'version', version: 'version',
   ip: 'ip',
   v: 'variable', var: 'variable',
+  // A map's own fields. `owner` is a map's authors, and `desc` its style and
+  // description, so those two read the same on every list.
+  au: 'owner', author: 'owner',
+  f: 'addr', file: 'addr',
+  ti: 'title', title: 'title',
+  cr: 'created', created: 'created',
+  ar: 'archived', archived: 'archived',
+  po: 'posted', posted: 'posted',
+  li: 'license', license: 'license',
+  so: 'source', source: 'source',
+  no: 'note', note: 'note',
 };
 
 // A glob is `*` for any run and `?` for any one character; a pattern with
@@ -261,6 +281,14 @@ function rangeValue(entry, key) {
     case 'maxPlayerScore': return entry.mps;
     case 'shakeWins': return entry.sw;
     case 'shakeTime': return entry.st;
+    case 'objects': return entry.o;
+    case 'faces': return entry.fa;
+    case 'msize': return entry.sz;
+    case 'fsize': return entry.fs;
+    case 'missing': return entry.mi;
+    case 'views': return entry.vw;
+    case 'servers': return entry.sv;
+    case 'year': return entry.dt ? Number(entry.dt.slice(0, 4)) : undefined;
     default: break;
   }
 
@@ -324,11 +352,18 @@ function boolValue(entry, key) {
   }
 }
 
+// Map fields a pattern reads as they are, by the key the entry carries them
+// under.
+const MAP_PATTERN_KEYS = ['title', 'created', 'archived', 'posted', 'license', 'source', 'note'];
+
 function checkSet(set, entry) {
   const addr = entry.a || '';
   const desc = entry.d || '';
   if (set.patterns.addr && !set.patterns.addr.test(addr)) return false;
-  if (set.patterns.desc && !set.patterns.desc.test(desc)) return false;
+  if (set.patterns.desc && !set.patterns.desc.test(desc) && !set.patterns.desc.test(entry.de || '')) return false;
+  for (const key of MAP_PATTERN_KEYS) {
+    if (set.patterns[key] && !set.patterns[key].test(entry[key] || '')) return false;
+  }
   if (set.patterns.hash && !set.patterns.hash.test(entry.hs || '')) return false;
   if (set.patterns.owner && !set.patterns.owner.test(entry.ow || '')) return false;
   if (set.patterns.version && !set.patterns.version.test(entry.ve || '')) return false;
@@ -382,7 +417,7 @@ window.parseServerFilter = function parseServerFilter(source) {
       if (headPattern && !headPattern.test(entry.a || '')
         && !headPattern.test(entry.d || '') && !headPattern.test(entry.hs || '')
         && !headPattern.test(entry.ow || '') && !headPattern.test(entry.ve || '')
-        && !headPattern.test(entry.de || '')) {
+        && !headPattern.test(entry.de || '') && !headPattern.test(entry.title || '')) {
         return false;
       }
       return checkSet(sets[0], entry);
@@ -585,8 +620,6 @@ document.addEventListener('click', (e) => {
 window.attachList('serverList', 'serverFilter', 'bzflag', '-p');
 window.attachList('bzoServerList', 'bzoServerFilter', 'bzo', '-p');
 // The maps list is the same shell as a server list, so it is the same code.
-// Only the glob half of the filter language means anything on it, which is why
-// it has no syntax-help button beside its box.
 window.attachList('mapList', 'mapFilter', 'maps', 'n');
 // And so is the replays list, for the same reason.
 window.attachList('replayList', 'replayFilter', 'replays');

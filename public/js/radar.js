@@ -250,6 +250,9 @@ function world2Radar(worldX, worldY, px, py, azimuth, center, radius, shotDistan
 // over `RADAR_DEPTH_FACTOR` units and no further than its own floor. The two
 // upstream functions differ only in that floor: objects stop at 0.35, the
 // obstacles they stand on at 0.5.
+// The world edge's dashes, and the gaps between them, in world units: a dash
+// and a gap together are forty, a scale the player can read off the panel.
+const RADAR_BORDER_DASH_UNITS = 20;
 const RADAR_DEPTH_FACTOR = 40;
 const RADAR_OBJECT_DEPTH_FLOOR = 0.35;
 const RADAR_OBSTACLE_DEPTH_FLOOR = 0.5;
@@ -927,26 +930,37 @@ export function updateRadar() {
     const east = Math.min(px + radarDistance, border);
     const north = Math.min(py + radarDistance, border);
     const south = Math.max(py - radarDistance, -border);
-    // One edge, dashed from world coordinates so the dashes stay put as the
-    // player moves.
-    const drawEdge = (x1, y1, x2, y2, color, dashOffset) => {
+    // One edge, dashed on the ground: each dash and each gap is
+    // `RADAR_BORDER_DASH_UNITS` of the world, so they stay put as the player
+    // moves and turns and their size on the panel reads as its scale. The
+    // dashes run from the corner the edge starts at, the visible stretch
+    // beginning `fromCorner` units along it. The panel's scale is the drawn
+    // segment's pixel length over its world length, whatever the zoom; a dash
+    // too small to see leaves the edge solid.
+    const drawEdge = (x1, y1, x2, y2, color, fromCorner) => {
       const p1 = world2Radar(x1, y1, px, py, azimuth, center, radius, radarDistance);
       const p2 = world2Radar(x2, y2, px, py, azimuth, center, radius, radarDistance);
+      const worldLength = Math.hypot(x2 - x1, y2 - y1);
+      if (worldLength < 1e-6) return;
+      const pixelsPerUnit = Math.hypot(p2.x - p1.x, p2.y - p1.y) / worldLength;
+      const dash = RADAR_BORDER_DASH_UNITS * pixelsPerUnit;
       client.radarCtx.save();
       client.radarCtx.strokeStyle = color;
       client.radarCtx.lineWidth = 2.5;
-      client.radarCtx.setLineDash([6, 6]);
-      client.radarCtx.lineDashOffset = dashOffset;
+      client.radarCtx.setLineDash(dash >= 1.5 ? [dash, dash] : []);
+      client.radarCtx.lineDashOffset = fromCorner * pixelsPerUnit;
       client.radarCtx.beginPath();
       client.radarCtx.moveTo(p1.x, p1.y);
       client.radarCtx.lineTo(p2.x, p2.y);
       client.radarCtx.stroke();
       client.radarCtx.restore();
     };
-    if (north === border) drawEdge(west, border, east, border, '#B20000', west * 2);
-    if (south === -border) drawEdge(west, -border, east, -border, '#1976D2', west * 2);
-    if (west === -border) drawEdge(-border, north, -border, south, '#9C27B0', -north * 2);
-    if (east === border) drawEdge(border, north, border, south, '#388E3C', -north * 2);
+    // North and south run east from their west corners, west and east south
+    // from their north corners, so every corner starts on a dash.
+    if (north === border) drawEdge(west, border, east, border, '#B20000', west + border);
+    if (south === -border) drawEdge(west, -border, east, -border, '#1976D2', west + border);
+    if (west === -border) drawEdge(-border, north, -border, south, '#9C27B0', border - north);
+    if (east === border) drawEdge(border, north, border, south, '#388E3C', border - north);
     client.radarCtx.restore();
   }
 

@@ -11,7 +11,7 @@
 // (docs/map-archive-plan.md):
 //
 //   node scripts/import-map-archive.mjs [--out data/maps] [--dry-run 1]
-//        [--cache /tmp/bzo-map-archive] [--source bzx|sf|all]
+//        [--cache /tmp/bzo-map-archive] [--source bzx|sf|forum|all]
 //
 // Downloads are kept in the cache directory, so a second run fetches nothing.
 // A map already in `--out` or `maps/` with the same content is given the
@@ -24,6 +24,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { FORUM_BASE, createArchiveFetch } from './archive-fetch.mjs';
 
 const require = createRequire(import.meta.url);
 const { parseBZWMap } = require('../server/bzw-parse.cjs');
@@ -46,29 +47,10 @@ const SF_BASE = 'https://sourceforge.net';
 const SF_TRACKER = `${SF_BASE}/p/bzflag/world-files/`;
 // Tickets are numbered from 1; a run of this many missing in a row ends it.
 const SF_GAP = 15;
+const MAP_INDEX = 'https://wiki.bzflag.org/Map_Index';
 const USER_AGENT = 'bzo map archive import (https://github.com/timriker/bzo)';
 
-const sleep = (ms) => new Promise((done) => { setTimeout(done, ms); });
-
-// A URL's body, from the cache when it is there. Null for a 404.
-async function fetchCached(url, { binary = false } = {}) {
-  const file = path.join(CACHE, 'fetch', crypto.createHash('sha1').update(url).digest('hex'));
-  if (fs.existsSync(file)) {
-    const body = fs.readFileSync(file);
-    return body.length === 0 ? null : (binary ? body : body.toString('utf8'));
-  }
-  await sleep(300);
-  const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  if (response.status === 404) {
-    fs.writeFileSync(file, '');
-    return null;
-  }
-  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-  const body = Buffer.from(await response.arrayBuffer());
-  fs.writeFileSync(file, body);
-  return binary ? body : body.toString('utf8');
-}
+const { fetchCached } = createArchiveFetch({ cache: CACHE, userAgent: USER_AGENT });
 
 const decodeEntities = (text) => text
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
@@ -179,6 +161,150 @@ async function sourceforgeFiles() {
         body: world.body,
       });
     }
+  }
+  return files;
+}
+
+// The wiki's Map Index: a section for each author, a row for each map naming
+// its forum thread and the day it was published there.
+function parseMapIndex(html) {
+  const maps = [];
+  for (const section of html.split(/<h1>/i).slice(1)) {
+    const heading = /class="mw-headline"[^>]*>([\s\S]*?)<\/span>/i.exec(section)?.[1] || '';
+    const author = stripTags(heading);
+    const authorId = /memberlist\.php\?mode=viewprofile&amp;u=(\d+)/.exec(heading)?.[1] || '';
+    for (const row of section.matchAll(/<tr>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>/gi)) {
+      const topic = /href="https?:\/\/forums\.bzflag\.org\/viewtopic\.php\?[^"]*\bt=(\d+)/i.exec(row[2])?.[1];
+      const published = /\d{4}-\d{2}-\d{2}/.exec(row[3])?.[0] || '';
+      if (!topic && !published) continue;
+      maps.push({ author, authorId, title: stripTags(row[1]), topic, published });
+    }
+  }
+  return maps;
+}
+
+// The posts of a forum thread page: who wrote each, its text, and the worlds
+// attached to it.
+function parsePosts(html) {
+  return html.split(/<div id="p\d+" class="post /).slice(1).map((post) => ({
+    posted: /<time datetime="([^"]+)"/.exec(post)?.[1] || '',
+    authorId: /memberlist\.php\?mode=viewprofile&amp;u=(\d+)[^"]*" class="username/.exec(post)?.[1] || '',
+    text: stripTags(/<div class="content">([\s\S]*?)<\/div>\s*(?:<dl class="attachbox"|<div id="sig|<div class="notice"|<\/div>)/i
+      .exec(post)?.[1] || ''),
+    attachments: [...post.matchAll(/href="\.\/download\/file\.php\?id=(\d+)[^"]*">([^<]+)<\/a>/g)]
+      .map((m) => ({ name: decodeEntities(m[2]).trim(), url: `${FORUM_BASE}download/file.php?id=${m[1]}` }))
+      .filter((a) => WORLD_FILE.test(a.name) || ARCHIVE.test(a.name)),
+  })).map((post) => {
+    for (const attachment of post.attachments) attachment.posted = post.posted;
+    return post;
+  });
+}
+
+// When the forums' map licence terms were posted: a map posted after it may be
+// hosted and changed by anyone, as public domain where it names no licence.
+const FORUM_TERMS = `${FORUM_BASE}viewtopic.php?t=10575`;
+const FORUM_TERMS_FROM = '2007-04-11T18:37:23Z';
+const utc = (stamp) => (stamp ? new Date(stamp).toISOString().replace(/\.000Z$/, 'Z') : '');
+
+// A forum post as a map's description: its first lines, no addresses.
+function postDescription(text) {
+  return text.replace(/\S+@\S+\.\S+/g, '').split('\n').map((line) => line.trim())
+    .filter((line) => line && !/^(quote|code|select all)$/i.test(line)).slice(0, 8);
+}
+
+const FORUM_PAGES = 10;
+
+// The worlds a forum thread gives, pushed onto `files`: `map` is its title,
+// author (name and forum id), topic number and the day it was published.
+async function threadFiles(map, files) {
+  const thread = `${FORUM_BASE}viewtopic.php?t=${map.topic}`;
+  const ticket = {
+    title: map.title, creator: map.author, created: map.published, url: thread, description: '',
+  };
+  const posts = [];
+  for (let page = 0; page < FORUM_PAGES; page += 1) {
+    const html = await fetchCached(page ? `${thread}&start=${page * 25}` : thread);
+    if (!html) break;
+    const found = parsePosts(html);
+    posts.push(...found);
+    if (found.length < 25 || !html.includes(`start=${(page + 1) * 25}`)) break;
+  }
+  // The author's last world in the thread is the map as it was left; a
+  // thread whose author posted none gives its first post's.
+  const own = posts.filter((post) => map.authorId && post.authorId === map.authorId);
+  const attachment = own.flatMap((post) => post.attachments).at(-1) || posts[0]?.attachments.at(-1);
+  const starter = own[0] || posts[0];
+  ticket.description = starter ? postDescription(starter.text).join('\n') : '';
+  if (!attachment) {
+    files.push({ source: 'forum', name: map.title, url: thread, ticket, body: null });
+    return;
+  }
+  ticket.posted = utc(attachment.posted);
+  const body = await fetchCached(attachment.url, { binary: true });
+  const worlds = body && ARCHIVE.test(attachment.name) ? unpack(attachment.name, body)
+    : [{ name: attachment.name, body }];
+  if (body && worlds.length === 0) {
+    files.push({ source: 'forum', name: attachment.name, url: attachment.url, ticket, body: null, empty: true });
+  }
+  for (const world of worlds) {
+    files.push({
+      source: 'forum',
+      name: world.name.replace(/\.map$/i, '.bzw'),
+      url: worlds.length === 1 && world.name === attachment.name
+        ? attachment.url : `${attachment.url}#${encodeURIComponent(world.name)}`,
+      ticket,
+      inPack: worlds.length > 1,
+      body: world.body,
+    });
+  }
+}
+
+// The Map releases forum's own topics, page by page: each one's number,
+// title, starter and the day it was started. Announcements from other forums
+// that every forum lists are left out.
+const MAP_FORUM = `${FORUM_BASE}viewforum.php?f=64`;
+const FORUM_TOPICS_PER_PAGE = 25;
+
+function parseTopicRows(html) {
+  return html.split(/<li class="row /).slice(1)
+    .filter((row) => !/^[^"]*\b(global-announce|announce)\b/.test(row))
+    .map((row) => {
+      const poster = /class="topic-poster[^"]*"[\s\S]*?memberlist\.php\?mode=viewprofile&amp;u=(\d+)[^"]*"[^>]*>([^<]*)<\/a>[\s\S]*?<time datetime="(\d{4}-\d{2}-\d{2})/
+        .exec(row);
+      return {
+        topic: /viewtopic\.php\?t=(\d+)[^"]*" class="topictitle/.exec(row)?.[1],
+        title: stripTags(/class="topictitle">([^<]*)</.exec(row)?.[1] || ''),
+        authorId: poster?.[1] || '',
+        author: decodeEntities(poster?.[2] || '').trim(),
+        published: poster?.[3] || '',
+      };
+    })
+    .filter((row) => row.topic);
+}
+
+async function forumFiles() {
+  const index = parseMapIndex(await fetchCached(MAP_INDEX));
+  const files = [];
+  const seen = new Set();
+  for (const map of index) {
+    if (!map.topic) {
+      files.push({ source: 'forum', name: map.title, url: MAP_INDEX, ticket: { url: MAP_INDEX }, body: null });
+      continue;
+    }
+    seen.add(map.topic);
+    await threadFiles(map, files);
+  }
+  // Then every topic in the forum the index has not named, which is most of
+  // the maps posted since it was kept.
+  for (let start = 0; ; start += FORUM_TOPICS_PER_PAGE) {
+    const html = await fetchCached(`${MAP_FORUM}&start=${start}`);
+    const rows = html ? parseTopicRows(html) : [];
+    const fresh = rows.filter((row) => !seen.has(row.topic));
+    for (const row of fresh) {
+      seen.add(row.topic);
+      await threadFiles(row, files);
+    }
+    if (rows.length === 0 || !html.includes(`start=${start + FORUM_TOPICS_PER_PAGE}`)) break;
   }
   return files;
 }
@@ -424,6 +550,7 @@ async function main() {
   const files = [
     ...(SOURCE === 'all' || SOURCE === 'bzx' ? await bzexcessFiles() : []),
     ...(SOURCE === 'all' || SOURCE === 'sf' ? await sourceforgeFiles() : []),
+    ...(SOURCE === 'all' || SOURCE === 'forum' ? await forumFiles() : []),
   ];
   const { byKey, names } = existingMaps();
   const report = [];
@@ -455,12 +582,17 @@ async function main() {
       continue;
     }
     const ticket = file.ticket;
+    if (ticket?.posted && ticket.posted >= FORUM_TERMS_FROM) {
+      notes.push(`posted under the forums' map terms, ${FORUM_TERMS}`);
+    }
     const fields = [
       ['title', (!file.inPack && ticket?.title) || titleFrom(lines, file.name)],
-      ['author', authorFrom(lines) || ticket?.creator || ''],
+      // The wiki's index names a forum map's author by hand.
+      ['author', (file.source === 'forum' && ticket.creator) || authorFrom(lines) || ticket?.creator || ''],
       ['version', labelled(lines).get('version') || ''],
       ['created', dateFrom(lines) || ticket?.created || ''],
       ['archived', file.source === 'bzx' ? BZX_ARCHIVED : ''],
+      ['posted', ticket?.posted || ''],
       ['sourceurl', ticket?.url || file.url],
       // The file itself, where the source is a page about it; `#member` for
       // one taken out of an archive.
@@ -489,7 +621,34 @@ async function main() {
     const twin = byKey.get(key);
     if (twin) {
       // The same map already here, with or without a block of its own.
-      if (splitBzwMetadata(twin.text).metadata || twin.taken) {
+      const known = splitBzwMetadata(twin.text).metadata;
+      if (known && file.source === 'forum' && twin.dir === OUT && twin.text.startsWith('metadata\n')
+        && !fs.readFileSync(path.join(twin.dir, twin.name)).includes('\r')) {
+        // An archived copy of a map its thread says more about: the thread
+        // and the fields the block lacks.
+        const merged = new Map(Object.entries(known));
+        const added = [];
+        for (const [key, values] of fields) {
+          const have = merged.get(key) || [];
+          const multi = key === 'sourceurl' || key === 'downloadurl' || key === 'note';
+          const fresh = [].concat(values).filter((value) => value && !have.includes(value));
+          if (fresh.length && (multi || have.length === 0)) {
+            merged.set(key, [...have, ...fresh]);
+            added.push(key);
+          }
+        }
+        if (added.length === 0) {
+          row.result = `same as ${twin.name}`;
+          continue;
+        }
+        row.result = `metadata merged into ${twin.name}`;
+        row.file = twin.name;
+        row.added = added.join(' ');
+        twin.text = metadataBlock(merged) + twin.text.replace(/^metadata\n[\s\S]*?\nendmetadata\n\n?/, '');
+        if (!DRY_RUN) fs.writeFileSync(path.join(twin.dir, twin.name), twin.text);
+        continue;
+      }
+      if (known || twin.taken) {
         row.result = `same as ${twin.name}`;
         continue;
       }

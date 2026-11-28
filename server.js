@@ -855,6 +855,9 @@ const SERVER_VERSION = (() => {
 // server's `build` and `/serverquery`. The release, then the build id, which
 // is what tells two servers on one release apart.
 const BZO_APP_VERSION = `bzo-${SERVER_VERSION}-${CLIENT_BUILD}`;
+// BZFlag's message of the day, which a bzo client shows as it joins, as a
+// BZFlag client does when it starts.
+const bzflagMotd = require('./server/bzflag-motd.cjs').createBzflagMotd({ version: BZO_APP_VERSION, log });
 // The code a map's built files come from: the parser, the compiler, the
 // packer and what they require. A change to any of it rebuilds them.
 const MAP_CODE_DIGEST = codeDigest([
@@ -2657,17 +2660,27 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
     };
   });
 
-  // `a`, `d`, `ow`, `ve`, `de` and `hs` are the fields the filter box's own
-  // glob looks at, so on this list typing a word matches a file name, a style
-  // or the map's title, its authors, its version, its description or a hash. The `/` filter
-  // language is about servers and is not offered here -- there is no `?`
-  // beside this box.
-  const data = entries.map((entry) => ({
+  // `a`, `d`, `ow`, `ve`, `de`, `title` and `hs` are the fields the filter
+  // box's own glob looks at, so on this list typing a word matches a file
+  // name, a style, the map's title, its authors, its version, its description
+  // or a hash. The rest are for the `/` filter language's map labels
+  // (`renderMapFilterHelp`).
+  const meta = (entry, key, joiner = ' ') => (entry.stats?.metadata?.[key] || []).join(joiner);
+  // A field a map does not have is left out rather than sent empty: most
+  // maps have no licence, note or forum post, and the list is long.
+  const data = entries.map((entry) => Object.fromEntries(Object.entries({
     a: entry.file,
-    d: [entry.stats?.style, ...(entry.stats?.metadata?.title || [])].filter(Boolean).join(' '),
-    ow: (entry.stats?.metadata?.author || []).join(', '),
-    ve: (entry.stats?.metadata?.version || []).join(' '),
-    de: (entry.stats?.metadata?.description || []).join(' '),
+    d: entry.stats?.style || '',
+    title: meta(entry, 'title'),
+    ow: meta(entry, 'author', ', '),
+    ve: meta(entry, 'version'),
+    de: meta(entry, 'description'),
+    created: meta(entry, 'created'),
+    archived: meta(entry, 'archived'),
+    posted: meta(entry, 'posted'),
+    license: meta(entry, 'license'),
+    source: [meta(entry, 'sourceurl'), meta(entry, 'downloadurl')].filter(Boolean).join(' '),
+    note: meta(entry, 'note'),
     dt: mapDate(entry.stats?.metadata).sortKey,
     vw: entry.use.views,
     sv: Object.keys(entry.use.servers).length,
@@ -2675,8 +2688,10 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
     o: entry.stats ? entry.stats.objects || 0 : 0,
     fa: entry.stats ? entry.stats.faces || 0 : 0,
     sz: entry.stats ? entry.stats.size || 0 : 0,
+    fs: entry.bzw,
+    mi: missingMapImages(entry.stats).length,
     hs: entry.hash || '',
-  }));
+  }).filter(([, value]) => value !== '')));
 
   const num = (value) => (Number.isFinite(value) ? String(value) : '');
   // A row is only here once it is registered, or while the background pass is
@@ -2695,6 +2710,7 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
       + `<span class="num col-obj">${stats ? num(stats.objects) : ''}</span>`
       + `<span class="num col-fa">${stats ? num(stats.faces) : ''}</span>`
       + `<span class="num col-sz">${stats ? num(stats.size) : ''}</span>`
+      + `<span class="num col-fs">${entry.bzw ? formatByteSize(entry.bzw) : ''}</span>`
       + `<span class="num col-vw">${entry.use.views || ''}</span>`
       + `<span class="num col-sv">${Object.keys(entry.use.servers).length || ''}</span>`
       + listHashLetter(entry.hash)
@@ -2707,13 +2723,15 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
 
   const objLabel = t('Obj');
   const facesLabel = t('Faces');
-  const sizeLabel = t('Size');
+  const sizeLabel = t('msize');
+  const fileSizeLabel = t('fsize');
   const viewsLabel = t('Views');
   const serversLabel = t('Servers');
   const head = `<div class="shead">`
     + `<button class="num col-obj" data-field="o" title="${escapeHtml(t('Obstacles in the world'))}">${escapeHtml(objLabel)}</button>`
     + `<button class="num col-fa" data-field="fa" title="${escapeHtml(t('Mesh faces in the world'))}">${escapeHtml(facesLabel)}</button>`
-    + `<button class="num col-sz" data-field="sz" title="${escapeHtml(t('World size'))}">${escapeHtml(sizeLabel)}</button>`
+    + `<button class="num col-sz" data-field="sz" title="${escapeHtml(t('Map size'))}">${escapeHtml(sizeLabel)}</button>`
+    + `<button class="num col-fs" data-field="fs" title="${escapeHtml(t('File size, as this server has it'))}">${escapeHtml(fileSizeLabel)}</button>`
     + `<button class="num col-vw" data-field="vw" title="${escapeHtml(t('Times viewed, one a day for each visitor'))}">${escapeHtml(viewsLabel)}</button>`
     + `<button class="num col-sv" data-field="sv" title="${escapeHtml(t('Servers on the BZFlag list seen running this map'))}">${escapeHtml(serversLabel)}</button>`
     + listHashHeader(t)
@@ -2728,6 +2746,7 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
   const widths = `--col-obj:${listColumnWidth(objLabel, data.map((entry) => entry.o || ''))};`
     + `--col-fa:${listColumnWidth(facesLabel, data.map((entry) => entry.fa || ''))};`
     + `--col-sz:${listColumnWidth(sizeLabel, data.map((entry) => entry.sz || ''))};`
+    + `--col-fs:${listColumnWidth(fileSizeLabel, data.map((entry) => (entry.fs ? formatByteSize(entry.fs) : '')))};`
     + `--col-vw:${listColumnWidth(viewsLabel, data.map((entry) => entry.vw || ''))};`
     + `--col-sv:${listColumnWidth(serversLabel, data.map((entry) => entry.sv || ''))}`;
   return `<div class="listWrap" id="${escapeHtml(listId)}" style="${widths}">`
@@ -2735,6 +2754,8 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
       .map((entry, index) => renderMapReadout(entry, index, index !== 0, t, bzidOf)).join('\n')}</div>`
     + `<div class="listBar">`
     + listFilterInput(filterId, t)
+    + `<button type="button" data-help="${escapeHtml(listId)}-help"`
+    + ` title="${escapeHtml(t('Filter syntax'))}">?</button>`
     + entries.map((entry, index) => `<div class="rowActions" id="map-pane-${index}-actions"`
       + `${index !== 0 ? ' hidden' : ''}>`
       + (entry.hashed
@@ -2745,6 +2766,8 @@ function renderMapList(listId, filterId, maps, t, bzidOf) {
         : `<span class="muted">${escapeHtml(t('Still hashing'))}</span>`)
       + `</div>`).join('')
     + `</div>`
+    + `<p class="filterError" id="${escapeHtml(filterId)}Error" hidden></p>`
+    + renderMapFilterHelp(listId, t)
     + head
     + `<ul class="srows">\n${rows}\n</ul>`
     + `<script type="application/json" id="${escapeHtml(listId)}-data">`
@@ -3035,6 +3058,7 @@ function renderMapReadout(entry, index, hidden, t, bzidOf) {
       : rawRow(t('Author'), describeAuthors(stats.metadata?.author, bzidOf)))
     + row(t('Created'), meta('created', ', '))
     + row(t('Archived'), meta('archived', ', '))
+    + row(t('Posted'), meta('posted', ', '))
     + row(t('Version'), meta('version', ' '))
     + row(t('License'), meta('license', ', '))
     + row(t('Description'), meta('description', ' '))
@@ -3050,6 +3074,7 @@ function renderMapReadout(entry, index, hidden, t, bzidOf) {
     + row(t('Style'), stats.style || '')
     + row(t('World size'), count(stats.size))
     + row(t('Has'), features)
+    + row(t('Missing images'), missingMapImages(stats).join(' '))
     + row(t('Hashed'), entry.file === 'random' ? t('generated at boot') : (entry.hashed ? t('yes') : t('not yet')))
     + row(t('Hash'), entry.hash)
     + row(t('Modified'), entry.modified)
@@ -3149,6 +3174,63 @@ function renderFilterHelp(listId, t) {
       ['/v)_disableBots=*', l10n.html(t('Lists {variable} at all, on or off; {off} is the one that means off'), {
         variable: code('_disableBots'), off: code('-b'),
       })],
+    ])
+    + `</div>`;
+}
+
+// The same filter language over the maps list, with the names a map has: the
+// server labels mean nothing here, so only these are listed.
+function renderMapFilterHelp(listId, t) {
+  const code = (text) => `<code>${text}</code>`;
+  const group = (title, rows) => `<p class="helpGroup">${title}</p>`
+    + rows.map(([names, what]) => `<div class="helpRow">`
+      + `<span><code>${names}</code></span><span>${what}</span></div>`).join('');
+  return `<div class="filterHelp" id="${escapeHtml(listId)}-help" hidden>`
+    + `<p>${l10n.html(t('Plain text is a glob over the file name, style, title, authors, version, description and hash -- {examples} -- and a word with no {star} or {query} in it is wrapped in both, so it matches anywhere.'), {
+      examples: `${code('castle')}, ${code('ctf*')}, ${code('hix?')}`, star: code('*'), query: code('?'),
+    })}`
+    + ` ${l10n.html(t('A leading {slash} starts filters instead: comma-separated, combined with {and}.'), {
+      slash: code('/'), and: `<em>${escapeHtml(t('and'))}</em>`,
+    })}`
+    + ` ${l10n.html(t('A second {slash} starts another set, and a map matching either set is shown.'), { slash: code('/') })}</p>`
+    + group(l10n.html(t('Numbers -- a name, then {operators}, then a number'), {
+      operators: ['&lt;', '&lt;=', '&gt;', '&gt;=', '='].map(code).join(' '),
+    }), [
+      ['y year', escapeHtml(t('The year it was made, or an archive held it'))],
+      ['ob objects', escapeHtml(t('Obstacles in the world'))],
+      ['fa faces', escapeHtml(t('Mesh faces in the world'))],
+      ['ms msize', escapeHtml(t('Map size'))],
+      ['fs fsize', escapeHtml(t('File size in bytes, as this server has it'))],
+      ['mi missing', escapeHtml(t('Texture images that are not there'))],
+      ['vw views', escapeHtml(t('Times viewed, one a day for each visitor'))],
+      ['sv servers', escapeHtml(t('Servers on the BZFlag list seen running this map'))],
+    ])
+    + group(l10n.html(t('Patterns -- a name, then {glob} for a glob or {regex} for a regular expression'), {
+      glob: code(')'), regex: code(']'),
+    }), [
+      ['f file', escapeHtml(t('Map file name'))],
+      ['ti title', escapeHtml(t('The title'))],
+      ['au author', escapeHtml(t('Map authors'))],
+      ['d desc', escapeHtml(t('The game style, or the description'))],
+      ['ve version', escapeHtml(t('The version'))],
+      ['cr created', escapeHtml(t('When it was made'))],
+      ['ar archived', escapeHtml(t('When an archive held it'))],
+      ['po posted', escapeHtml(t('When it was posted to its forum thread'))],
+      ['li license', escapeHtml(t('Its licence'))],
+      ['so source', escapeHtml(t('Where it was published, or downloaded from'))],
+      ['no note', escapeHtml(t('What was changed from the file as found'))],
+      ['hs hash', escapeHtml(t('The world hash the pane shows'))],
+    ])
+    + `<p>${l10n.html(t('A capitalised pattern name matches case-sensitively: {lower} ignores case, {upper} does not.'), {
+      lower: code('au)tim'), upper: code('Au)Tim'),
+    })} ${l10n.html(t('{hash} begins a comment.'), { hash: code('#') })}</p>`
+    + group(escapeHtml(t('Examples')), [
+      ['/au)ducati*', escapeHtml(t('Maps by one author'))],
+      ['/y&lt;2005', escapeHtml(t('Made before 2005'))],
+      ['/d)ctf,sv&gt;0', escapeHtml(t('Capture-the-flag maps a server runs'))],
+      ['/so)*forums.bzflag.org*', escapeHtml(t('Published on the BZFlag forums'))],
+      ['/li].', escapeHtml(t('Any licence stated'))],
+      ['/fa&gt;1000/ob&gt;500', escapeHtml(t('Many mesh faces or many obstacles'))],
     ])
     + `</div>`;
 }
@@ -3848,6 +3930,7 @@ ${discoveryHead}
   .col-obj { width: var(--col-obj, 4ch); }
   .col-fa { width: var(--col-fa, 5ch); }
   .col-sz { width: var(--col-sz, 4ch); }
+  .col-fs { width: var(--col-fs, 4ch); }
   .col-vw { width: var(--col-vw, 5ch); }
   .col-sv { width: var(--col-sv, 7ch); }
   .col-date { width: 19ch; }
@@ -3856,7 +3939,7 @@ ${discoveryHead}
   /* The map list drops columns as the screen narrows, the least telling
      first; the pane and the filter still have every one of them. */
   @media (max-width: 60rem) { .listWrap .col-fa { display: none; } }
-  @media (max-width: 48rem) { .listWrap .col-sz, .listWrap .col-au, .listWrap .col-sv { display: none; } }
+  @media (max-width: 48rem) { .listWrap .col-sz, .listWrap .col-fs, .listWrap .col-au, .listWrap .col-sv { display: none; } }
   @media (max-width: 36rem) { .listWrap .col-obj, .listWrap .col-vw { display: none; } }
   .col-len { width: 6ch; }
   .col-pl { width: var(--col-pl, 7ch); }
@@ -4630,6 +4713,19 @@ const mapStats = createMapStats({
   statePath: path.join(path.dirname(CONFIG_PATH), 'map-stats.json'),
   logError,
 });
+// Which of the texture URLs maps name still answer, for the list's missing
+// image count. Rebuildable, so in the cache.
+const imageCheck = require('./server/image-check.cjs').createImageCheck({
+  statePath: path.join(CACHE_DIR, 'image-check.json'), userAgent: BZO_APP_VERSION, log, logError,
+  onChecked: () => invalidateListTables(),
+  localImage: (url) => Boolean(findLocalImage(IMG_DIR, url.slice('/img'.length))),
+});
+
+// The images a map's textures need that are not there: names that resolve to
+// nothing, and URLs found not to answer with an image.
+function missingMapImages(stats) {
+  return [...(stats?.unresolvedTextures || []), ...imageCheck.missing(stats?.textureUrls)];
+}
 
 // Who a use is counted for: a browser, by its address and user agent, hashed
 // so neither is kept. Null for bzo's own headless probes, which count nothing.
@@ -5084,6 +5180,7 @@ function shareTwinWorld(fileName, filePath) {
     entry.keptAt = now;
     const twin = { ...entry, fileName, registeredAt: now, keptAt: now };
     MAP_REGISTRY.set(fileName, twin);
+    imageCheck.want(twin.stats?.textureUrls);
     mapIndex.note(fileName, twin.hash, path.basename(twin.overviewUrl || '', '.svg'), filePath, {
       stats: twin.stats, version: MAP_INDEX_VERSION, bzfsHash: twin.bzfsHash ?? null,
     });
@@ -5109,6 +5206,7 @@ function listFromMapIndex(fileName, filePath) {
     overviewUrl: `/overviews/${known.overview}.svg`,
   };
   MAP_REGISTRY.set(fileName, entry);
+  imageCheck.want(entry.stats?.textureUrls);
   return entry;
 }
 
@@ -7884,6 +7982,7 @@ function registerWorldFile(fileName, world, { keepWorld = true } = {}) {
     overviewUrl: hasOverview ? overviewUrl : null,
   };
   MAP_REGISTRY.set(fileName, registered);
+  imageCheck.want(stats?.textureUrls);
   invalidateListTables();
   // So the next boot can list this file from its hash, picture and stats
   // without parsing it.
@@ -18345,7 +18444,14 @@ function viewableMapEntry(entry) {
     // first (`importMapForView`), which writes it.
     ready: Boolean(entry.keptAt),
     ...viewableMapUse(entry.fileName),
+    ...viewableMapFileSize(entry.fileName),
   };
+}
+
+// A local map's file size, as it is here: metadata and corrections included.
+function viewableMapFileSize(fileName) {
+  const bzwPath = parseImportMapFileName(fileName) ? null : resolveMapFilePath(fileName);
+  return bzwPath ? { fileSize: statSizeBytes(bzwPath) } : {};
 }
 
 // A local map's use counts, as the View dialog's columns show them.
@@ -18652,6 +18758,7 @@ function acceptConnection(ws, req) {
     // Operator panel's title so an operator glancing at the panel already
     // knows what they're running, without typing the chat command for it.
     serverVersion: SERVER_VERSION,
+    bzflagMotd: bzflagMotd.messages(),
     player: player.getState(isAdmin(player)),
     players: getRosterFor(player),
     // The names the chat entry's Tab completes to, this server's own table

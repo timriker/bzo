@@ -884,13 +884,14 @@ Every field is a list, and saying a key again adds to it -- two `author`
 lines are two authors, two `description` lines two lines of one description.
 Any key is kept, so a map may carry a field of its own. `license` is an
 [SPDX expression](https://spdx.org/licenses/) where one fits. `created`,
-`archived`, `note`, `sourceurl` and `downloadurl` are bzo's, not the
-proposal's: the date the map was made, `YYYY-MM-DD` or as much of it as is
-known (`YYYY-MM`, `YYYY`); the date an archive held it, which says only that
-it existed by then; what was changed from the file as found, such as
-rotations converted from radians; where it was published, such as its forum
-thread; and the file itself where that page is about it, `#name` for one
-taken out of an archive.
+`archived`, `posted`, `note`, `sourceurl` and `downloadurl` are bzo's, not
+the proposal's: the date the map was made, `YYYY-MM-DD` or as much of it as
+is known (`YYYY-MM`, `YYYY`); the date an archive held it, which says only
+that it existed by then; when the file was posted to its forum thread, UTC,
+which decides whether the forums' map terms cover it; what was changed from
+the file as found, such as rotations converted from radians; where it was
+published, such as its forum thread; and the file itself where that page is
+about it, `#name` for one taken out of an archive.
 
 bzo shows the title in the map list's pane on the `/list` page, linked to
 `downloadurl`, or `sourceurl` where there is none, with the authors, dates,

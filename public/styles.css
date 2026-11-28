@@ -1342,17 +1342,18 @@ body.scoreboard-collapsed #mainhud {
 }
 
 /* Local maps drop columns as the screen narrows, the least telling first:
-   Size, then Objects and Author. A row's tooltip and the filter still have
-   them. Columns: File, Date, Author, Size, Objects, Faces, Views, Servers,
-   Style. */
+   the two sizes and Servers, then Author, Objects and Views. A row's tooltip
+   and the filter still have them. Columns: File, Date, Author, msize, fsize,
+   Objects, Faces, Views, Servers, Style. */
 @media (max-width: 48rem) {
   #viewMapTable th:nth-child(4), #viewMapTable td:nth-child(4),
-  #viewMapTable th:nth-child(8), #viewMapTable td:nth-child(8) { display: none; }
+  #viewMapTable th:nth-child(5), #viewMapTable td:nth-child(5),
+  #viewMapTable th:nth-child(9), #viewMapTable td:nth-child(9) { display: none; }
 }
 @media (max-width: 36rem) {
   #viewMapTable th:nth-child(3), #viewMapTable td:nth-child(3),
-  #viewMapTable th:nth-child(5), #viewMapTable td:nth-child(5),
-  #viewMapTable th:nth-child(7), #viewMapTable td:nth-child(7) { display: none; }
+  #viewMapTable th:nth-child(6), #viewMapTable td:nth-child(6),
+  #viewMapTable th:nth-child(8), #viewMapTable td:nth-child(8) { display: none; }
 }
 
 #viewOverlay .viewTable thead th {

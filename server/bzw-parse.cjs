@@ -1877,6 +1877,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   const { metadata, text, unterminated } = splitBzwMetadata(givenText ?? fs.readFileSync(filename, 'utf8'));
   if (unterminated) warn(`"metadata" with no "endmetadata" in ${mapLabel}: the rest of the file is read as metadata`);
   const lines = textLines(text);
+  // `isCustomObjectBlock`'s last scanned stretch, here because the walk over
+  // `lines` below calls it before its own declaration is reached.
+  let scannedFrom = -1;
+  let scannedTo = -1;
+  let scannedAnswer = false;
   const teamMode = parseBZWTeamMode(lines);
   const serverOptions = parseBZWServerOptions(lines);
   // The options block is read first, as upstream reads it before the world, so
@@ -4406,14 +4411,26 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   noteSpans(lines.length - 1);
 
   // Whether the lines after `start` reach an `end` before anything of the
-  // map's own begins.
+  // map's own begins. Every start within one scanned stretch reaches the
+  // same line first, so the last stretch's answer is kept (`scannedFrom`,
+  // declared with `lines`): a file of thousands of unread lines is then one
+  // scan, not one per line.
   function isCustomObjectBlock(start) {
-    for (let j = start + 1; j < lines.length; j++) {
+    if (start >= scannedFrom && start < scannedTo) return scannedAnswer;
+    let j = start + 1;
+    let answer = false;
+    for (; j < lines.length; j++) {
       const word = lines.at(j).trim().split(/\s+/)[0].toLowerCase();
-      if (word === 'end') return true;
-      if (TOP_LEVEL_OBJECT_KEYWORDS.has(word)) return false;
+      if (word === 'end') {
+        answer = true;
+        break;
+      }
+      if (TOP_LEVEL_OBJECT_KEYWORDS.has(word)) break;
     }
-    return false;
+    scannedFrom = start;
+    scannedTo = j;
+    scannedAnswer = answer;
+    return answer;
   }
 
   // One line inside a `drawInfo { ... }` block (`MeshDrawInfo::parse`,
@@ -4892,21 +4909,16 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     return edgePlanes;
   }
 
-  // Whether a planar face's own vertices wind consistently convex -- the
-  // same test upstream's `MeshFace::finalize` runs (MeshFace.cxx:139-151)
-  // before it trusts a face's whole polygon: for every vertex, the turn
-  // from the incoming edge to the outgoing one must agree with the face's
-  // own plane normal. Upstream never plays a mapper's non-convex face as
-  // broken, though -- it falls back to triangulating it
-  // (`MeshObstacle::addFace`, MeshObstacle.cxx:181-249) rather than either
-  // dropping it or handing it to a collision test that assumes convexity,
-  // which is exactly what `computeMeshFaceEdgePlanes`'s own per-edge
-  // "fence" planes do (a point inside a concave face's real area can sit
-  // outside one of those, since a concave shape is not the intersection of
-  // its edges' own half-spaces the way a convex one is). `triangulateFace`
-  // below is that same fallback, not upstream's exact algorithm (its own
-  // scoring picks prettier strips; this only needs a correct, gap-free
-  // covering).
+  // Whether a face's vertices wind convex and lie in its plane -- the two
+  // tests upstream's `MeshFace::finalize` runs (MeshFace.cxx:139-180) before
+  // it trusts a face's whole polygon: for every vertex, the turn from the
+  // incoming edge to the outgoing one must agree with the plane's normal, and
+  // every vertex must sit within 1e-3 of the plane. A face failing either is
+  // not dropped but triangulated (`MeshObstacle::addFace`,
+  // MeshObstacle.cxx:181-249), since the per-edge "fence" planes of
+  // `computeMeshFaceEdgePlanes` describe only a convex, flat polygon. A
+  // repeated corner fails the convex test too, so it is cut the same way and
+  // its zero-area sliver dropped with the other degenerate faces.
   function isFaceConvex(vertices, vertexIndices, plane) {
     const n = vertexIndices.length;
     if (n <= 3) return true;
@@ -4926,79 +4938,108 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     return true;
   }
 
-  // Ear-clipping a simple (non-self-intersecting) planar polygon into
-  // triangles -- upstream's own fallback for a face that fails
-  // `isFaceConvex` above. Repeatedly clips a convex corner whose triangle
-  // holds none of the polygon's other corners, until three vertices are
-  // left, projecting to 2D by dropping whichever axis the face's own plane
-  // normal points along most (the ear test only needs positions within the
-  // face's own flat plane). Returns `null` -- caller keeps the original
-  // face rather than risk a wrong cut -- if no valid ear is ever found,
-  // which a genuinely simple polygon should never do.
-  function triangulateFacePolygon(vertices, indices, plane) {
-    const [pnx, pny, pnz] = plane;
-    const ax = Math.abs(pnx); const ay = Math.abs(pny); const az = Math.abs(pnz);
-    // Drop whichever axis the normal points along most, keeping the other two
-    // in whichever cyclic order (x->y->z->x) makes a positive-signed
-    // component project a CCW polygon to a CCW one -- a negative component
-    // needs the pair swapped instead, or the ear test's sign convention
-    // silently flips for half of all possible face orientations (every axis
-    // this picks the same way `computeMeshFacePlane`'s own right-hand-rule
-    // cross product already does, just projected rather than kept in 3D).
-    // A tie between the vertical and north goes to the vertical.
-    let pt;
-    if (ax >= ay && ax >= az) {
-      pt = (i) => { const v = vertices[i]; return pnx >= 0 ? [v.y, v.z] : [v.z, v.y]; };
-    } else if (az >= ax && az >= ay) {
-      pt = (i) => { const v = vertices[i]; return pnz >= 0 ? [v.x, v.y] : [v.y, v.x]; };
-    } else {
-      pt = (i) => { const v = vertices[i]; return pny >= 0 ? [v.z, v.x] : [v.x, v.z]; };
-    }
-    const cross2 = (o, a, b) => (((a[0] - o[0]) * (b[1] - o[1])) - ((a[1] - o[1]) * (b[0] - o[0])));
+  function isFacePlanar(vertices, vertexIndices, plane) {
+    const [pnx, pny, pnz, pd] = plane;
+    return vertexIndices.every((index) => {
+      const v = vertices[index];
+      return Math.abs((v.x * pnx) + (v.y * pny) + (v.z * pnz) + pd) <= 1.0e-3;
+    });
+  }
 
-    const remaining = indices.slice();
-    const triangles = [];
-    let guard = (remaining.length * remaining.length) + 8;
-    while (remaining.length > 3 && guard-- > 0) {
-      const n = remaining.length;
-      let clipped = false;
-      for (let i = 0; i < n; i++) {
-        const iPrev = (i + n - 1) % n;
-        const iNext = (i + 1) % n;
-        const a = pt(remaining[iPrev]);
-        const b = pt(remaining[i]);
-        const c = pt(remaining[iNext]);
-        if (cross2(a, b, c) <= 0) continue;
-        let containsOther = false;
-        for (let j = 0; j < n; j++) {
-          if (j === iPrev || j === i || j === iNext) continue;
-          const p = pt(remaining[j]);
-          const c1 = cross2(a, b, p);
-          const c2 = cross2(b, c, p);
-          const c3 = cross2(c, a, p);
-          if ((c1 >= 0 && c2 >= 0 && c3 >= 0) || (c1 <= 0 && c2 <= 0 && c3 <= 0)) { containsOther = true; break; }
-        }
-        if (containsOther) continue;
-        triangles.push([remaining[iPrev], remaining[i], remaining[iNext]]);
-        remaining.splice(i, 1);
-        clipped = true;
-        break;
-      }
-      if (!clipped) return null;
+  // Upstream's `triangulateFace` (Triangulate.cxx:152-232), as it is: always
+  // `count - 2` triangles, each the best corner it can find -- convex and
+  // holding no other vertex if one is, else the best it has -- turned
+  // against the face's Newell normal, alternating sides for strips. It never
+  // gives up on a polygon, so a self-crossing or non-planar face is covered
+  // as upstream covers it, and a triangle with no area is dropped later.
+  // Returns triples of the face's own vertex indices.
+  function triangulateFacePolygon(vertices, indices) {
+    const sub = (a, b) => [a.x - b.x, a.y - b.y, a.z - b.z];
+    const cross = (a, b) => [(a[1] * b[2]) - (a[2] * b[1]), (a[2] * b[0]) - (a[0] * b[2]), (a[0] * b[1]) - (a[1] * b[0])];
+    const dot = (a, b) => (a[0] * b[0]) + (a[1] * b[1]) + (a[2] * b[2]);
+    const unit = (a) => {
+      const len = Math.sqrt(dot(a, a));
+      return len < 1.0e-6 ? [0, 0, 0] : [a[0] / len, a[1] / len, a[2] / len];
+    };
+    const verts = indices.map((index) => vertices[index]);
+    const normal = [0, 0, 0];
+    for (let i = 0; i < verts.length; i++) {
+      const v0 = verts[i];
+      const v1 = verts[(i + 1) % verts.length];
+      normal[0] += (v0.y - v1.y) * (v0.z + v1.z);
+      normal[1] += (v0.z - v1.z) * (v0.x + v1.x);
+      normal[2] += (v0.x - v1.x) * (v0.y + v1.y);
     }
-    if (remaining.length === 3) triangles.push(remaining);
+    const faceNormal = unit(normal);
+    const work = verts.map((_, i) => i);
+    const isConvex = (w0, w1, w2) => {
+      const [v0, v1, v2] = [verts[work[w0]], verts[work[w1]], verts[work[w2]]];
+      return dot(cross(sub(v1, v0), sub(v2, v1)), faceNormal) > 0;
+    };
+    const isFaceClear = (w0, w1, w2) => {
+      const [v0, v1, v2] = [verts[work[w0]], verts[work[w1]], verts[work[w2]]];
+      const edges = [sub(v1, v0), sub(v2, v1), sub(v0, v2)];
+      const triNormal = cross(edges[0], edges[1]);
+      const planes = [v0, v1, v2].map((v, i) => {
+        const n = cross(edges[i], triNormal);
+        return [n, -dot(n, [v.x, v.y, v.z])];
+      });
+      for (let w = 0; w < work.length; w++) {
+        if (w === w0 || w === w1 || w === w2) continue;
+        const v = verts[work[w]];
+        if (planes.every(([n, d]) => dot(n, [v.x, v.y, v.z]) + d <= 0)) return false;
+      }
+      return true;
+    };
+    const getDot = (w0, w1, w2) => {
+      const [v0, v1, v2] = [verts[work[w0]], verts[work[w1]], verts[work[w2]]];
+      return dot(unit(sub(v1, v0)), unit(sub(v2, v1)));
+    };
+
+    const triangles = [];
+    let best = 0;
+    let left = false;
+    let first = true;
+    let score = 0;
+    while (work.length >= 3) {
+      const count = work.length;
+      let convex = false;
+      let faceClear = false;
+      let offset = best === count ? count - 1 : best % count;
+      if (left) offset = (offset + (count - 1)) % count;
+      left = !left;
+      for (let w = offset; w < offset + (count - 2); w++) {
+        const w0 = w % count;
+        const w1 = (w + 1) % count;
+        const w2 = (w + 2) % count;
+        const convex2 = isConvex(w0, w1, w2);
+        if (convex && !convex2) continue;
+        const faceClear2 = isFaceClear(w0, w1, w2);
+        if ((faceClear && !faceClear2) && (convex || !convex2)) continue;
+        if (first) {
+          const score2 = 2 - getDot(w0, w1, w2);
+          if ((score2 < score) && (convex || !convex2) && (faceClear || !faceClear2)) continue;
+          score = score2;
+        }
+        best = w0;
+        if (convex && faceClear) break;
+        convex = convex2;
+        faceClear = faceClear2;
+      }
+      first = false;
+      triangles.push([0, 1, 2].map((k) => indices[work[(best + k) % count]]));
+      work.splice((best + 1) % count, 1);
+    }
     return triangles;
   }
 
-  // A non-convex face split into triangles, each a shallow copy of the
-  // original carrying its own three vertices/texcoords/normals -- every
-  // other property (texture, matref-resolved fields, passability, phydrv)
-  // stays shared, the same as upstream's own triangles all keeping the
-  // one face's own material. Falls back to the untouched original,
-  // singly, if `triangulateFacePolygon` can't safely clip it.
+  // A face split into triangles, each a shallow copy of the original
+  // carrying its own three vertices/texcoords/normals -- every other
+  // property (texture, matref-resolved fields, passability, phydrv) stays
+  // shared, the same as upstream's own triangles all keeping the one face's
+  // own material.
   function triangulateMeshFace(vertices, face) {
-    const tris = triangulateFacePolygon(vertices, face.vertexIndices, face.plane);
-    if (!tris) return [face];
+    const tris = triangulateFacePolygon(vertices, face.vertexIndices);
     const hasTex = face.texcoordIndices && face.texcoordIndices.length === face.vertexIndices.length;
     const hasNorm = face.normalIndices && face.normalIndices.length === face.vertexIndices.length;
     const posOf = (globalVertexIndex) => face.vertexIndices.indexOf(globalVertexIndex);
@@ -5017,11 +5058,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // transform, never on a `define`'s own still-local template
   // (`resolveDefineMeshes` holds those unfinalized, since the same
   // definition may be placed more than once, each landing somewhere
-  // different). A face that fails
-  // `isFaceConvex` is replaced here by its own triangulation, root and
-  // branch, rather than finalized as-is -- so nothing downstream of this
-  // function ever sees a concave face at all, the same guarantee upstream
-  // gives every one of its own collision/rendering paths.
+  // different). A face that fails `isFaceConvex` or `isFacePlanar` is
+  // replaced here by its own triangulation, root and branch, rather than
+  // finalized as-is -- so nothing downstream of this function ever sees a
+  // concave or bent face at all, the same guarantee upstream gives every one
+  // of its own collision/rendering paths.
   // Meshes that differ only by where they stand and which way they face: a
   // compiled world writes each placement of a `define` out in full, so
   // `bmbz.ducatileague.org:5172` is 693 meshes and far fewer shapes. Each is
@@ -5217,17 +5258,14 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     for (const face of mesh.faces) {
       face.plane = computeMeshFacePlane(mesh.vertices, face.vertexIndices);
       if (face.plane && face.vertexIndices.length > 3
-        && !isFaceConvex(mesh.vertices, face.vertexIndices, face.plane)) {
-        const triFaces = triangulateMeshFace(mesh.vertices, face);
-        if (triFaces.length > 1) {
-          for (const triFace of triFaces) {
-            triFace.plane = computeMeshFacePlane(mesh.vertices, triFace.vertexIndices);
-            triFace.edgePlanes = computeMeshFaceEdgePlanes(mesh.vertices, triFace.vertexIndices, triFace.plane);
-            finalFaces.push(triFace);
-          }
-          continue;
+        && (!isFaceConvex(mesh.vertices, face.vertexIndices, face.plane)
+          || !isFacePlanar(mesh.vertices, face.vertexIndices, face.plane))) {
+        for (const triFace of triangulateMeshFace(mesh.vertices, face)) {
+          triFace.plane = computeMeshFacePlane(mesh.vertices, triFace.vertexIndices);
+          triFace.edgePlanes = computeMeshFaceEdgePlanes(mesh.vertices, triFace.vertexIndices, triFace.plane);
+          finalFaces.push(triFace);
         }
-        log(`Could not triangulate a non-convex mesh face in ${mesh.name || '(unnamed mesh)'}, using it as-is`);
+        continue;
       }
       face.edgePlanes = computeMeshFaceEdgePlanes(mesh.vertices, face.vertexIndices, face.plane);
       finalFaces.push(face);
@@ -5938,6 +5976,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     materialSources: materialRegistry.map((material) => ({ name: material.name, source: material.source || null })),
     // Texture names that resolved to nothing, for the world viewer's summary.
     unresolvedTextureNames: Array.from(unresolvedTextureNames).sort(),
+    // The images it loads from anywhere else, `//host/path`, for the server
+    // to check are still there (`server/image-check.cjs`).
+    externalTextureUrls: Array.from(externalTextureUrls).sort(),
     instancing,
   };
   attachMeshArrayPayloads(world);
@@ -6330,7 +6371,13 @@ function buildWorldFile(map, { gameConfig, serverBzdb, puffClouds, defaultMapSiz
     hash: crypto.createHash('sha256').update(json).digest('hex').slice(0, 12),
     // Outside the hashed entry: a description *of* the map rather than part
     // of it.
-    stats: summariseMap(entry),
+    stats: {
+      ...summariseMap(entry),
+      // What its textures need from elsewhere: the URLs, and the names that
+      // resolve to nothing at all.
+      textureUrls: map.externalTextureUrls || [],
+      unresolvedTextures: map.unresolvedTextureNames || [],
+    },
     svg,
     overviewError,
   };
